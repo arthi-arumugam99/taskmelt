@@ -655,7 +655,15 @@ ${text}`,
                 </View>
               )}
 
-              {quickWins.length > 0 && (
+              {quickWins.length > 0 && quickWins.length <= 3 && (
+                <View style={styles.quickWinsCard}>
+                  <View style={styles.quickWinsHeader}>
+                    <Zap size={14} color="#F59E0B" fill="#F59E0B" />
+                    <Text style={styles.quickWinsTitle}>{quickWins.length} quick win{quickWins.length > 1 ? 's' : ''} below (≤5 min)</Text>
+                  </View>
+                </View>
+              )}
+              {quickWins.length > 3 && (
                 <View style={styles.quickWinsCard}>
                   <TouchableOpacity
                     onPress={() => {
@@ -665,16 +673,8 @@ ${text}`,
                     activeOpacity={0.7}
                   >
                     <View style={styles.quickWinsHeader}>
-                      <View style={styles.quickWinsIconBadge}>
-                        <Zap size={16} color="#F59E0B" fill="#F59E0B" />
-                      </View>
-                      <View style={styles.quickWinsHeaderText}>
-                        <Text style={styles.quickWinsTitle}>Quick Wins</Text>
-                        <Text style={styles.quickWinsSubtitle}>≤5 min each • Tap to expand</Text>
-                      </View>
-                      <View style={styles.quickWinsBadge}>
-                        <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
-                      </View>
+                      <Zap size={14} color="#F59E0B" fill="#F59E0B" />
+                      <Text style={styles.quickWinsTitle}>{quickWins.length} quick wins (≤5 min) • Tap to see</Text>
                     </View>
                   </TouchableOpacity>
                   {quickWinsExpanded && (
@@ -723,13 +723,13 @@ ${text}`,
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
-                highlightedTaskIds={firstTask ? [firstTask.id] : []}
+                highlightedTaskIds={[...(firstTask ? [firstTask.id] : []), ...quickWins.map(qw => qw.id)]}
                 showAllCategories={showAllCategories}
                 onToggleShowAll={() => {
                   setShowAllCategories(!showAllCategories);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
-                hideHighlightedTasks={completedTasks === 0}
+                hideHighlightedTasks={true}
               />
 
               {(() => {
@@ -1035,18 +1035,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic' as const,
   },
   quickWinsCard: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: Colors.border,
   },
   quickWinsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
+    gap: 8,
   },
   quickWinsIconBadge: {
     width: 32,
@@ -1060,9 +1059,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quickWinsTitle: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    color: '#92400E',
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.textMuted,
   },
   quickWinsSubtitle: {
     fontSize: 12,
@@ -1151,36 +1150,28 @@ const styles = StyleSheet.create({
     fontStyle: 'italic' as const,
   },
   startHereCard: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: Colors.background,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
   },
   startHereLabel: {
     alignItems: 'center',
     marginBottom: 16,
   },
   startHereLabelText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
+    fontSize: 11,
+    fontWeight: '600' as const,
     color: Colors.primary,
     textTransform: 'uppercase' as const,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
   startHereTask: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
   },
   startHereCheckbox: {
     width: 32,
@@ -1195,11 +1186,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   startHereTaskText: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600' as const,
     color: Colors.text,
     marginBottom: 6,
-    lineHeight: 24,
+    lineHeight: 26,
   },
   startHereTime: {
     fontSize: 14,
