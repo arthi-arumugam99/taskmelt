@@ -46,22 +46,41 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const startRecordingMobile = useCallback(async () => {
     try {
-      console.log('Requesting mobile audio permissions...');
-      const { status, canAskAgain } = await Audio.requestPermissionsAsync();
+      console.log('Checking mobile audio permissions...');
       
-      if (status !== 'granted') {
-        if (status === 'denied' && !canAskAgain) {
-          throw new Error('Microphone access denied. Please enable it in your device settings.');
-        }
-        throw new Error('Microphone permission is required to record audio. Please allow access and try again.');
+      const { status: existingStatus } = await Audio.getPermissionsAsync();
+      console.log('Current permission status:', existingStatus);
+      
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        console.log('Requesting microphone permission...');
+        const { status } = await Audio.requestPermissionsAsync();
+        finalStatus = status;
+        console.log('Permission request result:', status);
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.error('Permission not granted. Status:', finalStatus);
+        throw new Error('Microphone access is required. Please allow microphone access in your device settings and try again.');
+      }
+      
+      console.log('Permission granted, setting up audio mode...');
+
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+        console.log('Audio mode configured successfully');
+      } catch (audioModeErr) {
+        console.error('Error setting audio mode:', audioModeErr);
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
+      console.log('Creating recording instance...');
       const recording = new Audio.Recording();
+      
+      console.log('Preparing to record...');
       await recording.prepareToRecordAsync({
         android: {
           extension: '.m4a',
@@ -88,9 +107,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         },
       });
 
+      console.log('Starting recording...');
       await recording.startAsync();
       recordingRef.current = recording;
-      console.log('Mobile recording started');
+      console.log('Mobile recording started successfully');
     } catch (err) {
       console.error('Error starting mobile recording:', err);
       throw err;
