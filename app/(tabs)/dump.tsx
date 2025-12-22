@@ -13,7 +13,7 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap } from 'lucide-react-native';
+import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap, Check } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -69,8 +69,6 @@ export default function DumpScreen() {
   const [inputText, setInputText] = useState('');
   const [currentSession, setCurrentSession] = useState<DumpSession | null>(null);
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
-  const [showAllQuickWins, setShowAllQuickWins] = useState(false);
-  const [showQuickWinsWhy, setShowQuickWinsWhy] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
@@ -401,18 +399,6 @@ ${text}`,
   ) ?? 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const startHereTaskId = currentSession?.categories
-    .flatMap(cat => 
-      cat.items
-        .filter(item => !item.completed && !item.isReflection)
-        .map(item => ({ ...item, categoryColor: cat.color }))
-    )
-    .sort((a, b) => {
-      const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
-      const bTime = parseInt(b.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
-      return aTime - bTime;
-    })[0]?.id ?? null;
-
   const loopCloserTaskId = currentSession?.categories
     .flatMap(cat => 
       cat.items
@@ -422,13 +408,12 @@ ${text}`,
   const quickWins = currentSession?.categories.flatMap(cat => 
     cat.items
       .filter(item => {
-        if (item.id === startHereTaskId) return false;
         if (item.id === loopCloserTaskId) return false;
         const estimate = item.timeEstimate?.toLowerCase() || '';
         const match = estimate.match(/(\d+)\s*min/);
         if (!match) return false;
         const minutes = parseInt(match[1], 10);
-        return minutes <= 5 && !item.completed;
+        return minutes <= 5 && !item.completed && !item.isReflection;
       })
       .map(item => ({ ...item, categoryColor: cat.color }))
   ) ?? [];
@@ -611,131 +596,81 @@ ${text}`,
                 </View>
               )}
 
-              {currentSession.categories.some(cat => cat.items.some(item => !item.completed && !item.isReflection)) && (() => {
-                const startHereTask = currentSession.categories
-                  .flatMap(cat => 
-                    cat.items
-                      .filter(item => !item.completed && !item.isReflection)
-                      .map(item => ({ ...item, categoryColor: cat.color }))
-                  )
-                  .sort((a, b) => {
-                    const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
-                    const bTime = parseInt(b.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
-                    return aTime - bTime;
-                  })[0];
 
-                return startHereTask ? (
-                  <View style={styles.startHereCard}>
-                    <View style={styles.startHereHeader}>
-                      <Text style={styles.startHereLabel}>If you do nothing else today, do this 👇</Text>
+
+              {quickWins.length > 0 && (
+                <View style={styles.quickWinsCard}>
+                  <View style={styles.quickWinsHeader}>
+                    <View style={styles.quickWinsIconBadge}>
+                      <Zap size={16} color="#F59E0B" fill="#F59E0B" />
                     </View>
-                    <View style={styles.startHereTask}>
-                      <View style={styles.startHereContent}>
-                        <Text style={styles.startHereTaskText}>{startHereTask.task}</Text>
-                        {startHereTask.timeEstimate && (
-                          <Text style={styles.startHereTime}>{startHereTask.timeEstimate}</Text>
-                        )}
-                        <Text style={styles.scrollToCheckText}>👇 Scroll down to check it off</Text>
-                      </View>
+                    <View style={styles.quickWinsHeaderText}>
+                      <Text style={styles.quickWinsTitle}>Quick Wins</Text>
+                      <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
                     </View>
-                    <View style={styles.whyThisContainer}>
-                      <Text style={styles.whyThisText}>
-                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm.
-                      </Text>
+                    <View style={styles.quickWinsBadge}>
+                      <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
                     </View>
                   </View>
-                ) : null;
-              })()}
-
-              {quickWins.length > 0 && (() => {
-                const displayCount = 3;
-                const visibleQuickWins = showAllQuickWins ? quickWins : quickWins.slice(0, displayCount);
-                
-                return (
-                  <View style={styles.quickWinsCard}>
-                    <View style={styles.quickWinsHeader}>
-                      <View style={styles.quickWinsIconBadge}>
-                        <Zap size={16} color="#F59E0B" fill="#F59E0B" />
-                      </View>
-                      <View style={styles.quickWinsHeaderText}>
-                        <Text style={styles.quickWinsTitle}>Quick Wins</Text>
-                        <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
-                      </View>
-                      <TouchableOpacity 
-                        onPress={() => {
-                          setShowQuickWinsWhy(!showQuickWinsWhy);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                        style={styles.whyThisButton}
-                      >
-                        <Text style={styles.whyThisButtonText}>ⓘ</Text>
-                      </TouchableOpacity>
-                      <View style={styles.quickWinsBadge}>
-                        <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
-                      </View>
-                    </View>
-                    {showQuickWinsWhy && (
-                      <View style={[styles.whyThisContainer, { marginTop: 0, marginBottom: 12 }]}>
-                        <Text style={styles.whyThisText}>
-                          💡 These quick tasks (≤5 min) are perfect for building momentum when you&apos;re feeling stuck or overwhelmed.
-                        </Text>
-                      </View>
-                    )}
-                    <Text style={styles.quickWinsSuggestion}>👇 Scroll down to their categories to check them off</Text>
-                    <View style={styles.quickWinsList}>
-                      {visibleQuickWins.map((task) => (
-                        <View
-                          key={task.id}
-                          style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
-                        >
-                          <View
-                            style={[
-                              styles.quickWinDot,
-                              { backgroundColor: task.categoryColor },
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.quickWinText,
-                              task.completed && styles.quickWinTextCompleted,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {task.task}
-                          </Text>
-                          <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    {quickWins.length > displayCount && (
+                  <View style={styles.quickWinsList}>
+                    {quickWins.map((task) => (
                       <TouchableOpacity
-                        onPress={() => {
-                          setShowAllQuickWins(!showAllQuickWins);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                        style={styles.quickWinsMoreButton}
+                        key={task.id}
+                        onPress={() => handleToggleTask(task.id)}
+                        style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
+                        activeOpacity={0.7}
                       >
-                        <Text style={styles.quickWinsMore}>
-                          {showAllQuickWins ? 'Show less' : `+${quickWins.length - displayCount} more if you want`}
+                        <View
+                          style={[
+                            styles.quickWinCheckbox,
+                            { borderColor: task.categoryColor },
+                            task.completed && { backgroundColor: task.categoryColor },
+                          ]}
+                        >
+                          {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.quickWinText,
+                            task.completed && styles.quickWinTextCompleted,
+                          ]}
+                        >
+                          {task.task}
                         </Text>
+                        <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
                       </TouchableOpacity>
-                    )}
+                    ))}
                   </View>
-                );
-              })()}
-
-              {currentSession.reflectionInsight && (
-                <View style={styles.insightCard}>
-                  <Text style={styles.insightText}>&ldquo;{currentSession.reflectionInsight}&rdquo;</Text>
                 </View>
               )}
+
+
+
+
+
+              <OrganizedResults
+                categories={currentSession.categories.filter(cat => 
+                  !cat.name.toLowerCase().includes('reflection') && 
+                  !cat.name.toLowerCase().includes('notes')
+                )}
+                summary={currentSession.summary}
+                onToggleTask={handleToggleTask}
+                onToggleExpanded={handleToggleExpanded}
+                highlightedTaskIds={[loopCloserTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
+                showAllCategories={showAllCategories}
+                onToggleShowAll={() => {
+                  setShowAllCategories(!showAllCategories);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                hideHighlightedTasks={true}
+              />
 
               {(() => {
                 const loopClosers = currentSession.categories
                   .flatMap(cat => 
                     cat.items
                       .filter(item => item.closesLoop && !item.completed && !item.isReflection)
-                      .map(item => ({ ...item, categoryName: cat.name, categoryEmoji: cat.emoji }))
+                      .map(item => ({ ...item, categoryName: cat.name, categoryEmoji: cat.emoji, categoryColor: cat.color }))
                   )
                   .sort((a, b) => {
                     const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
@@ -749,38 +684,49 @@ ${text}`,
                       <Text style={styles.loopCloserLabel}>🔄 Close One Loop</Text>
                       <Text style={styles.loopCloserSubtitle}>Fastest way to feel lighter</Text>
                     </View>
-                    <View style={styles.loopCloserTask}>
-                      <Text style={styles.loopCloserEmoji}>{loopClosers.categoryEmoji}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleToggleTask(loopClosers.id)}
+                      style={styles.loopCloserTask}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.loopCloserCheckbox,
+                          { borderColor: loopClosers.categoryColor },
+                          loopClosers.completed && { backgroundColor: loopClosers.categoryColor },
+                        ]}
+                      >
+                        {loopClosers.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                      </View>
                       <View style={styles.loopCloserContent}>
-                        <Text style={styles.loopCloserTaskText}>{loopClosers.task}</Text>
+                        <Text style={[styles.loopCloserTaskText, loopClosers.completed && styles.loopCloserTaskTextCompleted]}>
+                          {loopClosers.task}
+                        </Text>
                         {loopClosers.timeEstimate && (
                           <Text style={styles.loopCloserTime}>{loopClosers.timeEstimate}</Text>
                         )}
-                        <Text style={styles.loopCloserHint}>Scroll down to {loopClosers.categoryName} to check it off ↓</Text>
                       </View>
-                    </View>
-                    <View style={styles.whyThisContainer}>
-                      <Text style={styles.whyThisText}>
-                        💡 Chosen because it completes something unfinished and doesn&apos;t require much energy.
-                      </Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
                 ) : null;
               })()}
 
-              <OrganizedResults
-                categories={currentSession.categories}
-                summary={currentSession.summary}
-                onToggleTask={handleToggleTask}
-                onToggleExpanded={handleToggleExpanded}
-                highlightedTaskIds={[startHereTaskId, loopCloserTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
-                showAllCategories={showAllCategories}
-                onToggleShowAll={() => {
-                  setShowAllCategories(!showAllCategories);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                hideHighlightedTasks={true}
-              />
+              {(() => {
+                const notesCategory = currentSession.categories.find(cat => 
+                  cat.name.toLowerCase().includes('reflection') || 
+                  cat.name.toLowerCase().includes('notes')
+                );
+
+                return notesCategory ? (
+                  <OrganizedResults
+                    categories={[notesCategory]}
+                    onToggleTask={handleToggleTask}
+                    onToggleExpanded={handleToggleExpanded}
+                    highlightedTaskIds={[]}
+                    hideHighlightedTasks={false}
+                  />
+                ) : null;
+              })()}
 
               <TouchableOpacity
                 style={styles.newDumpButton}
@@ -1301,5 +1247,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#15803D',
     fontStyle: 'italic' as const,
+  },
+  loopCloserCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loopCloserTaskTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: Colors.textMuted,
   },
 });
