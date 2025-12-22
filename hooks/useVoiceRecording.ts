@@ -35,7 +35,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('Sending audio for transcription...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -95,7 +95,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Request timeout after 45 seconds');
+          throw new Error('Transcription timeout - try a shorter recording');
         }
         throw err;
       }
@@ -165,19 +165,19 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
           sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 32000,
+          bitRate: 24000,
         },
         ios: {
           extension: '.m4a',
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          audioQuality: Audio.IOSAudioQuality.LOW,
           sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 32000,
+          bitRate: 24000,
         },
         web: {
           mimeType: 'audio/webm',
-          bitsPerSecond: 32000,
+          bitsPerSecond: 24000,
         },
       });
 
@@ -203,8 +203,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       streamRef.current = stream;
       audioChunksRef.current = [];
 
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : 'audio/webm';
+      
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm',
+        mimeType,
+        audioBitsPerSecond: 24000,
       });
 
       mediaRecorder.ondataavailable = (event) => {
@@ -391,15 +396,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No audio data captured');
       }
 
-      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 5) {
+      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 3) {
         console.log('Using live transcript from browser (instant)');
         const finalText = liveTranscript;
         setLiveTranscript('');
         return finalText;
       }
 
-      console.log('Transcribing audio...');
+      console.log('Transcribing audio via API...');
+      const startTime = Date.now();
       const transcribedText = await transcribeAudio(formData);
+      console.log(`Transcription completed in ${Date.now() - startTime}ms`);
       const finalText = liveTranscript || transcribedText;
       setLiveTranscript('');
       return finalText;
