@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import { Audio } from 'expo-av';
 import { useMutation } from '@tanstack/react-query';
 
@@ -62,7 +62,26 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (finalStatus !== 'granted') {
         console.error('Permission not granted. Status:', finalStatus);
-        throw new Error('Microphone access is required. Please allow microphone access in your device settings and try again.');
+        
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please allow microphone access to use voice recording. You can enable it in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
+            },
+          ]
+        );
+        
+        throw new Error('Microphone permission denied');
       }
       
       console.log('Permission granted, setting up audio mode...');
