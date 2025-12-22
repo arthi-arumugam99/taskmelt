@@ -55,22 +55,40 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         const responseText = await response.text();
         console.log('Transcription raw response:', responseText.substring(0, 200));
         
-        let result;
-        try {
-          result = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Failed to parse transcription response:', parseError);
-          console.error('Response was:', responseText);
-          throw new Error('Invalid response from transcription service');
+        const trimmedResponse = responseText.trim();
+        
+        if (!trimmedResponse) {
+          throw new Error('Empty response from transcription service');
         }
         
-        if (!result.text) {
-          console.error('No text in transcription result:', result);
+        let transcribedText: string;
+        
+        if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
+          try {
+            const result = JSON.parse(trimmedResponse);
+            if (result.text) {
+              transcribedText = result.text;
+            } else if (typeof result === 'string') {
+              transcribedText = result;
+            } else {
+              console.error('Unexpected JSON structure:', result);
+              throw new Error('Invalid transcription format');
+            }
+          } catch (parseError) {
+            console.error('Failed to parse JSON response:', parseError);
+            console.error('Response was:', trimmedResponse.substring(0, 500));
+            throw new Error('Invalid JSON response from transcription service');
+          }
+        } else {
+          transcribedText = trimmedResponse;
+        }
+        
+        if (!transcribedText || transcribedText.length === 0) {
           throw new Error('No transcription text received');
         }
         
-        console.log('Transcription result:', result);
-        return result.text;
+        console.log('Transcription result:', transcribedText.substring(0, 100));
+        return transcribedText;
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
