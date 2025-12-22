@@ -103,8 +103,10 @@ export default function DumpScreen() {
     mutationFn: async (text: string) => {
       console.log('Organizing text:', text.substring(0, 100) + '...');
       console.log('Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+      console.log('Platform:', Platform.OS);
       
-      const result = await generateObject({
+      try {
+        const result = await generateObject({
         messages: [
           {
             role: 'user',
@@ -208,10 +210,21 @@ ${text}`,
           },
         ],
         schema: resultSchema,
-      });
-      
-      console.log('AI Response:', JSON.stringify(result, null, 2));
-      return result;
+        });
+        
+        console.log('AI Response:', JSON.stringify(result, null, 2));
+        return result;
+      } catch (err) {
+        console.error('generateObject error:', err);
+        console.error('Error type:', typeof err);
+        console.error('Error constructor:', err?.constructor?.name);
+        if (err instanceof Error) {
+          console.error('Error name:', err.name);
+          console.error('Error message:', err.message);
+          console.error('Error stack:', err.stack);
+        }
+        throw err;
+      }
     },
     onSuccess: (data) => {
       console.log('Organization successful:', data);
@@ -508,12 +521,20 @@ ${text}`,
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>
                     {mutationError instanceof Error && mutationError.message ? 
-                      `Error: ${mutationError.message}` : 
+                      mutationError.message.includes('Network request failed') ?
+                        'Unable to connect to AI service. Please check your internet connection and try again.' :
+                        `Error: ${mutationError.message}` : 
                       'Oops! Something went wrong. Please try again.'}
                   </Text>
-                  {process.env.EXPO_PUBLIC_TOOLKIT_URL ? null : (
-                    <Text style={[styles.errorText, { marginTop: 8, fontSize: 12 }]}>Debug: Toolkit URL is not configured</Text>
-                  )}
+                  <TouchableOpacity 
+                    onPress={() => {
+                      reset();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={styles.retryButton}
+                  >
+                    <Text style={styles.retryButtonText}>Dismiss</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -861,6 +882,19 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 14,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   resultsHeader: {
     flexDirection: 'row',
