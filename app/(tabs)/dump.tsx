@@ -413,10 +413,17 @@ ${text}`,
       return aTime - bTime;
     })[0]?.id ?? null;
 
+  const loopCloserTaskId = currentSession?.categories
+    .flatMap(cat => 
+      cat.items
+        .filter(item => item.closesLoop && !item.completed && !item.isReflection)
+    )[0]?.id ?? null;
+
   const quickWins = currentSession?.categories.flatMap(cat => 
     cat.items
       .filter(item => {
         if (item.id === startHereTaskId) return false;
+        if (item.id === loopCloserTaskId) return false;
         const estimate = item.timeEstimate?.toLowerCase() || '';
         const match = estimate.match(/(\d+)\s*min/);
         if (!match) return false;
@@ -750,6 +757,11 @@ ${text}`,
                         )}
                         <Text style={styles.loopCloserHint}>Find in {loopClosers.categoryName} below ↓</Text>
                       </View>
+                    </View>
+                    <View style={styles.whyThisContainer}>
+                      <Text style={styles.whyThisText}>
+                        💡 Chosen because it completes something unfinished and doesn&apos;t require much energy.
+                      </Text>
                     </View>
                   </View>
                 ) : null;
