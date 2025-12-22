@@ -23,6 +23,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
 
   useEffect(() => {
+    if (!supabase) {
+      console.log('Auth: Supabase not available, running in offline mode');
+      setAuthState({
+        user: null,
+        session: null,
+        isLoading: false,
+        isInitialized: true,
+      });
+      return;
+    }
+
     console.log('Auth: Checking initial session...');
     
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -82,6 +93,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signUpMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      if (!supabase) {
+        throw new Error('Authentication not available. Please configure Supabase.');
+      }
       console.log('Auth: Signing up:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -100,6 +114,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signInMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      if (!supabase) {
+        throw new Error('Authentication not available. Please configure Supabase.');
+      }
       console.log('Auth: Signing in:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -118,6 +135,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signOutMutation = useMutation({
     mutationFn: async () => {
+      if (!supabase) {
+        throw new Error('Authentication not available. Please configure Supabase.');
+      }
       console.log('Auth: Signing out');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -133,6 +153,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
+      if (!supabase) {
+        throw new Error('Authentication not available. Please configure Supabase.');
+      }
       console.log('Auth: Sending password reset to:', email);
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;

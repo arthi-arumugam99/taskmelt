@@ -30,6 +30,11 @@ async function saveLocalDumps(dumps: DumpSession[]): Promise<void> {
 }
 
 async function loadRemoteDumps(userId: string): Promise<DumpSession[]> {
+  if (!supabase) {
+    console.log('Sync: Supabase not available, skipping remote load');
+    return [];
+  }
+  
   try {
     console.log('Sync: Loading remote dumps for user:', userId);
     const { data, error } = await supabase
@@ -59,6 +64,11 @@ async function loadRemoteDumps(userId: string): Promise<DumpSession[]> {
 }
 
 async function saveRemoteDump(userId: string, dump: DumpSession): Promise<void> {
+  if (!supabase) {
+    console.log('Sync: Supabase not available, skipping remote save');
+    return;
+  }
+  
   try {
     console.log('Sync: Saving dump to remote:', dump.id);
     const { error } = await supabase.from('dumps').upsert({
@@ -82,6 +92,11 @@ async function saveRemoteDump(userId: string, dump: DumpSession): Promise<void> 
 }
 
 async function deleteRemoteDump(userId: string, dumpId: string): Promise<void> {
+  if (!supabase) {
+    console.log('Sync: Supabase not available, skipping remote delete');
+    return;
+  }
+  
   try {
     console.log('Sync: Deleting remote dump:', dumpId);
     const { error } = await supabase
@@ -99,6 +114,11 @@ async function deleteRemoteDump(userId: string, dumpId: string): Promise<void> {
 }
 
 async function clearRemoteDumps(userId: string): Promise<void> {
+  if (!supabase) {
+    console.log('Sync: Supabase not available, skipping remote clear');
+    return;
+  }
+  
   try {
     console.log('Sync: Clearing all remote dumps for user:', userId);
     const { error } = await supabase
