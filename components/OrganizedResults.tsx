@@ -238,6 +238,7 @@ interface OrganizedResultsProps {
   summary?: string;
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
+  hiddenTaskIds?: string[];
 }
 
 export default function OrganizedResults({
@@ -245,8 +246,13 @@ export default function OrganizedResults({
   summary,
   onToggleTask,
   onToggleExpanded,
+  hiddenTaskIds = [],
 }: OrganizedResultsProps) {
-  const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
+  const filteredCategories = categories.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item => !hiddenTaskIds.includes(item.id)),
+  }));
+  const nonEmptyCategories = filteredCategories.filter((c) => c.items.length > 0);
 
   if (nonEmptyCategories.length === 0) {
     return null;

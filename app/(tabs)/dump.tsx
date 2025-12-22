@@ -67,6 +67,7 @@ export default function DumpScreen() {
   const [currentSession, setCurrentSession] = useState<DumpSession | null>(null);
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
   const [showAllQuickWins, setShowAllQuickWins] = useState(false);
+  const [showQuickWinsWhy, setShowQuickWinsWhy] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
   const { addDump, toggleTask } = useDumps();
@@ -626,10 +627,26 @@ ${text}`,
                         <Text style={styles.quickWinsTitle}>Quick Wins</Text>
                         <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
                       </View>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setShowQuickWinsWhy(!showQuickWinsWhy);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={styles.whyThisButton}
+                      >
+                        <Text style={styles.whyThisButtonText}>ⓘ</Text>
+                      </TouchableOpacity>
                       <View style={styles.quickWinsBadge}>
                         <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
                       </View>
                     </View>
+                    {showQuickWinsWhy && (
+                      <View style={[styles.whyThisContainer, { marginBottom: 12 }]}>
+                        <Text style={styles.whyThisText}>
+                          💡 These quick tasks (≤5 min) are perfect for building momentum when you&apos;re feeling stuck or overwhelmed.
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.quickWinsList}>
                       {visibleQuickWins.map((task) => (
                         <TouchableOpacity
@@ -682,6 +699,7 @@ ${text}`,
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
+                hiddenTaskIds={[startHereTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
               />
 
               <TouchableOpacity
@@ -1047,6 +1065,18 @@ const styles = StyleSheet.create({
     color: '#B45309',
     textAlign: 'center',
     fontStyle: 'italic' as const,
+  },
+  whyThisButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whyThisButtonText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
   whyThisContainer: {
     marginTop: 12,
