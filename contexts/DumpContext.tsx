@@ -60,12 +60,39 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
           categories: dump.categories.map((category) => ({
             ...category,
             items: category.items.map((item) => {
-              if (item.id !== taskId) return item;
-              return {
-                ...item,
-                completed: !item.completed,
-                completedAt: !item.completed ? new Date().toISOString() : undefined,
-              };
+              if (item.id === taskId) {
+                const newCompletedState = !item.completed;
+                return {
+                  ...item,
+                  completed: newCompletedState,
+                  completedAt: newCompletedState ? new Date().toISOString() : undefined,
+                  subtasks: item.subtasks?.map(subtask => ({
+                    ...subtask,
+                    completed: newCompletedState,
+                    completedAt: newCompletedState ? new Date().toISOString() : undefined,
+                  })),
+                };
+              }
+              if (item.subtasks) {
+                const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
+                if (subtaskIndex !== -1) {
+                  return {
+                    ...item,
+                    subtasks: item.subtasks.map((st) => {
+                      if (st.id === taskId) {
+                        const newCompletedState = !st.completed;
+                        return {
+                          ...st,
+                          completed: newCompletedState,
+                          completedAt: newCompletedState ? new Date().toISOString() : undefined,
+                        };
+                      }
+                      return st;
+                    }),
+                  };
+                }
+              }
+              return item;
             }),
           })),
         };

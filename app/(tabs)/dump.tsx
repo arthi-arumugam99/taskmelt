@@ -417,22 +417,20 @@ ${text}`,
   const totalTasks = currentSession?.categories.reduce((acc, cat) => {
     return acc + cat.items.reduce((itemAcc, item) => {
       if (item.isReflection) return itemAcc;
-      let count = 1;
       if (item.subtasks && item.subtasks.length > 0) {
-        count += item.subtasks.length;
+        return itemAcc + item.subtasks.length;
       }
-      return itemAcc + count;
+      return itemAcc + 1;
     }, 0);
   }, 0) ?? 0;
   
   const completedTasks = currentSession?.categories.reduce((acc, cat) => {
     return acc + cat.items.reduce((itemAcc, item) => {
       if (item.isReflection) return itemAcc;
-      let count = item.completed ? 1 : 0;
       if (item.subtasks && item.subtasks.length > 0) {
-        count += item.subtasks.filter(st => st.completed).length;
+        return itemAcc + item.subtasks.filter(st => st.completed).length;
       }
-      return itemAcc + count;
+      return itemAcc + (item.completed ? 1 : 0);
     }, 0);
   }, 0) ?? 0;
   
@@ -660,7 +658,7 @@ ${text}`,
 
               {completedTasks === 0 && firstTask && (
                 <View style={styles.startHereCard}>
-                  <View style={styles.startHereLabel}>
+                  <View style={styles.startHereHeader}>
                     <Text style={styles.startHereLabelText}>If you do nothing else</Text>
                   </View>
                   <TouchableOpacity
@@ -1161,28 +1159,31 @@ const styles = StyleSheet.create({
     fontStyle: 'italic' as const,
   },
   startHereCard: {
-    backgroundColor: Colors.background,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-  },
-  startHereLabel: {
-    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  startHereHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   startHereLabelText: {
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.primary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
+    color: Colors.text,
   },
   startHereTask: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 14,
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
   },
   startHereCheckbox: {
     width: 24,
@@ -1191,26 +1192,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 2,
   },
   startHereContent: {
     flex: 1,
   },
   startHereTaskText: {
     fontSize: 15,
-    fontWeight: '600' as const,
     color: Colors.text,
-    marginBottom: 6,
-    lineHeight: 22,
+    marginBottom: 4,
   },
   startHereTime: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600' as const,
-    marginBottom: 6,
+    fontSize: 13,
+    color: Colors.textMuted,
+    marginBottom: 4,
   },
   startHereHint: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
   },
