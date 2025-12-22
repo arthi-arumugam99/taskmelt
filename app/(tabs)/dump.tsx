@@ -74,7 +74,7 @@ export default function DumpScreen() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { addDump, toggleTask, canCreateDump, remainingFreeDumps } = useDumps();
+  const { dumps, addDump, toggleTask, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
   const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
@@ -258,32 +258,12 @@ ${text}`,
   const handleToggleTask = useCallback((taskId: string) => {
     if (!currentSession) return;
 
-    toggleTask(currentSession.id, taskId);
+    let isCompleting = false;
     
-    const updatedSession = { ...currentSession };
-    let taskFound = false;
-    
-    for (const category of updatedSession.categories) {
+    for (const category of currentSession.categories) {
       const taskIndex = category.items.findIndex(item => item.id === taskId);
       if (taskIndex !== -1) {
-        const newCompletedState = !category.items[taskIndex].completed;
-        category.items[taskIndex].completed = newCompletedState;
-        category.items[taskIndex].completedAt = newCompletedState ? new Date().toISOString() : undefined;
-        
-        if (category.items[taskIndex].subtasks && category.items[taskIndex].subtasks!.length > 0) {
-          category.items[taskIndex].subtasks!.forEach(subtask => {
-            subtask.completed = newCompletedState;
-            subtask.completedAt = newCompletedState ? new Date().toISOString() : undefined;
-          });
-        }
-        
-        taskFound = true;
-        
-        Haptics.impactAsync(
-          newCompletedState
-            ? Haptics.ImpactFeedbackStyle.Medium 
-            : Haptics.ImpactFeedbackStyle.Light
-        );
+        isCompleting = !category.items[taskIndex].completed;
         break;
       }
       
@@ -291,32 +271,20 @@ ${text}`,
         if (item.subtasks) {
           const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
           if (subtaskIndex !== -1) {
-            const newCompletedState = !item.subtasks[subtaskIndex].completed;
-            item.subtasks[subtaskIndex].completed = newCompletedState;
-            item.subtasks[subtaskIndex].completedAt = newCompletedState ? new Date().toISOString() : undefined;
-            
-            const allSubtasksComplete = item.subtasks.every(st => st.completed);
-            item.completed = allSubtasksComplete;
-            item.completedAt = allSubtasksComplete ? new Date().toISOString() : undefined;
-            
-            taskFound = true;
-            
-            Haptics.impactAsync(
-              newCompletedState
-                ? Haptics.ImpactFeedbackStyle.Medium 
-                : Haptics.ImpactFeedbackStyle.Light
-            );
+            isCompleting = !item.subtasks[subtaskIndex].completed;
             break;
           }
         }
       }
-      
-      if (taskFound) break;
     }
     
-    if (taskFound) {
-      setCurrentSession(updatedSession);
-    }
+    Haptics.impactAsync(
+      isCompleting
+        ? Haptics.ImpactFeedbackStyle.Medium 
+        : Haptics.ImpactFeedbackStyle.Light
+    );
+    
+    toggleTask(currentSession.id, taskId);
   }, [currentSession, toggleTask]);
 
   const handleToggleExpanded = useCallback((taskId: string) => {
@@ -378,16 +346,19 @@ ${text}`,
   const { totalTasks, completedTasks } = React.useMemo(() => {
     if (!currentSession) return { totalTasks: 0, completedTasks: 0 };
     
+    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
+    const dumpToUse = actualDump || currentSession;
+    
     let total = 0;
     let completed = 0;
     
-    for (const cat of currentSession.categories) {
+    for (const cat of dumpToUse.categories) {
       for (const item of cat.items) {
         if (item.isReflection) continue;
         
         if (item.subtasks && item.subtasks.length > 0) {
           total += item.subtasks.length;
-          completed += item.subtasks.filter(st => st.completed).length;
+          completed += item.subtasks.filter((st) => st.completed).length;
         } else {
           total += 1;
           if (item.completed) completed += 1;
@@ -396,16 +367,19 @@ ${text}`,
     }
     
     return { totalTasks: total, completedTasks: completed };
-  }, [currentSession]);
+  }, [currentSession, dumps]);
   
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const nextMomentumTask = React.useMemo(() => {
     if (!currentSession || completedTasks === 0 || completedTasks === totalTasks) return null;
     
+    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
+    const dumpToUse = actualDump || currentSession;
+    
     const incompleteTasks: { task: string; timeEstimate?: string; id: string; categoryColor: string; categoryName: string }[] = [];
     
-    for (const cat of currentSession.categories) {
+    for (const cat of dumpToUse.categories) {
       for (const item of cat.items) {
         if (item.isReflection || item.completed) continue;
         
@@ -442,32 +416,46 @@ ${text}`,
     });
     
     return incompleteTasks[0] || null;
-  }, [currentSession, completedTasks, totalTasks]);
+  }, [currentSession, completedTasks, totalTasks, dumps]);
 
-  const quickWins = currentSession?.categories.flatMap(cat => 
-    cat.items
-      .filter(item => {
-        const estimate = item.timeEstimate?.toLowerCase() || '';
-        const match = estimate.match(/(\d+)\s*min/);
-        if (!match) return false;
-        const minutes = parseInt(match[1], 10);
-        return minutes <= 5 && !item.completed && !item.isReflection;
-      })
-      .map(item => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
-  ) ?? [];
+  const quickWins = React.useMemo(() => {
+    if (!currentSession) return [];
+    
+    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
+    const dumpToUse = actualDump || currentSession;
+    
+    return dumpToUse.categories.flatMap((cat) => 
+      cat.items
+        .filter((item) => {
+          const estimate = item.timeEstimate?.toLowerCase() || '';
+          const match = estimate.match(/(\d+)\s*min/);
+          if (!match) return false;
+          const minutes = parseInt(match[1], 10);
+          return minutes <= 5 && !item.completed && !item.isReflection;
+        })
+        .map((item) => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
+    );
+  }, [currentSession, dumps]);
 
-  const firstTask = currentSession?.categories
-    .flatMap(cat => cat.items
-      .filter(item => !item.completed && !item.isReflection)
-      .map(item => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
-    )
-    .sort((a, b) => {
-      const aEst = a.timeEstimate?.match(/(\d+)/);
-      const bEst = b.timeEstimate?.match(/(\d+)/);
-      const aMin = aEst ? parseInt(aEst[1]) : 999;
-      const bMin = bEst ? parseInt(bEst[1]) : 999;
-      return aMin - bMin;
-    })[0];
+  const firstTask = React.useMemo(() => {
+    if (!currentSession) return undefined;
+    
+    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
+    const dumpToUse = actualDump || currentSession;
+    
+    return dumpToUse.categories
+      .flatMap((cat) => cat.items
+        .filter((item) => !item.completed && !item.isReflection)
+        .map((item) => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
+      )
+      .sort((a, b) => {
+        const aEst = a.timeEstimate?.match(/(\d+)/);
+        const bEst = b.timeEstimate?.match(/(\d+)/);
+        const aMin = aEst ? parseInt(aEst[1]) : 999;
+        const bMin = bEst ? parseInt(bEst[1]) : 999;
+        return aMin - bMin;
+      })[0];
+  }, [currentSession, dumps]);
 
   useEffect(() => {
     if (voiceError) {
@@ -748,7 +736,7 @@ ${text}`,
                     <Text style={styles.quickWinsTitle}>{quickWins.length} Quick Win{quickWins.length > 1 ? 's' : ''} (≤5 min)</Text>
                   </View>
                   <View style={styles.quickWinsList}>
-                    {quickWins.map((task) => (
+                    {quickWins.map((task: any) => (
                       <TouchableOpacity
                         key={task.id}
                         onPress={() => handleToggleTask(task.id)}
@@ -783,33 +771,42 @@ ${text}`,
 
 
 
-              <OrganizedResults
-                categories={currentSession.categories.filter(cat => 
-                  !cat.name.toLowerCase().includes('reflection') && 
-                  !cat.name.toLowerCase().includes('notes')
-                )}
-                summary={currentSession.summary}
-                onToggleTask={handleToggleTask}
-                onToggleExpanded={handleToggleExpanded}
-                highlightedTaskIds={[...(firstTask ? [firstTask.id] : []), ...quickWins.map(qw => qw.id)]}
-                hideHighlightedTasks={true}
-              />
-
               {(() => {
-                const notesCategory = currentSession.categories.find(cat => 
-                  cat.name.toLowerCase().includes('reflection') || 
-                  cat.name.toLowerCase().includes('notes')
-                );
+                const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
+                const dumpToUse = actualDump || currentSession;
+                
+                return (
+                  <>
+                    <OrganizedResults
+                      categories={dumpToUse.categories.filter((cat) => 
+                        !cat.name.toLowerCase().includes('reflection') && 
+                        !cat.name.toLowerCase().includes('notes')
+                      )}
+                      summary={dumpToUse.summary}
+                      onToggleTask={handleToggleTask}
+                      onToggleExpanded={handleToggleExpanded}
+                      highlightedTaskIds={[...(firstTask ? [firstTask.id] : []), ...quickWins.map(qw => qw.id)]}
+                      hideHighlightedTasks={true}
+                    />
 
-                return notesCategory ? (
-                  <OrganizedResults
-                    categories={[notesCategory]}
-                    onToggleTask={handleToggleTask}
-                    onToggleExpanded={handleToggleExpanded}
-                    highlightedTaskIds={[]}
-                    hideHighlightedTasks={false}
-                  />
-                ) : null;
+                    {(() => {
+                      const notesCategory = dumpToUse.categories.find(cat => 
+                        cat.name.toLowerCase().includes('reflection') || 
+                        cat.name.toLowerCase().includes('notes')
+                      );
+
+                      return notesCategory ? (
+                        <OrganizedResults
+                          categories={[notesCategory]}
+                          onToggleTask={handleToggleTask}
+                          onToggleExpanded={handleToggleExpanded}
+                          highlightedTaskIds={[]}
+                          hideHighlightedTasks={false}
+                        />
+                      ) : null;
+                    })()}
+                  </>
+                );
               })()}
 
               <TouchableOpacity
