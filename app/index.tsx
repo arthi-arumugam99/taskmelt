@@ -144,8 +144,11 @@ export default function SplashScreen() {
             transform: [{ translateY: slideAnim }],
           }}
         >
-          <Text style={styles.title}>taskmelt</Text>
-          <Text style={styles.tagline}>Chaos in. Clarity out.</Text>
+          <Text style={styles.title} accessibilityRole="header" testID="brandTitle">
+            <Text style={styles.titleMuted}>task</Text>
+            <Text style={styles.titleAccent}>melt</Text>
+          </Text>
+          <Text style={styles.tagline} testID="brandTagline">Chaos in. Clarity out.</Text>
         </Animated.View>
 
         <Animated.View
@@ -215,19 +218,26 @@ const styles = StyleSheet.create({
     top: -90,
   },
   title: {
-    fontSize: 48,
-    fontWeight: '700' as const,
+    fontSize: 50,
+    fontWeight: '800' as const,
     color: Colors.text,
-    letterSpacing: -1,
-    marginBottom: 8,
+    letterSpacing: -1.4,
+    marginBottom: 10,
     textAlign: 'center',
   },
+  titleMuted: {
+    color: Colors.textSecondary,
+  },
+  titleAccent: {
+    color: Colors.primary,
+  },
   tagline: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.textMuted,
-    fontWeight: '500' as const,
-    letterSpacing: 0.5,
+    fontWeight: '600' as const,
+    letterSpacing: 0.8,
     textAlign: 'center',
+    textTransform: 'uppercase' as const,
   },
   dotsContainer: {
     flexDirection: 'row',
