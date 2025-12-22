@@ -401,8 +401,21 @@ ${text}`,
         const minutes = parseInt(match[1], 10);
         return minutes <= 5 && !item.completed && !item.isReflection;
       })
-      .map(item => ({ ...item, categoryColor: cat.color }))
+      .map(item => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
   ) ?? [];
+
+  const firstTask = currentSession?.categories
+    .flatMap(cat => cat.items
+      .filter(item => !item.completed && !item.isReflection)
+      .map(item => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
+    )
+    .sort((a, b) => {
+      const aEst = a.timeEstimate?.match(/(\d+)/);
+      const bEst = b.timeEstimate?.match(/(\d+)/);
+      const aMin = aEst ? parseInt(aEst[1]) : 999;
+      const bMin = bEst ? parseInt(bEst[1]) : 999;
+      return aMin - bMin;
+    })[0];
 
   useEffect(() => {
     if (voiceError) {
@@ -562,16 +575,23 @@ ${text}`,
                   <View style={styles.progressStats}>
                     {completedTasks === 0 ? (
                       <>
-                        <Text style={styles.progressPercentage}>✨ Clarity Achieved</Text>
+                        <Text style={styles.progressPercentage}>✨</Text>
                         <Text style={styles.progressLabel}>
-                          {totalTasks} tasks captured • Ready to start
+                          {totalTasks} {totalTasks === 1 ? 'task' : 'tasks'} organized • Start with one
+                        </Text>
+                      </>
+                    ) : completedTasks === totalTasks ? (
+                      <>
+                        <Text style={styles.progressPercentage}>🎉 100%</Text>
+                        <Text style={styles.progressLabel}>
+                          All done! You turned chaos into clarity.
                         </Text>
                       </>
                     ) : (
                       <>
                         <Text style={styles.progressPercentage}>{completionRate}%</Text>
                         <Text style={styles.progressLabel}>
-                          {completedTasks} of {totalTasks} tasks completed
+                          {completedTasks} done, {totalTasks - completedTasks} to go • You&rsquo;re making progress
                         </Text>
                       </>
                     )}
@@ -583,6 +603,36 @@ ${text}`,
               )}
 
 
+
+              {completedTasks === 0 && firstTask && (
+                <View style={styles.startHereCard}>
+                  <View style={styles.startHereLabel}>
+                    <Text style={styles.startHereLabelText}>If you do nothing else</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleToggleTask(firstTask.id)}
+                    style={styles.startHereTask}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.startHereCheckbox,
+                        { borderColor: firstTask.categoryColor },
+                        firstTask.completed && { backgroundColor: firstTask.categoryColor },
+                      ]}
+                    >
+                      {firstTask.completed && <Check size={16} color="#FFFFFF" strokeWidth={3} />}
+                    </View>
+                    <View style={styles.startHereContent}>
+                      <Text style={styles.startHereTaskText}>{firstTask.task}</Text>
+                      {firstTask.timeEstimate && (
+                        <Text style={styles.startHereTime}>{firstTask.timeEstimate}</Text>
+                      )}
+                      <Text style={styles.startHereHint}>Shortest task • Builds momentum</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {quickWins.length > 0 && (
                 <View style={styles.quickWinsCard}>
@@ -598,8 +648,8 @@ ${text}`,
                         <Zap size={16} color="#F59E0B" fill="#F59E0B" />
                       </View>
                       <View style={styles.quickWinsHeaderText}>
-                        <Text style={styles.quickWinsTitle}>Quick Wins (Optional)</Text>
-                        <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum when ready</Text>
+                        <Text style={styles.quickWinsTitle}>Quick Wins</Text>
+                        <Text style={styles.quickWinsSubtitle}>≤5 min each • Tap to expand</Text>
                       </View>
                       <View style={styles.quickWinsBadge}>
                         <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
@@ -652,13 +702,13 @@ ${text}`,
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
-                highlightedTaskIds={quickWins.map(t => t.id)}
+                highlightedTaskIds={firstTask ? [firstTask.id] : []}
                 showAllCategories={showAllCategories}
                 onToggleShowAll={() => {
                   setShowAllCategories(!showAllCategories);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
-                hideHighlightedTasks={false}
+                hideHighlightedTasks={completedTasks === 0}
               />
 
               {(() => {
@@ -955,7 +1005,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#FCD34D',
   },
   quickWinsHeader: {
@@ -1067,51 +1117,66 @@ const styles = StyleSheet.create({
     fontStyle: 'italic' as const,
   },
   startHereCard: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 3,
     borderColor: Colors.primary,
-  },
-  startHereHeader: {
-    marginBottom: 12,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   startHereLabel: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    textAlign: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  startHereLabelText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1.2,
   },
   startHereTask: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    padding: 14,
+    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
   },
   startHereCheckbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 2,
   },
   startHereContent: {
     flex: 1,
   },
   startHereTaskText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600' as const,
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 24,
   },
   startHereTime: {
-    fontSize: 13,
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+    marginBottom: 6,
+  },
+  startHereHint: {
+    fontSize: 12,
     color: Colors.textMuted,
-    marginBottom: 4,
+    fontStyle: 'italic' as const,
   },
   scrollToCheckText: {
     fontSize: 12,
