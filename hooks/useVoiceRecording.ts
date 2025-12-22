@@ -35,7 +35,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('Sending audio for transcription...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -52,7 +52,23 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           throw new Error('Failed to transcribe audio');
         }
 
-        const result = await response.json();
+        const responseText = await response.text();
+        console.log('Transcription raw response:', responseText.substring(0, 200));
+        
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse transcription response:', parseError);
+          console.error('Response was:', responseText);
+          throw new Error('Invalid response from transcription service');
+        }
+        
+        if (!result.text) {
+          console.error('No text in transcription result:', result);
+          throw new Error('No transcription text received');
+        }
+        
         console.log('Transcription result:', result);
         return result.text;
       } catch (err) {
