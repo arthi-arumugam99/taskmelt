@@ -112,7 +112,7 @@ export default function DumpScreen() {
         throw new Error('AI service not configured. Please restart the app.');
       }
       
-      const maxRetries = 2;
+      const maxRetries = 1;
       let lastError: Error | null = null;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -124,41 +124,15 @@ export default function DumpScreen() {
         messages: [
           {
             role: 'user',
-            content: `Parse this brain dump into organized tasks. Create dynamic categories based on context (e.g., "Work Today", "Personal", "This Week", "Notes & Reflections").
+            content: `Organize this brain dump into actionable tasks with categories.
 
-For each task:
-- Rewrite as clear action (verb + object)
-- Add time estimate if possible
-- Suggest 2-3 subtasks for compound tasks (mark hasSubtaskSuggestion: true)
-- For vague tasks, add clarifying note in parentheses
-- Mark pure reflections with isReflection: true
-
-Prioritize:
-- high: Urgent, time-sensitive
-- medium: Regular tasks
-- low: Nice-to-haves, reflections
-
-If user seems depleted (overwhelmed/tired/anxious), prioritize body-based Quick Wins (stretch, breathe, walk).
-
-Return JSON:
-{
-  "categories": [{
-    "name": "Category Name",
-    "emoji": "📋",
-    "color": "#FF6B6B",
-    "priority": "high",
-    "items": [{
-      "task": "Clear action",
-      "original": "User's words",
-      "timeEstimate": "5 min",
-      "subtasks": [{"task": "...", "timeEstimate": "..."}],
-      "hasSubtaskSuggestion": true,
-      "isReflection": false
-    }]
-  }],
-  "summary": "Brief encouraging message",
-  "reflectionInsight": "Optional insight sentence"
-}
+Rules:
+- Create 2-4 categories based on context
+- Rewrite as clear actions
+- Add time estimates
+- For complex tasks, add 2-3 subtasks (mark hasSubtaskSuggestion: true)
+- Mark reflections/notes with isReflection: true
+- Prioritize: high (urgent), medium (regular), low (nice-to-have)
 
 Input:
 ${text}`,
@@ -167,7 +141,7 @@ ${text}`,
         schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 90 seconds')), 90000)
+              setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000)
             )
           ]);
           

@@ -220,9 +220,9 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
         
         if (localOnlyDumps.length > 0) {
           console.log('Sync: Uploading', localOnlyDumps.length, 'local-only dumps to remote');
-          for (const dump of localOnlyDumps) {
-            await saveRemoteDump(user.id, dump);
-          }
+          await Promise.all(
+            localOnlyDumps.map((dump) => saveRemoteDump(user.id, dump))
+          );
         }
         
         await saveLocalDumps(merged);
@@ -237,8 +237,10 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
   const dumps = useMemo(() => dumpsQuery.data ?? [], [dumpsQuery.data]);
 
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['dumps'] });
-  }, [isAuthenticated, user?.id, queryClient]);
+    if (isAuthenticated && user?.id) {
+      queryClient.invalidateQueries({ queryKey: dumpQueryKey });
+    }
+  }, [isAuthenticated, user?.id, queryClient, dumpQueryKey]);
 
   const { mutate: addDumpMutate } = useMutation({
     mutationFn: async (newDump: DumpSession) => {

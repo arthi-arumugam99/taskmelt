@@ -35,7 +35,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('Sending audio for transcription...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000);
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -373,13 +373,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No audio data captured');
       }
 
-      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 10) {
-        console.log('Using live transcript from browser (faster)');
+      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 5) {
+        console.log('Using live transcript from browser (instant)');
         const finalText = liveTranscript;
         setLiveTranscript('');
         return finalText;
       }
 
+      console.log('Transcribing audio...');
       const transcribedText = await transcribeAudio(formData);
       const finalText = liveTranscript || transcribedText;
       setLiveTranscript('');
