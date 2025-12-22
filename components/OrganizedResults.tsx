@@ -9,25 +9,23 @@ import {
 import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { Category, TaskItem, CategoryType } from '@/types/dump';
+import { Category, TaskItem } from '@/types/dump';
 
-const CATEGORY_COLORS: Record<CategoryType, { bg: string; accent: string }> = {
-  doNow: { bg: Colors.categories.doNowBg, accent: Colors.categories.doNow },
-  today: { bg: Colors.categories.todayBg, accent: Colors.categories.today },
-  thisWeek: { bg: Colors.categories.thisWeekBg, accent: Colors.categories.thisWeek },
-  someday: { bg: Colors.categories.somedayBg, accent: Colors.categories.someday },
-  notActionable: { bg: Colors.categories.notActionableBg, accent: Colors.categories.notActionable },
-};
+function hexToRGBA(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 interface TaskItemRowProps {
   item: TaskItem;
-  categoryType: CategoryType;
+  accentColor: string;
   onToggle: (taskId: string) => void;
 }
 
-function TaskItemRow({ item, categoryType, onToggle }: TaskItemRowProps) {
+function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const colors = CATEGORY_COLORS[categoryType];
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -53,8 +51,8 @@ function TaskItemRow({ item, categoryType, onToggle }: TaskItemRowProps) {
       <TouchableOpacity
         style={[
           styles.checkbox,
-          { borderColor: colors.accent },
-          item.completed && { backgroundColor: colors.accent },
+          { borderColor: accentColor },
+          item.completed && { backgroundColor: accentColor },
         ]}
         onPress={handlePress}
         activeOpacity={0.7}
@@ -84,20 +82,21 @@ interface CategoryCardProps {
 }
 
 function CategoryCard({ category, onToggleTask }: CategoryCardProps) {
-  const colors = CATEGORY_COLORS[category.type];
+  const bgColor = hexToRGBA(category.color, 0.12);
+  const accentColor = category.color;
   const completedCount = category.items.filter((i) => i.completed).length;
   const totalCount = category.items.length;
 
   if (totalCount === 0) return null;
 
   return (
-    <View style={[styles.categoryCard, { backgroundColor: colors.bg }]}>
+    <View style={[styles.categoryCard, { backgroundColor: bgColor }]}>
       <View style={styles.categoryHeader}>
         <View style={styles.categoryTitleRow}>
           <Text style={styles.categoryEmoji}>{category.emoji}</Text>
           <Text style={styles.categoryName}>{category.name}</Text>
         </View>
-        <Text style={[styles.categoryCount, { color: colors.accent }]}>
+        <Text style={[styles.categoryCount, { color: accentColor }]}>
           {completedCount}/{totalCount}
         </Text>
       </View>
@@ -106,7 +105,7 @@ function CategoryCard({ category, onToggleTask }: CategoryCardProps) {
           <TaskItemRow
             key={item.id}
             item={item}
-            categoryType={category.type}
+            accentColor={accentColor}
             onToggle={onToggleTask}
           />
         ))}
@@ -139,9 +138,9 @@ export default function OrganizedResults({
           <Text style={styles.summaryText}>{summary}</Text>
         </View>
       )}
-      {nonEmptyCategories.map((category) => (
+      {nonEmptyCategories.map((category, index) => (
         <CategoryCard
-          key={category.type}
+          key={`${category.name}-${index}`}
           category={category}
           onToggleTask={onToggleTask}
         />

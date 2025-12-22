@@ -19,7 +19,7 @@ import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
-import { DumpSession, Category, CategoryType, CATEGORY_CONFIG } from '@/types/dump';
+import { DumpSession, Category } from '@/types/dump';
 import OrganizedResults from '@/components/OrganizedResults';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 
@@ -34,7 +34,9 @@ const PLACEHOLDERS = [
 const resultSchema = z.object({
   categories: z.array(
     z.object({
-      type: z.enum(['doNow', 'today', 'thisWeek', 'someday', 'notActionable']),
+      name: z.string(),
+      emoji: z.string(),
+      color: z.string(),
       items: z.array(
         z.object({
           task: z.string(),
@@ -96,26 +98,35 @@ export default function DumpScreen() {
 INPUT: A messy, unstructured brain dump of thoughts, tasks, worries, and ideas.
 
 YOUR JOB:
-1. Parse the chaos into individual items
-2. Categorize each item:
-   - doNow: Urgent, can be done in <5 min, or blocking something
-   - today: Should happen today
-   - thisWeek: Important, not urgent, has implicit deadline
-   - someday: No deadline, life admin, "would be nice"
-   - notActionable: Feelings, worries, vague concerns (acknowledge but don't create false tasks)
+1. Analyze the content and identify natural themes/categories
+2. Create 2-5 contextually relevant categories based on what the user actually mentioned
+   - Categories should reflect the CONTENT (e.g., "Work", "Personal", "Health", "Ideas", "Errands", "Urgent", "This Week")
+   - Don't force generic time-based categories if the content suggests different groupings
+   - Each category gets: a descriptive name, relevant emoji, and hex color code
 
-3. For each actionable item:
+3. For each item:
    - Rewrite as a clear, specific action (verb + object)
    - Estimate time if possible
+   - Group into the most relevant category
 
-4. For non-actionable items:
-   - Acknowledge the feeling
-   - Suggest it may resolve when related tasks are done
+4. Category guidelines:
+   - If content has clear urgency, create "Urgent" or "Today" category
+   - If content spans different life areas, group by theme (Work, Personal, Health, etc.)
+   - If content is project-focused, group by project
+   - Always include a category for non-actionable items if present (worries, feelings)
+
+5. Colors should match the category vibe:
+   - Urgent/Important: reds, oranges (#FF4444, #FF6B35)
+   - Work/Professional: blues, purples (#4A90E2, #7B68EE)
+   - Personal/Life: greens, teals (#00C9A7, #4ECDC4)
+   - Health/Wellness: soft greens, pinks (#90EE90, #FFB6C1)
+   - Ideas/Creative: yellows, oranges (#FFD93D, #FFA07A)
+   - Not actionable: grays (#9CA3AF)
 
 RULES:
 - Never create tasks that weren't implied in the input
 - Keep task rewrites concise (<15 words)
-- If input is very short, output can be short too
+- Categories must feel natural to the user's dump
 - Be warm and encouraging in the summary
 
 Here's the brain dump to organize:
@@ -133,21 +144,18 @@ ${text}
     onSuccess: (result) => {
       const sessionId = generateId();
       
-      const categories: Category[] = Object.entries(CATEGORY_CONFIG).map(([type, config]) => {
-        const categoryResult = result.categories.find((c) => c.type === type);
-        return {
-          type: type as CategoryType,
-          name: config.name,
-          emoji: config.emoji,
-          items: (categoryResult?.items || []).map((item) => ({
-            id: generateId(),
-            task: item.task,
-            original: item.original,
-            timeEstimate: item.timeEstimate,
-            completed: false,
-          })),
-        };
-      });
+      const categories: Category[] = result.categories.map((cat) => ({
+        name: cat.name,
+        emoji: cat.emoji,
+        color: cat.color,
+        items: cat.items.map((item) => ({
+          id: generateId(),
+          task: item.task,
+          original: item.original,
+          timeEstimate: item.timeEstimate,
+          completed: false,
+        })),
+      }));
 
       const session: DumpSession = {
         id: sessionId,

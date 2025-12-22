@@ -1,5 +1,3 @@
-export type CategoryType = 'doNow' | 'today' | 'thisWeek' | 'someday' | 'notActionable';
-
 export interface TaskItem {
   id: string;
   task: string;
@@ -10,9 +8,9 @@ export interface TaskItem {
 }
 
 export interface Category {
-  type: CategoryType;
   name: string;
   emoji: string;
+  color: string;
   items: TaskItem[];
 }
 
@@ -23,25 +21,3 @@ export interface DumpSession {
   createdAt: string;
   summary?: string;
 }
-
-export interface OrganizedResult {
-  categories: {
-    type: CategoryType;
-    name: string;
-    emoji: string;
-    items: {
-      task: string;
-      original?: string;
-      timeEstimate?: string;
-    }[];
-  }[];
-  summary: string;
-}
-
-export const CATEGORY_CONFIG: Record<CategoryType, { name: string; emoji: string }> = {
-  doNow: { name: 'Do Now', emoji: '🔴' },
-  today: { name: 'Today', emoji: '🟠' },
-  thisWeek: { name: 'This Week', emoji: '🟡' },
-  someday: { name: 'Someday', emoji: '🟢' },
-  notActionable: { name: 'Not Actionable', emoji: '💭' },
-};
