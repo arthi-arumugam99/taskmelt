@@ -313,11 +313,19 @@ ${text}`,
     for (const category of updatedSession.categories) {
       const taskIndex = category.items.findIndex(item => item.id === taskId);
       if (taskIndex !== -1) {
-        category.items[taskIndex].completed = !category.items[taskIndex].completed;
+        const newCompletedState = !category.items[taskIndex].completed;
+        category.items[taskIndex].completed = newCompletedState;
+        
+        if (category.items[taskIndex].subtasks && category.items[taskIndex].subtasks!.length > 0) {
+          category.items[taskIndex].subtasks!.forEach(subtask => {
+            subtask.completed = newCompletedState;
+          });
+        }
+        
         taskFound = true;
         
         Haptics.impactAsync(
-          category.items[taskIndex].completed 
+          newCompletedState
             ? Haptics.ImpactFeedbackStyle.Medium 
             : Haptics.ImpactFeedbackStyle.Light
         );
@@ -406,10 +414,28 @@ ${text}`,
     }
   }, [currentSession]);
 
-  const totalTasks = currentSession?.categories.reduce((acc, cat) => acc + cat.items.filter(item => !item.isReflection).length, 0) ?? 0;
-  const completedTasks = currentSession?.categories.reduce(
-    (acc, cat) => acc + cat.items.filter(item => !item.isReflection && item.completed).length, 0
-  ) ?? 0;
+  const totalTasks = currentSession?.categories.reduce((acc, cat) => {
+    return acc + cat.items.reduce((itemAcc, item) => {
+      if (item.isReflection) return itemAcc;
+      let count = 1;
+      if (item.subtasks && item.subtasks.length > 0) {
+        count += item.subtasks.length;
+      }
+      return itemAcc + count;
+    }, 0);
+  }, 0) ?? 0;
+  
+  const completedTasks = currentSession?.categories.reduce((acc, cat) => {
+    return acc + cat.items.reduce((itemAcc, item) => {
+      if (item.isReflection) return itemAcc;
+      let count = item.completed ? 1 : 0;
+      if (item.subtasks && item.subtasks.length > 0) {
+        count += item.subtasks.filter(st => st.completed).length;
+      }
+      return itemAcc + count;
+    }, 0);
+  }, 0) ?? 0;
+  
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const quickWins = currentSession?.categories.flatMap(cat => 
