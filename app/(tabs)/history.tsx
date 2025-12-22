@@ -45,8 +45,15 @@ function getCompletionStats(dump: DumpSession): { completed: number; total: numb
   let total = 0;
   dump.categories.forEach((cat) => {
     cat.items.forEach((item) => {
-      total++;
-      if (item.completed) completed++;
+      if (item.isReflection) return;
+      
+      if (item.subtasks && item.subtasks.length > 0) {
+        total += item.subtasks.length;
+        completed += item.subtasks.filter(st => st.completed).length;
+      } else {
+        total += 1;
+        if (item.completed) completed += 1;
+      }
     });
   });
   return { completed, total };

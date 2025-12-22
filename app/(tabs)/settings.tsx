@@ -154,12 +154,27 @@ export default function SettingsScreen() {
   }, [signOut]);
 
   const totalTasks = dumps.reduce((acc, dump) => {
-    return acc + dump.categories.reduce((catAcc, cat) => catAcc + cat.items.length, 0);
+    return acc + dump.categories.reduce((catAcc, cat) => {
+      return catAcc + cat.items.reduce((itemAcc, item) => {
+        if (item.isReflection) return itemAcc;
+        if (item.subtasks && item.subtasks.length > 0) {
+          return itemAcc + item.subtasks.length;
+        }
+        return itemAcc + 1;
+      }, 0);
+    }, 0);
   }, 0);
 
   const completedTasks = dumps.reduce((acc, dump) => {
-    return acc + dump.categories.reduce((catAcc, cat) => 
-      catAcc + cat.items.filter((item) => item.completed).length, 0);
+    return acc + dump.categories.reduce((catAcc, cat) => {
+      return catAcc + cat.items.reduce((itemAcc, item) => {
+        if (item.isReflection) return itemAcc;
+        if (item.subtasks && item.subtasks.length > 0) {
+          return itemAcc + item.subtasks.filter(st => st.completed).length;
+        }
+        return itemAcc + (item.completed ? 1 : 0);
+      }, 0);
+    }, 0);
   }, 0);
 
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
