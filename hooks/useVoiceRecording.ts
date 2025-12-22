@@ -66,25 +66,28 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
           try {
             const result = JSON.parse(trimmedResponse);
-            if (result.text) {
-              transcribedText = result.text;
+            if ('text' in result) {
+              transcribedText = result.text || '';
             } else if (typeof result === 'string') {
               transcribedText = result;
+            } else if (Array.isArray(result) && result.length > 0) {
+              transcribedText = result[0].text || result[0] || '';
             } else {
-              console.error('Unexpected JSON structure:', result);
-              throw new Error('Invalid transcription format');
+              console.log('Unexpected JSON structure, using as string:', result);
+              transcribedText = JSON.stringify(result);
             }
           } catch (parseError) {
             console.error('Failed to parse JSON response:', parseError);
-            console.error('Response was:', trimmedResponse.substring(0, 500));
-            throw new Error('Invalid JSON response from transcription service');
+            console.log('Treating response as plain text');
+            transcribedText = trimmedResponse;
           }
         } else {
           transcribedText = trimmedResponse;
         }
         
-        if (!transcribedText || transcribedText.length === 0) {
-          throw new Error('No transcription text received');
+        if (!transcribedText || transcribedText.trim().length === 0) {
+          console.log('Empty transcription received - audio may have been silence');
+          return '';
         }
         
         console.log('Transcription result:', transcribedText.substring(0, 100));
