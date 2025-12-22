@@ -108,8 +108,15 @@ export default function DumpScreen() {
         throw new Error('AI service not configured. Please restart the app.');
       }
       
-      try {
-        const result = await generateObject({
+      const maxRetries = 2;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Attempt ${attempt}/${maxRetries} - Calling generateObject...`);
+          
+          const result = await Promise.race([
+            generateObject({
         messages: [
           {
             role: 'user',
@@ -221,21 +228,44 @@ ${text}`,
           },
         ],
         schema: resultSchema,
-        });
-        
-        console.log('AI Response:', JSON.stringify(result, null, 2));
-        return result;
-      } catch (err) {
-        console.error('generateObject error:', err);
-        console.error('Error type:', typeof err);
-        console.error('Error constructor:', err?.constructor?.name);
-        if (err instanceof Error) {
-          console.error('Error name:', err.name);
-          console.error('Error message:', err.message);
-          console.error('Error stack:', err.stack);
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+            )
+          ]);
+          
+          console.log('AI Response:', JSON.stringify(result, null, 2));
+          return result;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err));
+          console.error(`Attempt ${attempt} failed:`, lastError.message);
+          
+          if (attempt === maxRetries) {
+            console.error('All retry attempts failed');
+            console.error('Error type:', typeof err);
+            console.error('Error constructor:', err?.constructor?.name);
+            if (err instanceof Error) {
+              console.error('Error name:', err.name);
+              console.error('Error stack:', err.stack);
+            }
+            break;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
-        throw err;
       }
+      
+      if (lastError) {
+        if (lastError.message.includes('timeout')) {
+          throw new Error('The AI service is taking too long to respond. Please try again.');
+        } else if (lastError.message.includes('Network request failed')) {
+          throw new Error('Unable to reach the AI service. Please check your internet connection and try again.');
+        } else {
+          throw lastError;
+        }
+      }
+      
+      throw new Error('Organization failed after multiple attempts.');
     },
     onSuccess: (data) => {
       console.log('Organization successful:', data);
@@ -603,11 +633,7 @@ ${text}`,
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>
                     {mutationError instanceof Error && mutationError.message ? 
-                      mutationError.message.includes('Network request failed') ?
-                        'Unable to connect to AI service. Please check your internet connection or try again in a moment.' :
-                      mutationError.message.includes('not configured') ?
-                        mutationError.message :
-                        `Something went wrong: ${mutationError.message}` : 
+                      mutationError.message : 
                       'Oops! Something went wrong. Please try again.'}
                   </Text>
                   <TouchableOpacity 
