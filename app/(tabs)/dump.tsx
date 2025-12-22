@@ -151,6 +151,12 @@ YOUR JOB:
    - medium: Regular work tasks, personal errands
    - low: Nice-to-haves, long-term projects, reflections
 
+8. EMOTIONAL STATE DETECTION:
+   - If the input contains words indicating depletion (overwhelmed, tired, fog, stuck, anxious, drained, exhausted):
+   - Prioritize body-based tasks as Quick Wins (stretch, breathe, water, walk, etc.)
+   - Avoid money/admin tasks in the "If you do nothing else" suggestion
+   - This helps prevent nervous system overload
+
 8. For "Notes & Reflections" category, if present:
    - When there are emotional statements about feeling overwhelmed/unfinished
    - Create a distilled insight that validates and reframes
@@ -202,6 +208,8 @@ RULES:
 - Keep subtasks minimal (2-3 max) and actionable
 - For tasks with multiple steps (e.g., "fix keyboard" → check batteries + order if needed), consider 2-step breakdowns
 - Time estimates should be realistic: Quick Wins ≤5 min, standard tasks 10-30 min, projects >30 min
+- For depleted emotional states, bias toward restorative actions first
+- Occasionally include validating language for small tasks: "Small doesn't mean unimportant"
 
 Here's what the user needs to organize:
 
@@ -641,7 +649,7 @@ ${text}`,
                         firstTask.completed && { backgroundColor: firstTask.categoryColor },
                       ]}
                     >
-                      {firstTask.completed && <Check size={16} color="#FFFFFF" strokeWidth={3} />}
+                      {firstTask.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
                     </View>
                     <View style={styles.startHereContent}>
                       <Text style={styles.startHereTaskText}>{firstTask.task}</Text>
@@ -1151,10 +1159,10 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   startHereCheckbox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 3,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 2,
@@ -1163,14 +1171,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   startHereTaskText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.text,
     marginBottom: 6,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   startHereTime: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.primary,
     fontWeight: '600' as const,
     marginBottom: 6,
