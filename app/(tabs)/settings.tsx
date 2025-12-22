@@ -17,11 +17,15 @@ import {
   Crown,
   RefreshCw,
   ChevronRight,
+  User,
+  LogOut,
+  LogIn,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -56,6 +60,7 @@ export default function SettingsScreen() {
     restorePurchases,
     isRestoring,
   } = useRevenueCat();
+  const { user, isAuthenticated, signOut, isSigningOut } = useAuth();
 
   const handleClearAll = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -119,6 +124,34 @@ export default function SettingsScreen() {
       [{ text: 'OK' }]
     );
   }, []);
+
+  const handleSignIn = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/auth');
+  }, [router]);
+
+  const handleSignOut = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [signOut]);
 
   const totalTasks = dumps.reduce((acc, dump) => {
     return acc + dump.categories.reduce((catAcc, cat) => catAcc + cat.items.length, 0);
@@ -222,6 +255,41 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <View style={styles.sectionContent}>
+            {isAuthenticated ? (
+              <>
+                <View style={styles.accountInfo}>
+                  <View style={styles.accountIconContainer}>
+                    <User size={20} color={Colors.primary} />
+                  </View>
+                  <View style={styles.accountTextContainer}>
+                    <Text style={styles.accountEmail} numberOfLines={1}>
+                      {user?.email}
+                    </Text>
+                    <Text style={styles.accountStatus}>Signed in</Text>
+                  </View>
+                </View>
+                <SettingRow
+                  icon={<LogOut size={20} color={Colors.error} />}
+                  title={isSigningOut ? 'Signing out...' : 'Sign Out'}
+                  subtitle="Sign out of your account"
+                  onPress={handleSignOut}
+                  destructive
+                />
+              </>
+            ) : (
+              <SettingRow
+                icon={<LogIn size={20} color={Colors.primary} />}
+                title="Sign In"
+                subtitle="Sign in to sync your data"
+                onPress={handleSignIn}
+              />
+            )}
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
@@ -525,5 +593,34 @@ const styles = StyleSheet.create({
   proActiveSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  accountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  accountIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.backgroundDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  accountTextContainer: {
+    flex: 1,
+  },
+  accountEmail: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: Colors.text,
+  },
+  accountStatus: {
+    fontSize: 13,
+    color: Colors.success,
+    marginTop: 2,
   },
 });
