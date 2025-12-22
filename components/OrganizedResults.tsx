@@ -196,17 +196,23 @@ interface CategoryCardProps {
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
   highlightedTaskIds?: string[];
+  hideHighlightedTasks?: boolean;
 }
 
-function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTaskIds = [] }: CategoryCardProps) {
+function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
   const actionableItems = category.items.filter((i) => !i.isReflection);
   const completedCount = actionableItems.filter((i) => i.completed).length;
   const totalCount = actionableItems.length;
   const isReflectionCategory = category.name.toLowerCase().includes('reflection') || category.name.toLowerCase().includes('notes');
+  
+  const visibleItems = hideHighlightedTasks 
+    ? category.items.filter(item => !highlightedTaskIds.includes(item.id))
+    : category.items;
+  const hiddenCount = category.items.length - visibleItems.length;
 
-  if (category.items.length === 0) return null;
+  if (visibleItems.length === 0) return null;
 
   return (
     <View style={[styles.categoryCard, { backgroundColor: bgColor }]}>
@@ -224,15 +230,20 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTas
       {isReflectionCategory && (
         <Text style={styles.reflectionHint}>We heard you</Text>
       )}
+      {hideHighlightedTasks && hiddenCount > 0 && (
+        <Text style={styles.hiddenTasksHint}>
+          {hiddenCount} featured task{hiddenCount > 1 ? 's' : ''} from above {hiddenCount > 1 ? 'are' : 'is'} in this category
+        </Text>
+      )}
       <View style={styles.taskList}>
-        {category.items.map((item) => (
+        {visibleItems.map((item) => (
           <TaskItemRow
             key={item.id}
             item={item}
             accentColor={accentColor}
             onToggle={onToggleTask}
             onToggleExpanded={onToggleExpanded}
-            isHighlighted={highlightedTaskIds.includes(item.id)}
+            isHighlighted={false}
           />
         ))}
       </View>
@@ -248,6 +259,7 @@ interface OrganizedResultsProps {
   highlightedTaskIds?: string[];
   showAllCategories?: boolean;
   onToggleShowAll?: () => void;
+  hideHighlightedTasks?: boolean;
 }
 
 export default function OrganizedResults({
@@ -258,6 +270,7 @@ export default function OrganizedResults({
   highlightedTaskIds = [],
   showAllCategories = false,
   onToggleShowAll,
+  hideHighlightedTasks = true,
 }: OrganizedResultsProps) {
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
@@ -286,6 +299,7 @@ export default function OrganizedResults({
           onToggleTask={onToggleTask}
           onToggleExpanded={onToggleExpanded}
           highlightedTaskIds={highlightedTaskIds}
+          hideHighlightedTasks={hideHighlightedTasks}
         />
       ))}
       {hasMore && onToggleShowAll && (
@@ -423,6 +437,13 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     marginBottom: 8,
+  },
+  hiddenTasksHint: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontStyle: 'italic' as const,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   taskRowHighlighted: {
     borderWidth: 2,

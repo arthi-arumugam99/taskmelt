@@ -635,11 +635,12 @@ ${text}`,
                         {startHereTask.timeEstimate && (
                           <Text style={styles.startHereTime}>{startHereTask.timeEstimate}</Text>
                         )}
+                        <Text style={styles.scrollToCheckText}>👇 Scroll down to check it off</Text>
                       </View>
                     </View>
                     <View style={styles.whyThisContainer}>
                       <Text style={styles.whyThisText}>
-                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm. Find it below in its category.
+                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm.
                       </Text>
                     </View>
                   </View>
@@ -680,7 +681,7 @@ ${text}`,
                         </Text>
                       </View>
                     )}
-                    <Text style={styles.quickWinsSuggestion}>These tasks appear below in their categories ↓</Text>
+                    <Text style={styles.quickWinsSuggestion}>👇 Scroll down to their categories to check them off</Text>
                     <View style={styles.quickWinsList}>
                       {visibleQuickWins.map((task) => (
                         <View
@@ -755,7 +756,7 @@ ${text}`,
                         {loopClosers.timeEstimate && (
                           <Text style={styles.loopCloserTime}>{loopClosers.timeEstimate}</Text>
                         )}
-                        <Text style={styles.loopCloserHint}>Find in {loopClosers.categoryName} below ↓</Text>
+                        <Text style={styles.loopCloserHint}>Scroll down to {loopClosers.categoryName} to check it off ↓</Text>
                       </View>
                     </View>
                     <View style={styles.whyThisContainer}>
@@ -772,12 +773,13 @@ ${text}`,
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
-                highlightedTaskIds={[startHereTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
+                highlightedTaskIds={[startHereTaskId, loopCloserTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
                 showAllCategories={showAllCategories}
                 onToggleShowAll={() => {
                   setShowAllCategories(!showAllCategories);
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
+                hideHighlightedTasks={true}
               />
 
               <TouchableOpacity
@@ -1213,6 +1215,12 @@ const styles = StyleSheet.create({
   startHereTime: {
     fontSize: 13,
     color: Colors.textMuted,
+    marginBottom: 4,
+  },
+  scrollToCheckText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '500' as const,
   },
   quickWinsSuggestion: {
     fontSize: 11,
