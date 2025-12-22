@@ -17,46 +17,16 @@ interface UseVoiceRecordingReturn {
   cancelRecording: () => void;
 }
 
-function safeTrim(v: unknown): string {
-  return typeof v === 'string' ? v.trim() : '';
-}
-
-function extractTextFromSttResponse(responseText: string): string {
-  const trimmedResponse = responseText.trim();
-  if (!trimmedResponse) return '';
-
-  if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
-    try {
-      const parsed: unknown = JSON.parse(trimmedResponse);
-
-      if (Array.isArray(parsed)) {
-        const first = parsed[0] as unknown;
-        if (typeof first === 'string') return first.trim();
-        if (first && typeof first === 'object' && 'text' in (first as Record<string, unknown>)) {
-          return safeTrim((first as Record<string, unknown>).text);
-        }
-        return '';
-      }
-
-      if (parsed && typeof parsed === 'object') {
-        const obj = parsed as Record<string, unknown>;
-        if (typeof obj.text === 'string') return obj.text.trim();
-        if (typeof obj.transcription === 'string') return obj.transcription.trim();
-        const firstString = Object.values(obj).find((v) => typeof v === 'string' && v.trim().length > 0);
-        return safeTrim(firstString);
-      }
-
-      return '';
-    } catch (e) {
-      console.warn('STT JSON parse failed, treating as raw text:', e);
-      if (!trimmedResponse.toLowerCase().includes('error')) {
-        return trimmedResponse;
-      }
-      return '';
+function extractTextFromResponse(responseText: string): string {
+  try {
+    const parsed = JSON.parse(responseText);
+    if (parsed && typeof parsed.text === 'string') {
+      return parsed.text.trim();
     }
+    return responseText.trim();
+  } catch {
+    return responseText.trim();
   }
-
-  return trimmedResponse;
 }
 
 export function useVoiceRecording(): UseVoiceRecordingReturn {
@@ -81,10 +51,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const { mutateAsync: transcribeAudio, reset: resetTranscription } = useMutation({
     mutationFn: async (formData: FormData): Promise<string> => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
-        console.log('📤 STT request ->', STT_API_URL);
+        console.log('📤 Sending audio to STT API...');
+        const startTime = Date.now();
 
         const response = await fetch(STT_API_URL, {
           method: 'POST',
@@ -93,36 +64,35 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         });
 
         clearTimeout(timeoutId);
-
-        const responseText = await response.text();
-        console.log('📥 STT raw response (first 200):', responseText.slice(0, 200));
+        console.log(`⏱️ STT API responded in ${Date.now() - startTime}ms`);
 
         if (!response.ok) {
-          console.error('STT API error status:', response.status);
-          console.error('STT API error body:', responseText);
-          throw new Error(`Transcribe failed: ${response.status}`);
+          const errorText = await response.text();
+          console.error('STT API error:', response.status, errorText);
+          throw new Error('Transcription failed');
         }
 
-        const transcribedText = extractTextFromSttResponse(responseText).trim();
+        const responseText = await response.text();
+        console.log('📥 STT response:', responseText.slice(0, 100));
 
-        if (transcribedText.toLowerCase().includes('invalid json') || transcribedText.toLowerCase().includes('backend error')) {
-          return '';
-        }
-
+        const transcribedText = extractTextFromResponse(responseText);
+        console.log('✅ Transcribed:', transcribedText || '(empty)');
+        
         return transcribedText;
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('⏱️ STT timeout');
-          return '';
+          console.error('⏱️ STT request timed out after 15s');
+          throw new Error('Transcription timed out');
         }
+        console.error('STT error:', err);
         throw err;
       }
     },
   });
 
   const startRecordingMobile = useCallback(async () => {
-    console.log('🎤 startRecordingMobile');
+    console.log('🎤 Starting mobile recording...');
 
     const { status: existingStatus } = await Audio.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -168,48 +138,51 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         audioEncoder: Audio.AndroidAudioEncoder.AAC,
         sampleRate: 44100,
         numberOfChannels: 1,
-        bitRate: 96000,
+        bitRate: 128000,
       },
       ios: {
-        extension: '.wav',
-        outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+        extension: '.m4a',
+        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
         audioQuality: Audio.IOSAudioQuality.HIGH,
         sampleRate: 44100,
         numberOfChannels: 1,
-        bitRate: 1411200,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
+        bitRate: 128000,
       },
       web: {
         mimeType: 'audio/webm',
-        bitsPerSecond: 96000,
+        bitsPerSecond: 128000,
       },
     });
 
     await recording.startAsync();
     recordingRef.current = recording;
-
-    const status = await recording.getStatusAsync();
-    console.log('✅ Mobile recording started. status:', status);
+    console.log('✅ Recording started');
   }, []);
 
   const startRecordingWeb = useCallback(async () => {
-    console.log('🌐 startRecordingWeb');
+    console.log('🌐 Starting web recording...');
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('Voice recording is not supported in this browser');
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 44100,
+      } 
+    });
     streamRef.current = stream;
     audioChunksRef.current = [];
 
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+      ? 'audio/webm;codecs=opus' 
+      : 'audio/webm';
 
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType,
-      audioBitsPerSecond: 96000,
+      audioBitsPerSecond: 128000,
     });
 
     mediaRecorder.ondataavailable = (event) => {
@@ -219,10 +192,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     };
 
     mediaRecorder.onerror = (e) => {
-      console.log('MediaRecorder error:', e);
+      console.error('MediaRecorder error:', e);
     };
 
-    mediaRecorder.start(250);
+    mediaRecorder.start(100);
     mediaRecorderRef.current = mediaRecorder;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -266,23 +239,25 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       recognition.onerror = (event: any) => {
         if (event?.error !== 'no-speech' && event?.error !== 'aborted') {
-          console.log('Speech recognition error:', event?.error);
+          console.error('Speech recognition error:', event?.error);
         }
       };
 
       recognition.onstart = () => {
-        console.log('✅ Web live transcription active');
+        console.log('✅ Live transcription active');
       };
 
       try {
         recognition.start();
         recognitionRef.current = recognition;
       } catch (e) {
-        console.log('SpeechRecognition start failed:', e);
+        console.error('Failed to start speech recognition:', e);
       }
+    } else {
+      console.log('⚠️ Speech Recognition not available');
     }
 
-    console.log('✅ Web recording started');
+    console.log('✅ Recording started');
   }, []);
 
   const startRecording = useCallback(async () => {
@@ -323,14 +298,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const stopRecordingMobile = useCallback(async (): Promise<FormData | null> => {
     const recording = recordingRef.current;
     if (!recording) {
-      console.log('stopRecordingMobile: no active recording');
+      console.log('⚠️ No active recording');
       return null;
     }
 
     try {
-      const before = await recording.getStatusAsync();
-      console.log('🛑 stopRecordingMobile. status before stop:', before);
-
+      console.log('🛑 Stopping recording...');
       await recording.stopAndUnloadAsync();
 
       await Audio.setAudioModeAsync({
@@ -340,11 +313,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const uri = recording.getURI();
       recordingRef.current = null;
 
-      console.log('📼 Recording URI:', uri);
-
       if (!uri) {
+        console.error('❌ No recording URI');
         return null;
       }
+
+      console.log('📼 Recording saved:', uri);
 
       const uriParts = uri.split('.');
       const fileType = uriParts[uriParts.length - 1] || 'm4a';
@@ -360,7 +334,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       return formData;
     } catch (err) {
-      console.error('Error stopping mobile recording:', err);
+      console.error('❌ Error stopping recording:', err);
       throw err;
     }
   }, []);
@@ -368,7 +342,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const stopRecordingWeb = useCallback(async (): Promise<FormData | null> => {
     const mediaRecorder = mediaRecorderRef.current;
     if (!mediaRecorder) {
-      console.log('stopRecordingWeb: no active MediaRecorder');
+      console.log('⚠️ No active MediaRecorder');
       return null;
     }
 
@@ -376,13 +350,18 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       mediaRecorder.onstop = async () => {
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          console.log('📼 Recording size:', audioBlob.size, 'bytes');
 
           if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
           }
 
-          console.log('📼 Web recording blob size:', audioBlob.size);
+          if (audioBlob.size === 0) {
+            console.error('❌ Empty audio recording');
+            resolve(null);
+            return;
+          }
 
           const formData = new FormData();
           formData.append('audio', audioBlob, 'recording.webm');
@@ -392,6 +371,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
           resolve(formData);
         } catch (err) {
+          console.error('❌ Error processing recording:', err);
           reject(err);
         }
       };
@@ -399,18 +379,22 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       try {
         mediaRecorder.stop();
       } catch (e) {
+        console.error('❌ Error stopping MediaRecorder:', e);
         reject(e);
       }
     });
   }, []);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
-    if (!isRecording) return null;
+    if (!isRecording) {
+      console.log('⚠️ Not recording');
+      return null;
+    }
 
+    console.log('🛑 Stopping recording...');
     isStoppingRef.current = true;
     setIsRecording(false);
     setError(null);
-    setIsFetchingFinal(true);
 
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -421,7 +405,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       try {
         recognitionRef.current.stop();
       } catch (e) {
-        console.log('SpeechRecognition stop failed:', e);
+        console.error('Error stopping speech recognition:', e);
       }
       recognitionRef.current = null;
     }
@@ -430,53 +414,57 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const currentTranscript = transcriptRef.current.trim() || liveTranscript.trim();
 
       if (Platform.OS === 'web' && currentTranscript) {
-        console.log('✨ Using instant web live transcript');
+        console.log('✨ Using live transcript:', currentTranscript.slice(0, 50));
         setLiveTranscript('');
         transcriptRef.current = '';
         setConfidence(0);
         return currentTranscript;
       }
 
-      const stopStart = Date.now();
-      const formData = Platform.OS === 'web' ? await stopRecordingWeb() : await stopRecordingMobile();
-      console.log('🧾 stopRecording: formData ready in', Date.now() - stopStart, 'ms');
+      setIsFetchingFinal(true);
+
+      const formData = Platform.OS === 'web' 
+        ? await stopRecordingWeb() 
+        : await stopRecordingMobile();
 
       if (!formData) {
+        console.log('⚠️ No audio data, using live transcript');
         const result = currentTranscript || null;
         setLiveTranscript('');
         transcriptRef.current = '';
         setConfidence(0);
+        setIsFetchingFinal(false);
         return result;
       }
 
-      const startTime = Date.now();
       const transcribedText = await transcribeAudio(formData);
-      const elapsed = Date.now() - startTime;
-      console.log(`✅ STT done in ${elapsed}ms`);
 
-      const finalText = currentTranscript ? `${currentTranscript} ${transcribedText}`.trim() : transcribedText.trim();
+      const finalText = currentTranscript 
+        ? `${currentTranscript} ${transcribedText}`.trim() 
+        : transcribedText.trim();
 
       setLiveTranscript('');
       transcriptRef.current = '';
       setConfidence(0);
+      setIsFetchingFinal(false);
 
       if (!finalText) {
-        console.log('🫥 No speech detected / empty transcript');
+        console.log('⚠️ Empty transcription result');
         return null;
       }
 
+      console.log('✅ Final text:', finalText.slice(0, 50));
       return finalText;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to process recording';
+      const message = err instanceof Error ? err.message : 'Failed to transcribe';
       setError(message);
-      console.error('Recording stop error:', err);
+      console.error('❌ Stop recording error:', err);
 
       const fallback = transcriptRef.current.trim() || liveTranscript.trim() || null;
       setLiveTranscript('');
       transcriptRef.current = '';
-      return fallback;
-    } finally {
       setIsFetchingFinal(false);
+      return fallback;
     }
   }, [isRecording, liveTranscript, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
 
