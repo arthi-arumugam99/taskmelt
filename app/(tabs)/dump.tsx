@@ -128,7 +128,12 @@ YOUR JOB:
    - Acknowledge the feeling
    - Suggest it may resolve when related tasks are done
 
-5. Use appropriate emojis for each category that match the context
+5. For fuzzy/vague goals (e.g., "get inbox to zero", "be more organized"):
+   - Convert into time-boxed action: "Clear inbox for 20 minutes"
+   - Make them concrete and achievable
+   - Avoid leaving vague statements as tasks
+
+6. Use appropriate emojis for each category that match the context
 
 OUTPUT FORMAT:
 Return JSON with dynamic categories based on the user's input:
@@ -170,6 +175,8 @@ RULES:
 - Use colors that are vibrant and distinct for each category
 - Only suggest subtasks for genuinely compound tasks (>10 min estimated)
 - Keep subtasks minimal (2-3 max) and actionable
+- For tasks with multiple steps (e.g., "fix keyboard" → check batteries + order if needed), consider 2-step breakdowns
+- Time estimates should be realistic: Quick Wins ≤5 min, standard tasks 10-30 min, projects >30 min
 
 Here's what the user needs to organize:
 
@@ -357,18 +364,10 @@ ${text}`,
     cat.items
       .filter(item => {
         const estimate = item.timeEstimate?.toLowerCase() || '';
-        return (
-          estimate.includes('1 min') ||
-          estimate.includes('2 min') ||
-          estimate.includes('3 min') ||
-          estimate.includes('4 min') ||
-          estimate.includes('5 min') ||
-          estimate === '1min' ||
-          estimate === '2min' ||
-          estimate === '3min' ||
-          estimate === '4min' ||
-          estimate === '5min'
-        );
+        const match = estimate.match(/(\d+)\s*min/);
+        if (!match) return false;
+        const minutes = parseInt(match[1], 10);
+        return minutes <= 5;
       })
       .map(item => ({ ...item, categoryColor: cat.color }))
   ) ?? [];
@@ -541,7 +540,7 @@ ${text}`,
                     </View>
                     <View style={styles.quickWinsHeaderText}>
                       <Text style={styles.quickWinsTitle}>Quick Wins</Text>
-                      <Text style={styles.quickWinsSubtitle}>≤5 min tasks • Start here</Text>
+                      <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
                     </View>
                     <View style={styles.quickWinsBadge}>
                       <Text style={styles.quickWinsBadgeText}>{quickWins.filter(t => !t.completed).length}</Text>
