@@ -417,7 +417,7 @@ ${text}`,
   const totalTasks = currentSession?.categories.reduce((acc, cat) => {
     return acc + cat.items.reduce((itemAcc, item) => {
       if (item.isReflection) return itemAcc;
-      if (item.isExpanded && item.subtasks && item.subtasks.length > 0) {
+      if (item.subtasks && item.subtasks.length > 0) {
         return itemAcc + item.subtasks.length;
       }
       return itemAcc + 1;
@@ -427,7 +427,7 @@ ${text}`,
   const completedTasks = currentSession?.categories.reduce((acc, cat) => {
     return acc + cat.items.reduce((itemAcc, item) => {
       if (item.isReflection) return itemAcc;
-      if (item.isExpanded && item.subtasks && item.subtasks.length > 0) {
+      if (item.subtasks && item.subtasks.length > 0) {
         return itemAcc + item.subtasks.filter(st => st.completed).length;
       }
       return itemAcc + (item.completed ? 1 : 0);
