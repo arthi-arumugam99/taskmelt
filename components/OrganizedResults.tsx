@@ -217,8 +217,18 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTas
   const hiddenCount = category.items.length - sortedVisibleItems.length;
   
   const actionableVisibleItems = visibleItems.filter((i) => !i.isReflection);
-  const completedCount = actionableVisibleItems.filter((i) => i.completed).length;
-  const totalCount = actionableVisibleItems.length;
+  
+  let completedCount = 0;
+  let totalCount = 0;
+  actionableVisibleItems.forEach((item) => {
+    if (item.subtasks && item.subtasks.length > 0) {
+      totalCount += item.subtasks.length;
+      completedCount += item.subtasks.filter(st => st.completed).length;
+    } else {
+      totalCount += 1;
+      if (item.completed) completedCount += 1;
+    }
+  });
 
   if (sortedVisibleItems.length === 0) return null;
 
@@ -286,18 +296,39 @@ export default function OrganizedResults({
     const aActionableItems = a.items.filter(i => !i.isReflection);
     const bActionableItems = b.items.filter(i => !i.isReflection);
     
-    const aCompletedCount = aActionableItems.filter(i => i.completed).length;
-    const bCompletedCount = bActionableItems.filter(i => i.completed).length;
+    let aCompletedCount = 0;
+    let aTotalCount = 0;
+    aActionableItems.forEach((item) => {
+      if (item.subtasks && item.subtasks.length > 0) {
+        aTotalCount += item.subtasks.length;
+        aCompletedCount += item.subtasks.filter(st => st.completed).length;
+      } else {
+        aTotalCount += 1;
+        if (item.completed) aCompletedCount += 1;
+      }
+    });
     
-    const aAllComplete = aActionableItems.length > 0 && aCompletedCount === aActionableItems.length;
-    const bAllComplete = bActionableItems.length > 0 && bCompletedCount === bActionableItems.length;
+    let bCompletedCount = 0;
+    let bTotalCount = 0;
+    bActionableItems.forEach((item) => {
+      if (item.subtasks && item.subtasks.length > 0) {
+        bTotalCount += item.subtasks.length;
+        bCompletedCount += item.subtasks.filter(st => st.completed).length;
+      } else {
+        bTotalCount += 1;
+        if (item.completed) bCompletedCount += 1;
+      }
+    });
+    
+    const aAllComplete = aTotalCount > 0 && aCompletedCount === aTotalCount;
+    const bAllComplete = bTotalCount > 0 && bCompletedCount === bTotalCount;
     
     if (aAllComplete !== bAllComplete) {
       return aAllComplete ? 1 : -1;
     }
     
-    const aCompletionRate = aActionableItems.length > 0 ? aCompletedCount / aActionableItems.length : 0;
-    const bCompletionRate = bActionableItems.length > 0 ? bCompletedCount / bActionableItems.length : 0;
+    const aCompletionRate = aTotalCount > 0 ? aCompletedCount / aTotalCount : 0;
+    const bCompletionRate = bTotalCount > 0 ? bCompletedCount / bTotalCount : 0;
     
     if (Math.abs(aCompletionRate - bCompletionRate) > 0.01) {
       return aCompletionRate - bCompletionRate;
