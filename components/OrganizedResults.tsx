@@ -108,38 +108,48 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 
     onToggle(item.id);
   }, [item.id, item.completed, onToggle, scaleAnim, createCelebration]);
 
+  if (item.isReflection) {
+    return (
+      <View style={[styles.reflectionRow, { marginLeft: depth * 16 }]}>
+        <Text style={styles.reflectionText}>{item.task}</Text>
+      </View>
+    );
+  }
+
   return (
     <>
       <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 }]}>
-        <TouchableOpacity
-          style={[
-            styles.checkbox,
-            { borderColor: accentColor },
-            item.completed && { backgroundColor: accentColor },
-          ]}
-          onPress={handlePress}
-          activeOpacity={0.7}
-        >
-          {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-        </TouchableOpacity>
-        <View style={styles.taskContent}>
-          <Text
+        <View style={styles.taskRowContent}>
+          <TouchableOpacity
             style={[
-              styles.taskText,
-              item.completed && styles.taskTextCompleted,
+              styles.checkbox,
+              { borderColor: accentColor },
+              item.completed && { backgroundColor: accentColor },
             ]}
+            onPress={handlePress}
+            activeOpacity={0.7}
           >
-            {item.task}
-          </Text>
-          {item.timeEstimate && (
-            <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
-          )}
-          {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
-            <TouchableOpacity onPress={() => onToggleExpanded?.(item.id)} style={styles.subtaskHintButton}>
-              <ChevronRight size={12} color={Colors.primary} />
-              <Text style={styles.subtaskHint}>Tap to break down</Text>
-            </TouchableOpacity>
-          )}
+            {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+          </TouchableOpacity>
+          <View style={styles.taskContent}>
+            <Text
+              style={[
+                styles.taskText,
+                item.completed && styles.taskTextCompleted,
+              ]}
+            >
+              {item.task}
+            </Text>
+            {item.timeEstimate && (
+              <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
+            )}
+            {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
+              <TouchableOpacity onPress={() => onToggleExpanded?.(item.id)} style={styles.subtaskHintButton}>
+                <ChevronRight size={12} color={Colors.primary} />
+                <Text style={styles.subtaskHint}>Tap to break down</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         {confetti.map((particle) => (
           <Animated.View
@@ -185,10 +195,12 @@ interface CategoryCardProps {
 function CategoryCard({ category, onToggleTask, onToggleExpanded }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
-  const completedCount = category.items.filter((i) => i.completed).length;
-  const totalCount = category.items.length;
+  const actionableItems = category.items.filter((i) => !i.isReflection);
+  const completedCount = actionableItems.filter((i) => i.completed).length;
+  const totalCount = actionableItems.length;
+  const isReflectionCategory = category.name.toLowerCase().includes('reflection') || category.name.toLowerCase().includes('notes');
 
-  if (totalCount === 0) return null;
+  if (category.items.length === 0) return null;
 
   return (
     <View style={[styles.categoryCard, { backgroundColor: bgColor }]}>
@@ -197,10 +209,15 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded }: CategoryCard
           <Text style={styles.categoryEmoji}>{category.emoji}</Text>
           <Text style={styles.categoryName}>{category.name}</Text>
         </View>
-        <Text style={[styles.categoryCount, { color: accentColor }]}>
-          {completedCount}/{totalCount}
-        </Text>
+        {!isReflectionCategory && totalCount > 0 && (
+          <Text style={[styles.categoryCount, { color: accentColor }]}>
+            {completedCount}/{totalCount}
+          </Text>
+        )}
       </View>
+      {isReflectionCategory && (
+        <Text style={styles.reflectionHint}>We heard you</Text>
+      )}
       <View style={styles.taskList}>
         {category.items.map((item) => (
           <TaskItemRow
@@ -285,12 +302,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   taskRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
     backgroundColor: 'rgba(255,255,255,0.6)',
     borderRadius: 12,
     padding: 12,
+  },
+  taskRowContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
   },
 
   checkbox: {
@@ -337,5 +356,24 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     left: 12,
     top: 12,
+  },
+  reflectionRow: {
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.textMuted,
+  },
+  reflectionText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    fontStyle: 'italic' as const,
+  },
+  reflectionHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontStyle: 'italic' as const,
+    marginBottom: 8,
   },
 });

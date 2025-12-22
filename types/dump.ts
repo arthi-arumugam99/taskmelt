@@ -8,6 +8,7 @@ export interface TaskItem {
   subtasks?: TaskItem[];
   hasSubtaskSuggestion?: boolean;
   isExpanded?: boolean;
+  isReflection?: boolean;
 }
 
 export interface Category {

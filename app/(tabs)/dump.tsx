@@ -50,6 +50,7 @@ const resultSchema = z.object({
             })
           ).optional(),
           hasSubtaskSuggestion: z.boolean().optional(),
+          isReflection: z.boolean().optional(),
         })
       ),
     })
@@ -118,6 +119,8 @@ YOUR JOB:
    - Rewrite as a clear, specific action (verb + object)
    - Estimate time if possible
    - Note any missing info needed (dates, details)
+   - For vague/meta tasks containing words like "at least", "one", "something", "deliverable", add a clarifying note in parentheses
+     Example: "Ship at least one deliverable today" → "Ship one deliverable today (e.g., onboarding copy draft)"
    - For compound tasks (e.g., "prepare slides", "plan event"), optionally suggest 2-3 subtasks but mark with hasSubtaskSuggestion=true (don't auto-expand)
    - For tasks with dependencies (e.g., "cancel free trial" where service is unclear), create a 2-step chain:
      1. First task: "Identify which service the free trial is for"
@@ -127,6 +130,7 @@ YOUR JOB:
    - Place in "Notes & Reflections" category
    - Acknowledge the feeling
    - Suggest it may resolve when related tasks are done
+   - Mark with isReflection: true
 
 5. For fuzzy/vague goals (e.g., "get inbox to zero", "be more organized"):
    - Convert into time-boxed action: "Clear inbox for 20 minutes"
@@ -154,7 +158,8 @@ Return JSON with dynamic categories based on the user's input:
               "timeEstimate": "2 min"
             }
           ],
-          "hasSubtaskSuggestion": true
+          "hasSubtaskSuggestion": true,
+          "isReflection": false
         }
       ]
     }
@@ -205,6 +210,7 @@ ${text}`,
             completed: false,
           })),
           isExpanded: false,
+          isReflection: item.isReflection || false,
         })),
       }));
 
@@ -354,9 +360,9 @@ ${text}`,
     }
   }, [currentSession]);
 
-  const totalTasks = currentSession?.categories.reduce((acc, cat) => acc + cat.items.length, 0) ?? 0;
+  const totalTasks = currentSession?.categories.reduce((acc, cat) => acc + cat.items.filter(item => !item.isReflection).length, 0) ?? 0;
   const completedTasks = currentSession?.categories.reduce(
-    (acc, cat) => acc + cat.items.filter(item => item.completed).length, 0
+    (acc, cat) => acc + cat.items.filter(item => !item.isReflection && item.completed).length, 0
   ) ?? 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -518,19 +524,74 @@ ${text}`,
                 <View style={styles.progressCard}>
                   <View style={styles.progressHeader}>
                     <TrendingUp size={18} color={Colors.primary} />
-                    <Text style={styles.progressTitle}>Progress</Text>
-                  </View>
-                  <View style={styles.progressStats}>
-                    <Text style={styles.progressPercentage}>{completionRate}%</Text>
-                    <Text style={styles.progressLabel}>
-                      {completedTasks} of {totalTasks} tasks completed
+                    <Text style={styles.progressTitle}>
+                      {completedTasks === 0 ? 'Clarity Progress' : 'Execution Progress'}
                     </Text>
                   </View>
+                  <View style={styles.progressStats}>
+                    {completedTasks === 0 ? (
+                      <>
+                        <Text style={styles.progressPercentage}>✨ Clarity Achieved</Text>
+                        <Text style={styles.progressLabel}>
+                          {totalTasks} tasks captured • Ready to start
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.progressPercentage}>{completionRate}%</Text>
+                        <Text style={styles.progressLabel}>
+                          {completedTasks} of {totalTasks} tasks completed
+                        </Text>
+                      </>
+                    )}
+                  </View>
                   <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBarFill, { width: `${completionRate}%` }]} />
+                    <View style={[styles.progressBarFill, { width: completedTasks === 0 ? '15%' : `${completionRate}%` }]} />
                   </View>
                 </View>
               )}
+
+              {currentSession.categories.some(cat => cat.items.some(item => !item.completed && !item.isReflection)) && (() => {
+                const startHereTask = currentSession.categories
+                  .flatMap(cat => 
+                    cat.items
+                      .filter(item => !item.completed && !item.isReflection)
+                      .map(item => ({ ...item, categoryColor: cat.color }))
+                  )
+                  .sort((a, b) => {
+                    const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+                    const bTime = parseInt(b.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+                    return aTime - bTime;
+                  })[0];
+
+                return startHereTask ? (
+                  <View style={styles.startHereCard}>
+                    <View style={styles.startHereHeader}>
+                      <Text style={styles.startHereLabel}>If you do nothing else today, do this 👇</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.startHereTask}
+                      onPress={() => handleToggleTask(startHereTask.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.startHereCheckbox,
+                          { borderColor: startHereTask.categoryColor },
+                        ]}
+                      >
+                        <Check size={16} color={startHereTask.categoryColor} strokeWidth={3} />
+                      </View>
+                      <View style={styles.startHereContent}>
+                        <Text style={styles.startHereTaskText}>{startHereTask.task}</Text>
+                        {startHereTask.timeEstimate && (
+                          <Text style={styles.startHereTime}>{startHereTask.timeEstimate}</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                ) : null;
+              })()}
 
               {quickWins.length > 0 && (
                 <View style={styles.quickWinsCard}>
@@ -593,7 +654,7 @@ ${text}`,
                 style={styles.newDumpButton}
                 onPress={handleReset}
               >
-                <Text style={styles.newDumpButtonText}>Start New Dump</Text>
+                <Text style={styles.newDumpButtonText}>Unload Your Thoughts</Text>
               </TouchableOpacity>
             </>
           )}
@@ -949,5 +1010,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic' as const,
+  },
+  startHereCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  startHereHeader: {
+    marginBottom: 12,
+  },
+  startHereLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  startHereTask: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 14,
+  },
+  startHereCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  startHereContent: {
+    flex: 1,
+  },
+  startHereTaskText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  startHereTime: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
 });
