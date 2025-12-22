@@ -77,7 +77,7 @@ export default function DumpScreen() {
   const { dumps, addDump, toggleTask, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, confidence, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -305,18 +305,16 @@ ${text}`,
 
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
-      console.log('Stopping recording...');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const transcription = await stopRecording();
-      console.log('Transcription result:', transcription);
       if (transcription && transcription.trim()) {
-        console.log('Got transcription:', transcription);
         setInputText(prev => prev ? `${prev}\n${transcription}` : transcription);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        console.log('No transcription received or empty');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
     } else {
-      console.log('Starting recording...');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await startRecording();
     }
   }, [isRecording, startRecording, stopRecording]);
@@ -597,18 +595,35 @@ ${text}`,
                 <View style={styles.recordingIndicator}>
                   <View style={styles.recordingHeader}>
                     <View style={styles.recordingDot} />
-                    <Text style={styles.recordingText}>Recording</Text>
+                    <Text style={styles.recordingText}>Listening</Text>
                     <Text style={styles.recordingDuration}>
                       {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                     </Text>
                   </View>
                   {liveTranscript ? (
                     <View style={styles.transcriptContainer}>
-                      <Text style={styles.transcriptLabel}>Live transcription:</Text>
+                      <View style={styles.transcriptHeader}>
+                        <Text style={styles.transcriptLabel}>Live:</Text>
+                        {confidence > 0 && (
+                          <View style={styles.confidenceBadge}>
+                            <View style={[styles.confidenceDot, { opacity: confidence }]} />
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.transcriptText}>{liveTranscript}</Text>
+                      <Text style={styles.transcriptHint}>Tap stop when done speaking</Text>
                     </View>
                   ) : (
-                    <Text style={styles.listeningText}>Listening...</Text>
+                    <View style={styles.listeningContainer}>
+                      <Text style={styles.listeningText}>Start speaking...</Text>
+                      <View style={styles.waveBars}>
+                        <Animated.View style={[styles.waveBar, { height: 12 }]} />
+                        <Animated.View style={[styles.waveBar, { height: 20 }]} />
+                        <Animated.View style={[styles.waveBar, { height: 16 }]} />
+                        <Animated.View style={[styles.waveBar, { height: 24 }]} />
+                        <Animated.View style={[styles.waveBar, { height: 14 }]} />
+                      </View>
+                    </View>
                   )}
                 </View>
               )}
@@ -1076,53 +1091,99 @@ const styles = StyleSheet.create({
   },
   recordingIndicator: {
     marginTop: 16,
-    padding: 16,
-    backgroundColor: Colors.card,
-    borderRadius: 12,
+    padding: 18,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: '#FCA5A5',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
   },
   recordingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#EF4444',
-    marginRight: 8,
+    marginRight: 10,
   },
   recordingText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700' as const,
     color: '#EF4444',
     flex: 1,
+    letterSpacing: 0.3,
   },
   recordingDuration: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#DC2626',
+    fontVariant: ['tabular-nums'] as const,
   },
   transcriptContainer: {
-    marginTop: 8,
+    gap: 8,
+  },
+  transcriptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   transcriptLabel: {
     fontSize: 12,
-    color: Colors.textMuted,
-    marginBottom: 4,
-    fontWeight: '500' as const,
+    color: '#DC2626',
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  confidenceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  confidenceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22C55E',
   },
   transcriptText: {
-    fontSize: 14,
-    color: Colors.text,
-    lineHeight: 20,
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 24,
+    fontWeight: '500' as const,
+  },
+  transcriptHint: {
+    fontSize: 11,
+    color: '#DC2626',
+    fontStyle: 'italic' as const,
+    opacity: 0.8,
+  },
+  listeningContainer: {
+    gap: 12,
+    alignItems: 'center',
   },
   listeningText: {
     fontSize: 14,
-    color: Colors.textMuted,
-    fontStyle: 'italic' as const,
+    color: '#DC2626',
+    fontWeight: '500' as const,
+  },
+  waveBars: {
+    flexDirection: 'row',
+    gap: 4,
+    alignItems: 'center',
+    height: 30,
+  },
+  waveBar: {
+    width: 3,
+    backgroundColor: '#FCA5A5',
+    borderRadius: 2,
   },
   quickWinsCard: {
     backgroundColor: Colors.card,

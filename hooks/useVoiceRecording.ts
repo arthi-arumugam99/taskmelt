@@ -11,6 +11,7 @@ interface UseVoiceRecordingReturn {
   error: string | null;
   liveTranscript: string;
   recordingDuration: number;
+  confidence: number;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<string | null>;
   cancelRecording: () => void;
@@ -21,6 +22,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [error, setError] = useState<string | null>(null);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [confidence, setConfidence] = useState(0);
   
   const recordingRef = useRef<Audio.Recording | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -35,7 +37,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('Sending audio for transcription...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -96,7 +98,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Transcription timeout - try a shorter recording');
+          throw new Error('Transcription timeout');
         }
         throw err;
       }
@@ -228,19 +230,30 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
+        recognition.maxAlternatives = 1;
         
         recognition.onresult = (event: any) => {
           let interimTranscript = '';
           let finalTranscript = '';
+          let maxConfidence = 0;
           
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
+            const result = event.results[i];
+            const transcript = result[0].transcript;
+            const confidenceScore = result[0].confidence || 0;
+            
+            if (confidenceScore > maxConfidence) {
+              maxConfidence = confidenceScore;
+            }
+            
+            if (result.isFinal) {
               finalTranscript += transcript + ' ';
             } else {
               interimTranscript += transcript;
             }
           }
+          
+          setConfidence(maxConfidence);
           
           setLiveTranscript(prev => {
             const updated = (prev + finalTranscript).trim();
@@ -249,12 +262,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         };
         
         recognition.onerror = (event: any) => {
-          console.log('Speech recognition error:', event.error);
+          if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            console.log('Speech recognition error:', event.error);
+          }
+        };
+        
+        recognition.onstart = () => {
+          console.log('Live transcription started - instant feedback enabled');
         };
         
         recognition.start();
         recognitionRef.current = recognition;
-        console.log('Live transcription started');
       }
       
       console.log('Web recording started');
@@ -277,6 +295,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setError(null);
     setLiveTranscript('');
     setRecordingDuration(0);
+    setConfidence(0);
     recordingStartTimeRef.current = Date.now();
     
     try {
@@ -397,25 +416,26 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No audio data captured');
       }
 
-      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 3) {
-        console.log('Using live transcript from browser (instant)');
-        const finalText = liveTranscript;
+      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 0) {
+        console.log('✨ Instant transcription from live recognition');
+        const finalText = liveTranscript.trim();
         setLiveTranscript('');
+        setConfidence(0);
         return finalText;
       }
 
-      console.log('Transcribing audio via API...');
+      console.log('Fast-track API transcription...');
       const startTime = Date.now();
       const transcribedText = await transcribeAudio(formData);
-      console.log(`Transcription completed in ${Date.now() - startTime}ms`);
-      console.log('Transcribed text length:', transcribedText.length);
-      console.log('Transcribed text:', transcribedText);
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Transcribed in ${elapsed}ms`);
       
-      const finalText = liveTranscript || transcribedText;
+      const finalText = transcribedText || liveTranscript;
       setLiveTranscript('');
+      setConfidence(0);
       
       if (!finalText || finalText.trim().length === 0) {
-        console.log('Empty transcription received - returning null');
+        console.log('No speech detected');
         return null;
       }
       
@@ -434,6 +454,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setError(null);
     setLiveTranscript('');
     setRecordingDuration(0);
+    setConfidence(0);
     
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -476,6 +497,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     error,
     liveTranscript,
     recordingDuration,
+    confidence,
     startRecording,
     stopRecording,
     cancelRecording,
