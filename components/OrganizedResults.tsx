@@ -207,13 +207,20 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTas
   const visibleItems = hideHighlightedTasks 
     ? category.items.filter(item => !highlightedTaskIds.includes(item.id))
     : category.items;
-  const hiddenCount = category.items.length - visibleItems.length;
+  
+  const sortedVisibleItems = [...visibleItems].sort((a, b) => {
+    if (a.isReflection && !b.isReflection) return 1;
+    if (!a.isReflection && b.isReflection) return -1;
+    if (a.completed === b.completed) return 0;
+    return a.completed ? 1 : -1;
+  });
+  const hiddenCount = category.items.length - sortedVisibleItems.length;
   
   const actionableVisibleItems = visibleItems.filter((i) => !i.isReflection);
   const completedCount = actionableVisibleItems.filter((i) => i.completed).length;
   const totalCount = actionableVisibleItems.length;
 
-  if (visibleItems.length === 0) return null;
+  if (sortedVisibleItems.length === 0) return null;
 
   return (
     <View style={[styles.categoryCard, { backgroundColor: bgColor }]}>
@@ -237,7 +244,7 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTas
         </Text>
       )}
       <View style={styles.taskList}>
-        {visibleItems.map((item) => (
+        {sortedVisibleItems.map((item) => (
           <TaskItemRow
             key={item.id}
             item={item}
