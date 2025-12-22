@@ -167,7 +167,7 @@ ${text}`,
         schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000)
+              setTimeout(() => reject(new Error('Request timeout after 90 seconds')), 90000)
             )
           ]);
           
@@ -194,7 +194,7 @@ ${text}`,
       
       if (lastError) {
         if (lastError.message.includes('timeout')) {
-          throw new Error('The AI service is taking too long to respond. Please try again.');
+          throw new Error('The AI service is taking too long to respond. Please try with a shorter brain dump or try again later.');
         } else if (lastError.message.includes('Network request failed')) {
           throw new Error('Unable to reach the AI service. Please check your internet connection and try again.');
         } else {
