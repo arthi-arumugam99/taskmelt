@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, User } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,6 +27,7 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,13 +76,18 @@ export default function AuthScreen() {
     }
 
     if (mode === 'signup') {
+      if (!name.trim()) {
+        setError('Please enter your name');
+        return;
+      }
+
       if (password !== confirmPassword) {
         setError('Passwords do not match');
         return;
       }
 
       try {
-        await signUp(email, password);
+        await signUp(email, password, name.trim());
         Alert.alert(
           'Check your email',
           'We sent you a confirmation link. Please verify your email to continue.',
@@ -162,6 +168,22 @@ export default function AuthScreen() {
             {error && (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {mode === 'signup' && (
+              <View style={styles.inputContainer}>
+                <User size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full name"
+                  placeholderTextColor={Colors.textMuted}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  testID="name-input"
+                />
               </View>
             )}
 

@@ -92,7 +92,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   };
 
   const signUpMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+    mutationFn: async ({ email, password, name }: { email: string; password: string; name?: string }) => {
       if (!supabase) {
         throw new Error('Authentication not available. Please configure Supabase.');
       }
@@ -102,6 +102,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         password,
         options: {
           emailRedirectTo: 'rork-app://auth',
+          data: {
+            full_name: name,
+          },
         },
       });
       if (error) throw error;
@@ -179,8 +182,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const { mutateAsync: resetPasswordAsync } = resetPasswordMutation;
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
-      return signUpAsync({ email, password });
+    async (email: string, password: string, name?: string) => {
+      return signUpAsync({ email, password, name });
     },
     [signUpAsync]
   );
