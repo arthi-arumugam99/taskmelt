@@ -200,7 +200,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.proTextContainer}>
                 <Text style={styles.proTitle}>Upgrade to Pro</Text>
-                <Text style={styles.proSubtitle}>Unlock unlimited brain dumps</Text>
+                <Text style={styles.proSubtitle}>From $6.99/mo • Unlimited dumps</Text>
               </View>
               <ChevronRight size={20} color="#FFFFFF" />
             </View>
@@ -237,7 +237,7 @@ export default function SettingsScreen() {
               <SettingRow
                 icon={<Crown size={20} color={Colors.primary} />}
                 title="Upgrade to Pro"
-                subtitle="Unlock all premium features"
+                subtitle="From $6.99/mo • $69.99/yr • $99.99 lifetime"
                 onPress={handleUpgrade}
               />
             )}
