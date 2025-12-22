@@ -34,10 +34,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isStoppingRef = useRef(false);
 
-  const { mutateAsync: transcribeAudio, isPending: isTranscribing, reset: resetTranscription } = useMutation({
+  const isProcessingChunkRef = useRef(false);
+  const transcriptRef = useRef('');
+  const [isFetchingFinal, setIsFetchingFinal] = useState(false);
+
+  const { mutateAsync: transcribeAudio, reset: resetTranscription } = useMutation({
     mutationFn: async (formData: FormData): Promise<string> => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced to 10s for faster failure on chunks
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -50,53 +54,66 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('STT API error:', errorText);
-          throw new Error('Failed to transcribe audio');
+          console.error('STT API error status:', response.status);
+          console.error('STT API error body:', errorText);
+          throw new Error(`Transcribe failed: ${response.status}`);
         }
 
         const responseText = await response.text();
-        console.log('📥 STT response (first 200 chars):', responseText.substring(0, 200));
         const trimmedResponse = responseText.trim();
         
         if (!trimmedResponse) {
-          console.log('⚠️ Empty response from STT');
           return '';
         }
         
-        let transcribedText: string;
+        let transcribedText: string = '';
         
+        // Try to parse as JSON first
         if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
           try {
             const result = JSON.parse(trimmedResponse);
-            console.log('✅ Parsed JSON response');
-            if ('text' in result) {
-              transcribedText = result.text || '';
-            } else if (typeof result === 'string') {
-              transcribedText = result;
+            if (result && typeof result === 'object') {
+              if ('text' in result) {
+                transcribedText = result.text || '';
+              } else if ('transcription' in result) {
+                 transcribedText = result.transcription || '';
+              } else {
+                 // Fallback: try to find any string property that looks like text
+                 const values = Object.values(result);
+                 const textValue = values.find(v => typeof v === 'string' && v.length > 0);
+                 transcribedText = (textValue as string) || '';
+              }
             } else if (Array.isArray(result) && result.length > 0) {
-              transcribedText = result[0].text || result[0] || '';
-            } else {
-              transcribedText = JSON.stringify(result);
+              transcribedText = result[0]?.text || result[0] || '';
             }
-          } catch {
-            console.log('⚠️ JSON parse failed, using raw text');
-            transcribedText = trimmedResponse;
+          } catch (e) {
+            console.warn('JSON parse failed, treating as raw text. Error:', e);
+            // If it looked like JSON but failed to parse, it might be partial or malformed.
+            // But we can try to use it as raw text if it doesn't look like an error message.
+            if (!trimmedResponse.includes('"error"')) {
+               transcribedText = trimmedResponse;
+            }
           }
         } else {
-          console.log('📝 Plain text response');
+          // Plain text response
           transcribedText = trimmedResponse;
         }
+
+        // Clean up text
+        transcribedText = transcribedText.trim();
         
-        if (!transcribedText || transcribedText.trim().length === 0) {
-          return '';
+        // Filter out "invalid json" or "error" if they somehow got into the text
+        if (transcribedText.toLowerCase().includes('invalid json') || transcribedText.toLowerCase().includes('backend error')) {
+           return '';
         }
         
         return transcribedText;
+
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('Chunk transcription timeout - skipping');
-          return '';
+          console.log('Transcription timeout');
+          return ''; // Return empty string on timeout to not break flow
         }
         throw err;
       }
@@ -105,38 +122,26 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const processLiveChunk = useCallback(async () => {
     if (!recordingRef.current || isStoppingRef.current || Platform.OS === 'web') return;
+    if (isProcessingChunkRef.current) {
+        console.log('Skipping chunk - previous chunk still processing');
+        return;
+    }
     
     try {
       const status = await recordingRef.current.getStatusAsync();
       if (!status.isRecording) return;
       
       const durationMillis = status.durationMillis || 0;
-      if (durationMillis < 1500) return;
+      // Process every 2.5 seconds to balance "live" feel with network load
+      if (durationMillis < 2500) return;
       
       console.log('📦 Processing live chunk...');
+      isProcessingChunkRef.current = true;
       
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
       
-      if (uri) {
-        const uriParts = uri.split('.');
-        const fileType = uriParts[uriParts.length - 1];
-        const audioFile = {
-          uri,
-          name: `chunk_${Date.now()}.${fileType}`,
-          type: `audio/${fileType}`,
-        };
-        
-        const formData = new FormData();
-        formData.append('audio', audioFile as unknown as Blob);
-        
-        const chunkText = await transcribeAudio(formData);
-        if (chunkText && chunkText.trim()) {
-          console.log('✨ Live chunk:', chunkText.substring(0, 50));
-          setLiveTranscript(prev => prev ? `${prev} ${chunkText}` : chunkText);
-        }
-      }
-      
+      // Start new recording IMMEDIATELY to minimize gap
       const newRecording = new Audio.Recording();
       await newRecording.prepareToRecordAsync({
         android: {
@@ -148,7 +153,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           bitRate: 32000,
         },
         ios: {
-          extension: '.m4a',
+          extension: '.m4a', 
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
           audioQuality: Audio.IOSAudioQuality.MEDIUM,
           sampleRate: 16000,
@@ -162,8 +167,62 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       });
       await newRecording.startAsync();
       recordingRef.current = newRecording;
+      
+      // Process the previous chunk in background
+      if (uri) {
+        const uriParts = uri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+        const audioFile = {
+          uri,
+          name: `chunk_${Date.now()}.${fileType}`,
+          type: `audio/${fileType}`,
+        };
+        
+        const formData = new FormData();
+        formData.append('audio', audioFile as unknown as Blob);
+        
+        // We don't await this directly to block the function, but we await it to unset the flag
+        transcribeAudio(formData).then((chunkText) => {
+            if (chunkText && chunkText.trim()) {
+                console.log('✨ Live chunk:', chunkText.substring(0, 50));
+                
+                // Update both ref and state to ensure sync
+                const cleanChunk = chunkText.trim();
+                
+                setLiveTranscript(prev => {
+                    const cleanPrev = prev.trim();
+                    
+                    let newTranscript = '';
+                    if (!cleanPrev) {
+                        newTranscript = cleanChunk;
+                    } else {
+                        // Avoid duplicate words at the seam
+                        const prevWords = cleanPrev.split(' ');
+                        const lastWord = prevWords[prevWords.length - 1];
+                        if (cleanChunk.startsWith(lastWord)) {
+                             newTranscript = cleanPrev + cleanChunk.substring(lastWord.length);
+                        } else {
+                             newTranscript = `${cleanPrev} ${cleanChunk}`;
+                        }
+                    }
+                    
+                    // Sync ref
+                    transcriptRef.current = newTranscript;
+                    return newTranscript;
+                });
+            }
+        }).catch(err => {
+            console.log('Chunk transcription failed safely:', err);
+        }).finally(() => {
+            isProcessingChunkRef.current = false;
+        });
+      } else {
+         isProcessingChunkRef.current = false;
+      }
+      
     } catch (err) {
       console.log('Chunk processing skipped:', err instanceof Error ? err.message : 'Unknown');
+      isProcessingChunkRef.current = false;
     }
   }, [transcribeAudio]);
 
@@ -203,6 +262,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true, // Keep recording if app goes background briefly
       });
 
       const recording = new Audio.Recording();
@@ -233,9 +293,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       recordingRef.current = recording;
       console.log('✅ Mobile recording started');
       
+      // Clear any existing intervals just in case
+      if (chunkIntervalRef.current) {
+        clearInterval(chunkIntervalRef.current);
+      }
+
+      // Use 3000ms interval to match the chunk processing check
       chunkIntervalRef.current = setInterval(async () => {
         await processLiveChunk();
-      }, 2000);
+      }, 3000);
     } catch (err) {
       console.error('Error starting mobile recording:', err);
       throw err;
@@ -344,6 +410,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const startRecording = useCallback(async () => {
     setError(null);
     setLiveTranscript('');
+    transcriptRef.current = ''; // Reset ref
     setRecordingDuration(0);
     setConfidence(0);
     isStoppingRef.current = false;
@@ -449,10 +516,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const stopRecording = useCallback(async (): Promise<string | null> => {
     if (!isRecording) return null;
     
+    // 1. Mark as stopping to prevent new chunks
     isStoppingRef.current = true;
     setIsRecording(false);
     setError(null);
+    setIsFetchingFinal(true);
     
+    // 2. Clear intervals immediately
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
@@ -469,11 +539,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
 
     try {
-      const currentTranscript = liveTranscript.trim();
+      // 3. Wait for any pending chunk processing to finish (up to 2s)
+      let waitTime = 0;
+      while (isProcessingChunkRef.current && waitTime < 2000) {
+        await new Promise(r => setTimeout(r, 100));
+        waitTime += 100;
+      }
+
+      // 4. Use the REF for the most up-to-date transcript (avoiding state staleness)
+      const currentTranscript = transcriptRef.current.trim() || liveTranscript.trim();
       
       if (Platform.OS === 'web' && currentTranscript) {
         console.log('✨ Instant result from live transcription');
         setLiveTranscript('');
+        transcriptRef.current = '';
         setConfidence(0);
         return currentTranscript;
       }
@@ -489,6 +568,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (!formData) {
         const result = currentTranscript || null;
         setLiveTranscript('');
+        transcriptRef.current = '';
         setConfidence(0);
         return result;
       }
@@ -504,6 +584,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         : transcribedText;
       
       setLiveTranscript('');
+      transcriptRef.current = '';
       setConfidence(0);
       
       if (!finalText || finalText.trim().length === 0) {
@@ -516,9 +597,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const message = err instanceof Error ? err.message : 'Failed to process recording';
       setError(message);
       console.error('Recording stop error:', err);
-      const fallback = liveTranscript.trim() || null;
+      // Fallback to what we have
+      const fallback = transcriptRef.current.trim() || liveTranscript.trim() || null;
       setLiveTranscript('');
+      transcriptRef.current = '';
       return fallback;
+    } finally {
+        setIsFetchingFinal(false);
     }
   }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio, liveTranscript]);
 
@@ -527,8 +612,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setIsRecording(false);
     setError(null);
     setLiveTranscript('');
+    transcriptRef.current = '';
     setRecordingDuration(0);
     setConfidence(0);
+    isProcessingChunkRef.current = false;
+    setIsFetchingFinal(false);
     
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -572,7 +660,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   return {
     isRecording,
-    isTranscribing,
+    isTranscribing: isFetchingFinal,
     error,
     liveTranscript,
     recordingDuration,
