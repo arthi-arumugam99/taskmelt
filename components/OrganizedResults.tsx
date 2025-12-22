@@ -202,15 +202,16 @@ interface CategoryCardProps {
 function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
-  const actionableItems = category.items.filter((i) => !i.isReflection);
-  const completedCount = actionableItems.filter((i) => i.completed).length;
-  const totalCount = actionableItems.length;
   const isReflectionCategory = category.name.toLowerCase().includes('reflection') || category.name.toLowerCase().includes('notes');
   
   const visibleItems = hideHighlightedTasks 
     ? category.items.filter(item => !highlightedTaskIds.includes(item.id))
     : category.items;
   const hiddenCount = category.items.length - visibleItems.length;
+  
+  const actionableVisibleItems = visibleItems.filter((i) => !i.isReflection);
+  const completedCount = actionableVisibleItems.filter((i) => i.completed).length;
+  const totalCount = actionableVisibleItems.length;
 
   if (visibleItems.length === 0) return null;
 
