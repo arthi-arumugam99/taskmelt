@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Sparkles, RotateCcw, Mic, Square } from 'lucide-react-native';
+import { RotateCcw, Mic, Square } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -318,10 +318,8 @@ ${text}
                 activeOpacity={0.8}
                 disabled={isButtonDisabled || !!currentSession}
               >
-                {isPending ? (
+                {isPending && (
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Sparkles size={20} color="#FFFFFF" />
                 )}
                 <Text style={styles.organizeButtonText}>
                   {isPending ? 'Melting...' : 'Melt My Chaos'}
