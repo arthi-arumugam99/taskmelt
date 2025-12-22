@@ -1,7 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Platform, Alert, Linking } from 'react-native';
 import { Audio } from 'expo-av';
-import { useMutation } from '@tanstack/react-query';
 
 const STT_API_URL = 'https://toolkit.rork.com/stt/transcribe/';
 
@@ -17,146 +16,187 @@ interface UseVoiceRecordingReturn {
   cancelRecording: () => void;
 }
 
-function extractTextFromResponse(responseText: string): string {
-  try {
-    const parsed = JSON.parse(responseText);
-    if (parsed && typeof parsed.text === 'string') {
-      return parsed.text.trim();
-    }
-    return responseText.trim();
-  } catch {
-    return responseText.trim();
-  }
-}
+
 
 export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [confidence, setConfidence] = useState<number>(0);
-  const [isFetchingFinal, setIsFetchingFinal] = useState<boolean>(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
-
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
-  const isStoppingRef = useRef<boolean>(false);
   const transcriptRef = useRef<string>('');
+  const isMountedRef = useRef<boolean>(true);
 
-  const { mutateAsync: transcribeAudio, reset: resetTranscription } = useMutation({
-    mutationFn: async (formData: FormData): Promise<string> => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      try {
-        console.log('📤 Sending audio to STT API...');
-        const startTime = Date.now();
-
-        const response = await fetch(STT_API_URL, {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-        console.log(`⏱️ STT API responded in ${Date.now() - startTime}ms`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('STT API error:', response.status, errorText);
-          throw new Error('Transcription failed');
-        }
-
-        const responseText = await response.text();
-        console.log('📥 STT response:', responseText.slice(0, 100));
-
-        const transcribedText = extractTextFromResponse(responseText);
-        console.log('✅ Transcribed:', transcribedText || '(empty)');
-        
-        return transcribedText;
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if (err instanceof Error && err.name === 'AbortError') {
-          console.error('⏱️ STT request timed out after 15s');
-          throw new Error('Transcription timed out');
-        }
-        console.error('STT error:', err);
-        throw err;
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
       }
-    },
-  });
+    };
+  }, []);
+
+  const transcribeAudio = useCallback(async (formData: FormData): Promise<string> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      console.log('📤 Sending audio to STT API...');
+      const startTime = Date.now();
+
+      const response = await fetch(STT_API_URL, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      console.log(`⏱️ STT API responded in ${Date.now() - startTime}ms, status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ STT API error:', response.status, errorText);
+        throw new Error(`Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📥 STT response:', JSON.stringify(data));
+      
+      const text = data?.text?.trim() || '';
+      console.log('✅ Transcribed text:', text || '(empty)');
+      return text;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.error('⏱️ STT request timed out');
+        throw new Error('Transcription timed out');
+      }
+      console.error('❌ STT error:', err);
+      throw err;
+    }
+  }, []);
 
   const startRecordingMobile = useCallback(async () => {
     console.log('🎤 Starting mobile recording...');
 
-    const { status: existingStatus } = await Audio.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    try {
+      const { status: existingStatus } = await Audio.getPermissionsAsync();
+      console.log('📋 Current permission status:', existingStatus);
+      let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Audio.requestPermissionsAsync();
-      finalStatus = status;
-    }
+      if (existingStatus !== 'granted') {
+        console.log('🔐 Requesting microphone permission...');
+        const { status } = await Audio.requestPermissionsAsync();
+        finalStatus = status;
+        console.log('📋 New permission status:', finalStatus);
+      }
 
-    if (finalStatus !== 'granted') {
-      Alert.alert(
-        'Microphone Permission Required',
-        'Please allow microphone access to use voice recording.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Open Settings',
-            onPress: () => {
-              if (Platform.OS === 'ios') {
-                Linking.openURL('app-settings:');
-              } else {
-                Linking.openSettings();
-              }
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Microphone Permission Required',
+          'Please allow microphone access to use voice recording.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              },
             },
-          },
-        ]
-      );
-      throw new Error('Microphone permission denied');
+          ]
+        );
+        throw new Error('Microphone permission denied');
+      }
+
+      console.log('🔊 Setting audio mode...');
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      console.log('🎙️ Creating recording instance...');
+      const recording = new Audio.Recording();
+
+      const recordingOptions = Platform.OS === 'ios' ? {
+        isMeteringEnabled: true,
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      } : {
+        isMeteringEnabled: true,
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      };
+
+      console.log('⚙️ Preparing to record with options:', Platform.OS);
+      await recording.prepareToRecordAsync(recordingOptions);
+
+      console.log('▶️ Starting recording...');
+      await recording.startAsync();
+      recordingRef.current = recording;
+      
+      const status = await recording.getStatusAsync();
+      console.log('✅ Recording started, status:', JSON.stringify(status));
+    } catch (err) {
+      console.error('❌ Mobile recording error:', err);
+      throw err;
     }
-
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-    });
-
-    const recording = new Audio.Recording();
-
-    await recording.prepareToRecordAsync({
-      android: {
-        extension: '.m4a',
-        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-        audioEncoder: Audio.AndroidAudioEncoder.AAC,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        bitRate: 128000,
-      },
-      ios: {
-        extension: '.m4a',
-        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-        audioQuality: Audio.IOSAudioQuality.HIGH,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        bitRate: 128000,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 128000,
-      },
-    });
-
-    await recording.startAsync();
-    recordingRef.current = recording;
-    console.log('✅ Recording started');
   }, []);
 
   const startRecordingWeb = useCallback(async () => {
@@ -261,15 +301,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   }, []);
 
   const startRecording = useCallback(async () => {
+    console.log('🎬 startRecording called, Platform:', Platform.OS);
+    
     setError(null);
     setLiveTranscript('');
     transcriptRef.current = '';
     setRecordingDuration(0);
     setConfidence(0);
-    setIsFetchingFinal(false);
-    isStoppingRef.current = false;
+    setIsTranscribing(false);
     recordingStartTimeRef.current = Date.now();
-    resetTranscription();
 
     try {
       if (Platform.OS === 'web') {
@@ -278,63 +318,79 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         await startRecordingMobile();
       }
 
+      if (!isMountedRef.current) return;
+      
       setIsRecording(true);
+      console.log('✅ isRecording set to true');
 
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
       }
 
       durationIntervalRef.current = setInterval(() => {
+        if (!isMountedRef.current) return;
         const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
         setRecordingDuration(elapsed);
       }, 500);
     } catch (err) {
+      console.error('❌ Recording start error:', err);
       const message = err instanceof Error ? err.message : 'Failed to start recording';
-      setError(message);
-      console.error('Recording start error:', err);
+      if (isMountedRef.current) {
+        setError(message);
+        setIsRecording(false);
+      }
     }
-  }, [resetTranscription, startRecordingMobile, startRecordingWeb]);
+  }, [startRecordingMobile, startRecordingWeb]);
 
   const stopRecordingMobile = useCallback(async (): Promise<FormData | null> => {
     const recording = recordingRef.current;
     if (!recording) {
-      console.log('⚠️ No active recording');
+      console.log('⚠️ No active recording to stop');
       return null;
     }
 
     try {
-      console.log('🛑 Stopping recording...');
+      console.log('🛑 Stopping mobile recording...');
+      
+      const status = await recording.getStatusAsync();
+      console.log('📊 Recording status before stop:', JSON.stringify(status));
+      
       await recording.stopAndUnloadAsync();
+      console.log('✅ Recording stopped and unloaded');
 
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
+      console.log('🔇 Audio mode reset');
 
       const uri = recording.getURI();
       recordingRef.current = null;
 
       if (!uri) {
-        console.error('❌ No recording URI');
+        console.error('❌ No recording URI available');
         return null;
       }
 
-      console.log('📼 Recording saved:', uri);
+      console.log('📼 Recording URI:', uri);
 
       const uriParts = uri.split('.');
-      const fileType = uriParts[uriParts.length - 1] || 'm4a';
+      const fileType = uriParts[uriParts.length - 1] || (Platform.OS === 'ios' ? 'wav' : 'm4a');
+      console.log('📁 File type:', fileType);
 
       const audioFile = {
         uri,
         name: `recording.${fileType}`,
-        type: `audio/${fileType}`,
+        type: `audio/${fileType === 'wav' ? 'wav' : 'mp4'}`,
       };
+      console.log('📦 Audio file object:', JSON.stringify(audioFile));
 
       const formData = new FormData();
       formData.append('audio', audioFile as unknown as Blob);
 
       return formData;
     } catch (err) {
-      console.error('❌ Error stopping recording:', err);
+      console.error('❌ Error stopping mobile recording:', err);
+      recordingRef.current = null;
       throw err;
     }
   }, []);
@@ -386,13 +442,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   }, []);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
-    if (!isRecording) {
-      console.log('⚠️ Not recording');
+    console.log('🛑 stopRecording called, isRecording:', isRecording);
+    
+    if (!isRecording && !recordingRef.current && !mediaRecorderRef.current) {
+      console.log('⚠️ No active recording');
       return null;
     }
 
-    console.log('🛑 Stopping recording...');
-    isStoppingRef.current = true;
     setIsRecording(false);
     setError(null);
 
@@ -405,39 +461,60 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       try {
         recognitionRef.current.stop();
       } catch (e) {
-        console.error('Error stopping speech recognition:', e);
+        console.log('Speech recognition stop:', e);
       }
       recognitionRef.current = null;
     }
 
     try {
       const currentTranscript = transcriptRef.current.trim() || liveTranscript.trim();
+      console.log('📝 Current live transcript:', currentTranscript.slice(0, 50) || '(empty)');
 
       if (Platform.OS === 'web' && currentTranscript) {
-        console.log('✨ Using live transcript:', currentTranscript.slice(0, 50));
+        console.log('✨ Using live transcript for web');
+        
+        if (mediaRecorderRef.current) {
+          try {
+            mediaRecorderRef.current.stop();
+          } catch (e) {
+            console.log('MediaRecorder stop:', e);
+          }
+          mediaRecorderRef.current = null;
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        
         setLiveTranscript('');
         transcriptRef.current = '';
         setConfidence(0);
         return currentTranscript;
       }
 
-      setIsFetchingFinal(true);
+      setIsTranscribing(true);
+      console.log('🔄 Starting transcription...');
 
       const formData = Platform.OS === 'web' 
         ? await stopRecordingWeb() 
         : await stopRecordingMobile();
 
       if (!formData) {
-        console.log('⚠️ No audio data, using live transcript');
-        const result = currentTranscript || null;
-        setLiveTranscript('');
-        transcriptRef.current = '';
-        setConfidence(0);
-        setIsFetchingFinal(false);
-        return result;
+        console.log('⚠️ No audio data captured');
+        if (isMountedRef.current) {
+          setIsTranscribing(false);
+          setLiveTranscript('');
+          transcriptRef.current = '';
+          setConfidence(0);
+        }
+        return currentTranscript || null;
       }
 
+      console.log('📤 Sending to transcription API...');
       const transcribedText = await transcribeAudio(formData);
+      console.log('📥 Transcription result:', transcribedText.slice(0, 100) || '(empty)');
+
+      if (!isMountedRef.current) return null;
 
       const finalText = currentTranscript 
         ? `${currentTranscript} ${transcribedText}`.trim() 
@@ -446,37 +523,38 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       setLiveTranscript('');
       transcriptRef.current = '';
       setConfidence(0);
-      setIsFetchingFinal(false);
+      setIsTranscribing(false);
 
       if (!finalText) {
         console.log('⚠️ Empty transcription result');
         return null;
       }
 
-      console.log('✅ Final text:', finalText.slice(0, 50));
+      console.log('✅ Final transcribed text:', finalText.slice(0, 100));
       return finalText;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to transcribe';
-      setError(message);
       console.error('❌ Stop recording error:', err);
-
-      const fallback = transcriptRef.current.trim() || liveTranscript.trim() || null;
-      setLiveTranscript('');
-      transcriptRef.current = '';
-      setIsFetchingFinal(false);
-      return fallback;
+      const message = err instanceof Error ? err.message : 'Transcription failed';
+      
+      if (isMountedRef.current) {
+        setError(message);
+        setIsTranscribing(false);
+        setLiveTranscript('');
+        transcriptRef.current = '';
+      }
+      
+      return null;
     }
   }, [isRecording, liveTranscript, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
 
   const cancelRecording = useCallback(async () => {
-    isStoppingRef.current = true;
     setIsRecording(false);
+    setIsTranscribing(false);
     setError(null);
     setLiveTranscript('');
     transcriptRef.current = '';
     setRecordingDuration(0);
     setConfidence(0);
-    setIsFetchingFinal(false);
 
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -525,7 +603,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   return {
     isRecording,
-    isTranscribing: isFetchingFinal,
+    isTranscribing,
     error,
     liveTranscript,
     recordingDuration,
