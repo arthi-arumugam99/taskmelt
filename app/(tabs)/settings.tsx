@@ -84,8 +84,8 @@ export default function SettingsScreen() {
   const handleAbout = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
-      'About TaskMelt',
-      'TaskMelt helps you transform overwhelming thoughts into organized, actionable tasks.\n\nVersion 1.0.0',
+      'About taskmelt',
+      'taskmelt helps you transform overwhelming thoughts into organized, actionable tasks.\n\nVersion 1.0.0',
       [{ text: 'OK' }]
     );
   }, []);
@@ -93,8 +93,8 @@ export default function SettingsScreen() {
   const handleRateApp = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
-      'Rate TaskMelt',
-      'Thank you for using TaskMelt! Your feedback helps us improve.',
+      'Rate taskmelt',
+      'Thank you for using taskmelt! Your feedback helps us improve.',
       [{ text: 'OK' }]
     );
   }, []);
@@ -245,7 +245,7 @@ export default function SettingsScreen() {
                 <Crown size={20} color={Colors.primary} />
               </View>
               <View style={styles.proActiveTextContainer}>
-                <Text style={styles.proActiveTitle}>TaskMelt Pro</Text>
+                <Text style={styles.proActiveTitle}>taskmelt Pro</Text>
                 <Text style={styles.proActiveSubtitle}>
                   {customerInfo?.activeSubscriptions?.length
                     ? 'Active subscription'
@@ -323,7 +323,7 @@ export default function SettingsScreen() {
           <View style={styles.sectionContent}>
             <SettingRow
               icon={<Info size={20} color={Colors.primary} />}
-              title="About TaskMelt"
+              title="About taskmelt"
               subtitle="Version 1.0.0"
               onPress={handleAbout}
             />

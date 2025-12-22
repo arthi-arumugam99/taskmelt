@@ -143,7 +143,7 @@ export default function PaywallScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Welcome to Pro!',
-        'Thank you for upgrading. Enjoy all the premium features!',
+        'Thank you for upgrading. Enjoy all the premium features in taskmelt!',
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -199,7 +199,7 @@ export default function PaywallScreen() {
           <View style={styles.iconContainer}>
             <Crown size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>TaskMelt Pro</Text>
+          <Text style={styles.heroTitle}>taskmelt Pro</Text>
           <Text style={styles.heroSubtitle}>
             Unlock the full potential of your productivity
           </Text>
