@@ -55,9 +55,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
 
         const responseText = await response.text();
+        console.log('📥 STT response (first 200 chars):', responseText.substring(0, 200));
         const trimmedResponse = responseText.trim();
         
         if (!trimmedResponse) {
+          console.log('⚠️ Empty response from STT');
           return '';
         }
         
@@ -66,6 +68,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         if (trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[')) {
           try {
             const result = JSON.parse(trimmedResponse);
+            console.log('✅ Parsed JSON response');
             if ('text' in result) {
               transcribedText = result.text || '';
             } else if (typeof result === 'string') {
@@ -76,9 +79,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
               transcribedText = JSON.stringify(result);
             }
           } catch {
+            console.log('⚠️ JSON parse failed, using raw text');
             transcribedText = trimmedResponse;
           }
         } else {
+          console.log('📝 Plain text response');
           transcribedText = trimmedResponse;
         }
         
