@@ -258,6 +258,8 @@ ${text}`,
   const handleToggleTask = useCallback((taskId: string) => {
     if (!currentSession) return;
 
+    toggleTask(currentSession.id, taskId);
+    
     const updatedSession = { ...currentSession };
     let taskFound = false;
     
@@ -266,10 +268,12 @@ ${text}`,
       if (taskIndex !== -1) {
         const newCompletedState = !category.items[taskIndex].completed;
         category.items[taskIndex].completed = newCompletedState;
+        category.items[taskIndex].completedAt = newCompletedState ? new Date().toISOString() : undefined;
         
         if (category.items[taskIndex].subtasks && category.items[taskIndex].subtasks!.length > 0) {
           category.items[taskIndex].subtasks!.forEach(subtask => {
             subtask.completed = newCompletedState;
+            subtask.completedAt = newCompletedState ? new Date().toISOString() : undefined;
           });
         }
         
@@ -287,15 +291,18 @@ ${text}`,
         if (item.subtasks) {
           const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
           if (subtaskIndex !== -1) {
-            item.subtasks[subtaskIndex].completed = !item.subtasks[subtaskIndex].completed;
+            const newCompletedState = !item.subtasks[subtaskIndex].completed;
+            item.subtasks[subtaskIndex].completed = newCompletedState;
+            item.subtasks[subtaskIndex].completedAt = newCompletedState ? new Date().toISOString() : undefined;
             
             const allSubtasksComplete = item.subtasks.every(st => st.completed);
             item.completed = allSubtasksComplete;
+            item.completedAt = allSubtasksComplete ? new Date().toISOString() : undefined;
             
             taskFound = true;
             
             Haptics.impactAsync(
-              item.subtasks[subtaskIndex].completed 
+              newCompletedState
                 ? Haptics.ImpactFeedbackStyle.Medium 
                 : Haptics.ImpactFeedbackStyle.Light
             );
@@ -309,7 +316,6 @@ ${text}`,
     
     if (taskFound) {
       setCurrentSession(updatedSession);
-      toggleTask(currentSession.id, taskId);
     }
   }, [currentSession, toggleTask]);
 
