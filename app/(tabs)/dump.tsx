@@ -10,9 +10,10 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square } from 'lucide-react-native';
+import { RotateCcw, Mic, Square, Share2, TrendingUp } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -258,6 +259,38 @@ ${text}`,
     }
   }, [isRecording, startRecording, stopRecording]);
 
+  const handleShareResults = useCallback(async () => {
+    if (!currentSession) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    let shareText = `📋 TaskMelt Brain Dump\n\n`;
+    
+    currentSession.categories.forEach((cat) => {
+      if (cat.items.length > 0) {
+        shareText += `\n${cat.emoji} ${cat.name}:\n`;
+        cat.items.forEach((item) => {
+          const status = item.completed ? '✅' : '⬜';
+          shareText += `${status} ${item.task}`;
+          if (item.timeEstimate) shareText += ` (${item.timeEstimate})`;
+          shareText += '\n';
+        });
+      }
+    });
+    
+    try {
+      await Share.share({ message: shareText });
+    } catch (error) {
+      console.log('Error sharing:', error);
+    }
+  }, [currentSession]);
+
+  const totalTasks = currentSession?.categories.reduce((acc, cat) => acc + cat.items.length, 0) ?? 0;
+  const completedTasks = currentSession?.categories.reduce(
+    (acc, cat) => acc + cat.items.filter(item => item.completed).length, 0
+  ) ?? 0;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   useEffect(() => {
     if (voiceError) {
       console.error('Voice recording error:', voiceError);
@@ -384,16 +417,39 @@ ${text}`,
           ) : (
             <>
               <View style={styles.resultsHeader}>
-                <View>
+                <View style={styles.resultsHeaderLeft}>
                   <Text style={styles.resultsTitle}>Your Clarity</Text>
                   {currentSession.summary && (
                     <Text style={styles.resultsSummary}>{currentSession.summary}</Text>
                   )}
                 </View>
-                <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-                  <RotateCcw size={20} color={Colors.primary} />
-                </TouchableOpacity>
+                <View style={styles.resultsHeaderActions}>
+                  <TouchableOpacity onPress={handleShareResults} style={styles.iconButton}>
+                    <Share2 size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleReset} style={styles.iconButton}>
+                    <RotateCcw size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
               </View>
+
+              {totalTasks > 0 && (
+                <View style={styles.progressCard}>
+                  <View style={styles.progressHeader}>
+                    <TrendingUp size={18} color={Colors.primary} />
+                    <Text style={styles.progressTitle}>Progress</Text>
+                  </View>
+                  <View style={styles.progressStats}>
+                    <Text style={styles.progressPercentage}>{completionRate}%</Text>
+                    <Text style={styles.progressLabel}>
+                      {completedTasks} of {totalTasks} tasks completed
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarFill, { width: `${completionRate}%` }]} />
+                  </View>
+                </View>
+              )}
 
               <OrganizedResults
                 categories={currentSession.categories}
@@ -539,7 +595,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  resultsHeaderLeft: {
+    flex: 1,
+  },
+  resultsHeaderActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   resultsTitle: {
     fontSize: 28,
@@ -551,11 +614,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
+    paddingRight: 8,
   },
-  resetButton: {
+  iconButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  progressCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressTitle: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  progressStats: {
+    gap: 4,
+  },
+  progressPercentage: {
+    fontSize: 32,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: Colors.borderLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 4,
   },
   newDumpButton: {
     marginTop: 24,

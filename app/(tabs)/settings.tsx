@@ -91,6 +91,14 @@ export default function SettingsScreen() {
       catAcc + cat.items.filter((item) => item.completed).length, 0);
   }, 0);
 
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const thisWeekDumps = dumps.filter((dump) => {
+    const dumpDate = new Date(dump.createdAt);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return dumpDate >= weekAgo;
+  }).length;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -105,7 +113,7 @@ export default function SettingsScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statsHeader}>
             <Sparkles size={20} color={Colors.primary} />
-            <Text style={styles.statsTitle}>Your Progress</Text>
+            <Text style={styles.statsTitle}>Your Journey</Text>
           </View>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
@@ -123,6 +131,23 @@ export default function SettingsScreen() {
               <Text style={styles.statLabel}>Completed</Text>
             </View>
           </View>
+
+          <View style={styles.secondaryStats}>
+            <View style={styles.secondaryStatRow}>
+              <Text style={styles.secondaryStatLabel}>Completion Rate</Text>
+              <Text style={styles.secondaryStatValue}>{completionRate}%</Text>
+            </View>
+            <View style={styles.secondaryStatRow}>
+              <Text style={styles.secondaryStatLabel}>This Week</Text>
+              <Text style={styles.secondaryStatValue}>{thisWeekDumps} dumps</Text>
+            </View>
+          </View>
+
+          {completionRate >= 50 && (
+            <View style={styles.achievementBadge}>
+              <Text style={styles.achievementText}>🎯 Great progress! Keep it up!</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -212,6 +237,40 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  secondaryStats: {
+    gap: 12,
+    paddingTop: 16,
+  },
+  secondaryStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  secondaryStatLabel: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  secondaryStatValue: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  achievementBadge: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.primary + '15',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  achievementText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '500' as const,
   },
   statItem: {
     alignItems: 'center',

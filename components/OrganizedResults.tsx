@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,17 @@ function hexToRGBA(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+interface Confetti {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  rotation: Animated.Value;
+  translateY: Animated.Value;
+  translateX: Animated.Value;
+  opacity: Animated.Value;
+}
+
 interface TaskItemRowProps {
   item: TaskItem;
   accentColor: string;
@@ -26,6 +37,50 @@ interface TaskItemRowProps {
 
 function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [confetti, setConfetti] = useState<Confetti[]>([]);
+
+  const createCelebration = useCallback(() => {
+    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+    const newConfetti: Confetti[] = Array.from({ length: 12 }, (_, i) => ({
+      id: Date.now() + i,
+      x: Math.random() * 60 - 30,
+      y: 0,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: new Animated.Value(0),
+      translateY: new Animated.Value(0),
+      translateX: new Animated.Value(0),
+      opacity: new Animated.Value(1),
+    }));
+
+    setConfetti(newConfetti);
+
+    newConfetti.forEach((particle, index) => {
+      Animated.parallel([
+        Animated.timing(particle.translateY, {
+          toValue: -100 - Math.random() * 50,
+          duration: 800 + Math.random() * 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle.translateX, {
+          toValue: particle.x,
+          duration: 800 + Math.random() * 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle.rotation, {
+          toValue: Math.random() * 720 - 360,
+          duration: 800 + Math.random() * 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle.opacity, {
+          toValue: 0,
+          duration: 800 + Math.random() * 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+
+    setTimeout(() => setConfetti([]), 1200);
+  }, []);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -43,8 +98,13 @@ function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
       }),
     ]).start();
 
+    if (!item.completed) {
+      createCelebration();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
     onToggle(item.id);
-  }, [item.id, onToggle, scaleAnim]);
+  }, [item.id, item.completed, onToggle, scaleAnim, createCelebration]);
 
   return (
     <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }] }]}>
@@ -72,6 +132,26 @@ function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
           <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
         )}
       </View>
+      {confetti.map((particle) => (
+        <Animated.View
+          key={particle.id}
+          style={[
+            styles.confettiParticle,
+            {
+              backgroundColor: particle.color,
+              transform: [
+                { translateX: particle.translateX },
+                { translateY: particle.translateY },
+                { rotate: particle.rotation.interpolate({
+                  inputRange: [0, 360],
+                  outputRange: ['0deg', '360deg'],
+                }) },
+              ],
+              opacity: particle.opacity,
+            },
+          ]}
+        />
+      ))}
     </Animated.View>
   );
 }
@@ -228,5 +308,13 @@ const styles = StyleSheet.create({
   timeEstimate: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  confettiParticle: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    left: 12,
+    top: 12,
   },
 });
