@@ -13,7 +13,7 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square, Share2, TrendingUp } from 'lucide-react-native';
+import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap, Check } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -43,6 +43,13 @@ const resultSchema = z.object({
           task: z.string(),
           original: z.string().optional(),
           timeEstimate: z.string().optional(),
+          subtasks: z.array(
+            z.object({
+              task: z.string(),
+              timeEstimate: z.string().optional(),
+            })
+          ).optional(),
+          hasSubtaskSuggestion: z.boolean().optional(),
         })
       ),
     })
@@ -105,14 +112,19 @@ YOUR JOB:
    - For personal: "Home Tasks", "Health & Wellness", "Social", "Creative Projects"
    - For urgent items: "Do Now", "Today", "This Week"
    - For concerns: "To Think About", "Decisions to Make", "Questions to Answer"
-   - Always include: "Not Actionable" for pure feelings/worries without clear actions
+   - Always include: "Notes & Reflections" for pure feelings/worries without clear actions
 
 3. For each actionable item:
    - Rewrite as a clear, specific action (verb + object)
    - Estimate time if possible
    - Note any missing info needed (dates, details)
+   - For compound tasks (e.g., "prepare slides", "plan event"), optionally suggest 2-3 subtasks but mark with hasSubtaskSuggestion=true (don't auto-expand)
+   - For tasks with dependencies (e.g., "cancel free trial" where service is unclear), create a 2-step chain:
+     1. First task: "Identify which service the free trial is for"
+     2. Second task: "Cancel [service name] free trial"
 
 4. For non-actionable items:
+   - Place in "Notes & Reflections" category
    - Acknowledge the feeling
    - Suggest it may resolve when related tasks are done
 
@@ -130,7 +142,14 @@ Return JSON with dynamic categories based on the user's input:
         {
           "task": "Clear, actionable task text",
           "original": "What user wrote that mapped to this",
-          "timeEstimate": "5 min"
+          "timeEstimate": "5 min",
+          "subtasks": [
+            {
+              "task": "Subtask 1 (optional)",
+              "timeEstimate": "2 min"
+            }
+          ],
+          "hasSubtaskSuggestion": true
         }
       ]
     }
@@ -145,10 +164,12 @@ RULES:
 - Create categories that reflect the USER'S life context, not generic templates
 - Group similar items together under meaningful category names
 - When in doubt, ask for clarity rather than assume
-- "Not Actionable" is valid - not everything needs to be a task
+- "Notes & Reflections" is valid - not everything needs to be a task
 - Keep task rewrites concise (<15 words)
 - If input is very short, output can be short too
 - Use colors that are vibrant and distinct for each category
+- Only suggest subtasks for genuinely compound tasks (>10 min estimated)
+- Keep subtasks minimal (2-3 max) and actionable
 
 Here's what the user needs to organize:
 
@@ -171,6 +192,12 @@ ${text}`,
           ...item,
           id: generateId(),
           completed: false,
+          subtasks: item.subtasks?.map(subtask => ({
+            ...subtask,
+            id: generateId(),
+            completed: false,
+          })),
+          isExpanded: false,
         })),
       }));
 
@@ -237,6 +264,25 @@ ${text}`,
         );
         break;
       }
+      
+      for (const item of category.items) {
+        if (item.subtasks) {
+          const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
+          if (subtaskIndex !== -1) {
+            item.subtasks[subtaskIndex].completed = !item.subtasks[subtaskIndex].completed;
+            taskFound = true;
+            
+            Haptics.impactAsync(
+              item.subtasks[subtaskIndex].completed 
+                ? Haptics.ImpactFeedbackStyle.Medium 
+                : Haptics.ImpactFeedbackStyle.Light
+            );
+            break;
+          }
+        }
+      }
+      
+      if (taskFound) break;
     }
     
     if (taskFound) {
@@ -244,6 +290,22 @@ ${text}`,
       toggleTask(currentSession.id, taskId);
     }
   }, [currentSession, toggleTask]);
+
+  const handleToggleExpanded = useCallback((taskId: string) => {
+    if (!currentSession) return;
+
+    const updatedSession = { ...currentSession };
+    
+    for (const category of updatedSession.categories) {
+      const taskIndex = category.items.findIndex(item => item.id === taskId);
+      if (taskIndex !== -1) {
+        category.items[taskIndex].isExpanded = !category.items[taskIndex].isExpanded;
+        setCurrentSession(updatedSession);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        return;
+      }
+    }
+  }, [currentSession]);
 
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
@@ -290,6 +352,26 @@ ${text}`,
     (acc, cat) => acc + cat.items.filter(item => item.completed).length, 0
   ) ?? 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const quickWins = currentSession?.categories.flatMap(cat => 
+    cat.items
+      .filter(item => {
+        const estimate = item.timeEstimate?.toLowerCase() || '';
+        return (
+          estimate.includes('1 min') ||
+          estimate.includes('2 min') ||
+          estimate.includes('3 min') ||
+          estimate.includes('4 min') ||
+          estimate.includes('5 min') ||
+          estimate === '1min' ||
+          estimate === '2min' ||
+          estimate === '3min' ||
+          estimate === '4min' ||
+          estimate === '5min'
+        );
+      })
+      .map(item => ({ ...item, categoryColor: cat.color }))
+  ) ?? [];
 
   useEffect(() => {
     if (voiceError) {
@@ -451,10 +533,61 @@ ${text}`,
                 </View>
               )}
 
+              {quickWins.length > 0 && (
+                <View style={styles.quickWinsCard}>
+                  <View style={styles.quickWinsHeader}>
+                    <View style={styles.quickWinsIconBadge}>
+                      <Zap size={16} color="#F59E0B" fill="#F59E0B" />
+                    </View>
+                    <View style={styles.quickWinsHeaderText}>
+                      <Text style={styles.quickWinsTitle}>Quick Wins</Text>
+                      <Text style={styles.quickWinsSubtitle}>≤5 min tasks • Start here</Text>
+                    </View>
+                    <View style={styles.quickWinsBadge}>
+                      <Text style={styles.quickWinsBadgeText}>{quickWins.filter(t => !t.completed).length}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.quickWinsList}>
+                    {quickWins.slice(0, 4).map((task) => (
+                      <TouchableOpacity
+                        key={task.id}
+                        style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
+                        onPress={() => handleToggleTask(task.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={[
+                            styles.quickWinCheckbox,
+                            { borderColor: task.categoryColor },
+                            task.completed && { backgroundColor: task.categoryColor },
+                          ]}
+                        >
+                          {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.quickWinText,
+                            task.completed && styles.quickWinTextCompleted,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {task.task}
+                        </Text>
+                        <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {quickWins.length > 4 && (
+                    <Text style={styles.quickWinsMore}>+{quickWins.length - 4} more below</Text>
+                  )}
+                </View>
+              )}
+
               <OrganizedResults
                 categories={currentSession.categories}
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
+                onToggleExpanded={handleToggleExpanded}
               />
 
               <TouchableOpacity
@@ -727,6 +860,95 @@ const styles = StyleSheet.create({
   listeningText: {
     fontSize: 14,
     color: Colors.textMuted,
+    fontStyle: 'italic' as const,
+  },
+  quickWinsCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+  },
+  quickWinsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  quickWinsIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickWinsHeaderText: {
+    flex: 1,
+  },
+  quickWinsTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: '#92400E',
+  },
+  quickWinsSubtitle: {
+    fontSize: 12,
+    color: '#B45309',
+    marginTop: 2,
+  },
+  quickWinsBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  quickWinsBadgeText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  quickWinsList: {
+    gap: 8,
+  },
+  quickWinItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+  },
+  quickWinItemCompleted: {
+    opacity: 0.6,
+  },
+  quickWinCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickWinText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+  },
+  quickWinTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: Colors.textMuted,
+  },
+  quickWinTime: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '600' as const,
+  },
+  quickWinsMore: {
+    fontSize: 12,
+    color: '#B45309',
+    textAlign: 'center',
+    marginTop: 8,
     fontStyle: 'italic' as const,
   },
 });

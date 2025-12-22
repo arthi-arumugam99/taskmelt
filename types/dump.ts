@@ -5,6 +5,9 @@ export interface TaskItem {
   timeEstimate?: string;
   completed: boolean;
   completedAt?: string;
+  subtasks?: TaskItem[];
+  hasSubtaskSuggestion?: boolean;
+  isExpanded?: boolean;
 }
 
 export interface Category {

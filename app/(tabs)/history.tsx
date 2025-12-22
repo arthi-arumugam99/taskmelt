@@ -131,6 +131,13 @@ export default function HistoryScreen() {
     [toggleTask]
   );
 
+  const handleToggleExpanded = useCallback(
+    (taskId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    []
+  );
+
   const handleShare = useCallback(async (dump: DumpSession) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
@@ -271,6 +278,7 @@ export default function HistoryScreen() {
               categories={expandedDump.categories}
               summary={expandedDump.summary}
               onToggleTask={(taskId) => handleToggleTask(expandedDump.id, taskId)}
+              onToggleExpanded={handleToggleExpanded}
             />
           </View>
         ) : (

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Category, TaskItem } from '@/types/dump';
@@ -33,9 +33,11 @@ interface TaskItemRowProps {
   item: TaskItem;
   accentColor: string;
   onToggle: (taskId: string) => void;
+  onToggleExpanded?: (taskId: string) => void;
+  depth?: number;
 }
 
-function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
+function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [confetti, setConfetti] = useState<Confetti[]>([]);
 
@@ -107,61 +109,90 @@ function TaskItemRow({ item, accentColor, onToggle }: TaskItemRowProps) {
   }, [item.id, item.completed, onToggle, scaleAnim, createCelebration]);
 
   return (
-    <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }] }]}>
-      <TouchableOpacity
-        style={[
-          styles.checkbox,
-          { borderColor: accentColor },
-          item.completed && { backgroundColor: accentColor },
-        ]}
-        onPress={handlePress}
-        activeOpacity={0.7}
-      >
-        {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-      </TouchableOpacity>
-      <View style={styles.taskContent}>
-        <Text
-          style={[
-            styles.taskText,
-            item.completed && styles.taskTextCompleted,
-          ]}
-        >
-          {item.task}
-        </Text>
-        {item.timeEstimate && (
-          <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
+    <>
+      <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 }]}>
+        {item.hasSubtaskSuggestion && item.subtasks && item.subtasks.length > 0 && (
+          <TouchableOpacity
+            style={styles.expandButton}
+            onPress={() => onToggleExpanded?.(item.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {item.isExpanded ? (
+              <ChevronDown size={16} color={Colors.textMuted} />
+            ) : (
+              <ChevronRight size={16} color={Colors.textMuted} />
+            )}
+          </TouchableOpacity>
         )}
-      </View>
-      {confetti.map((particle) => (
-        <Animated.View
-          key={particle.id}
+        <TouchableOpacity
           style={[
-            styles.confettiParticle,
-            {
-              backgroundColor: particle.color,
-              transform: [
-                { translateX: particle.translateX },
-                { translateY: particle.translateY },
-                { rotate: particle.rotation.interpolate({
-                  inputRange: [0, 360],
-                  outputRange: ['0deg', '360deg'],
-                }) },
-              ],
-              opacity: particle.opacity,
-            },
+            styles.checkbox,
+            { borderColor: accentColor },
+            item.completed && { backgroundColor: accentColor },
           ]}
+          onPress={handlePress}
+          activeOpacity={0.7}
+        >
+          {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+        </TouchableOpacity>
+        <View style={styles.taskContent}>
+          <Text
+            style={[
+              styles.taskText,
+              item.completed && styles.taskTextCompleted,
+            ]}
+          >
+            {item.task}
+          </Text>
+          {item.timeEstimate && (
+            <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
+          )}
+          {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
+            <Text style={styles.subtaskHint}>Tap → to break down</Text>
+          )}
+        </View>
+        {confetti.map((particle) => (
+          <Animated.View
+            key={particle.id}
+            style={[
+              styles.confettiParticle,
+              {
+                backgroundColor: particle.color,
+                transform: [
+                  { translateX: particle.translateX },
+                  { translateY: particle.translateY },
+                  { rotate: particle.rotation.interpolate({
+                    inputRange: [0, 360],
+                    outputRange: ['0deg', '360deg'],
+                  }) },
+                ],
+                opacity: particle.opacity,
+              },
+            ]}
+          />
+        ))}
+      </Animated.View>
+      {item.isExpanded && item.subtasks && item.subtasks.map((subtask) => (
+        <TaskItemRow
+          key={subtask.id}
+          item={subtask}
+          accentColor={accentColor}
+          onToggle={onToggle}
+          onToggleExpanded={onToggleExpanded}
+          depth={depth + 1}
         />
       ))}
-    </Animated.View>
+    </>
   );
 }
 
 interface CategoryCardProps {
   category: Category;
   onToggleTask: (taskId: string) => void;
+  onToggleExpanded: (taskId: string) => void;
 }
 
-function CategoryCard({ category, onToggleTask }: CategoryCardProps) {
+function CategoryCard({ category, onToggleTask, onToggleExpanded }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
   const completedCount = category.items.filter((i) => i.completed).length;
@@ -187,6 +218,7 @@ function CategoryCard({ category, onToggleTask }: CategoryCardProps) {
             item={item}
             accentColor={accentColor}
             onToggle={onToggleTask}
+            onToggleExpanded={onToggleExpanded}
           />
         ))}
       </View>
@@ -198,12 +230,14 @@ interface OrganizedResultsProps {
   categories: Category[];
   summary?: string;
   onToggleTask: (taskId: string) => void;
+  onToggleExpanded: (taskId: string) => void;
 }
 
 export default function OrganizedResults({
   categories,
   summary,
   onToggleTask,
+  onToggleExpanded,
 }: OrganizedResultsProps) {
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
@@ -223,6 +257,7 @@ export default function OrganizedResults({
           key={`${category.name}-${index}`}
           category={category}
           onToggleTask={onToggleTask}
+          onToggleExpanded={onToggleExpanded}
         />
       ))}
     </View>
@@ -283,6 +318,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
+  expandButton: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
   checkbox: {
     width: 24,
     height: 24,
@@ -308,6 +350,12 @@ const styles = StyleSheet.create({
   timeEstimate: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  subtaskHint: {
+    fontSize: 11,
+    color: Colors.primary,
+    marginTop: 4,
+    fontStyle: 'italic' as const,
   },
   confettiParticle: {
     position: 'absolute',
