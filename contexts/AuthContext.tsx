@@ -100,6 +100,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: 'rork-app://auth',
+        },
       });
       if (error) throw error;
       return data;
@@ -157,7 +160,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error('Authentication not available. Please configure Supabase.');
       }
       console.log('Auth: Sending password reset to:', email);
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'rork-app://auth',
+      });
       if (error) throw error;
     },
     onSuccess: () => {
