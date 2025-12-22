@@ -307,9 +307,13 @@ ${text}`,
     if (isRecording) {
       console.log('Stopping recording...');
       const transcription = await stopRecording();
-      if (transcription) {
+      console.log('Transcription result:', transcription);
+      if (transcription && transcription.trim()) {
         console.log('Got transcription:', transcription);
         setInputText(prev => prev ? `${prev}\n${transcription}` : transcription);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        console.log('No transcription received or empty');
       }
     } else {
       console.log('Starting recording...');

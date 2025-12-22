@@ -53,7 +53,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
 
         const responseText = await response.text();
-        console.log('Transcription raw response:', responseText.substring(0, 200));
+        console.log('Transcription raw response:', responseText);
         
         const trimmedResponse = responseText.trim();
         
@@ -87,6 +87,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         
         if (!transcribedText || transcribedText.trim().length === 0) {
           console.log('Empty transcription received - audio may have been silence');
+          console.log('Full response was:', responseText);
           return '';
         }
         
@@ -407,8 +408,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const startTime = Date.now();
       const transcribedText = await transcribeAudio(formData);
       console.log(`Transcription completed in ${Date.now() - startTime}ms`);
+      console.log('Transcribed text length:', transcribedText.length);
+      console.log('Transcribed text:', transcribedText);
+      
       const finalText = liveTranscript || transcribedText;
       setLiveTranscript('');
+      
+      if (!finalText || finalText.trim().length === 0) {
+        throw new Error('No speech detected. Please speak clearly and try again.');
+      }
+      
       return finalText;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to process recording';
