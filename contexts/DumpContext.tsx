@@ -14,7 +14,14 @@ async function loadLocalDumps(): Promise<DumpSession[]> {
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      try {
+        return JSON.parse(stored);
+      } catch (parseError) {
+        console.log('Error parsing stored dumps, clearing corrupted data:', parseError);
+        console.log('Corrupted value:', stored?.substring(0, 100));
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        return [];
+      }
     }
     return [];
   } catch (error) {
@@ -34,7 +41,14 @@ async function saveLocalDumps(dumps: DumpSession[]): Promise<void> {
 async function getLifetimeDumpCount(): Promise<number> {
   try {
     const count = await AsyncStorage.getItem(LIFETIME_COUNT_KEY);
-    return count ? parseInt(count, 10) : 0;
+    if (!count) return 0;
+    const parsed = parseInt(count, 10);
+    if (isNaN(parsed)) {
+      console.log('Invalid lifetime count, resetting:', count);
+      await AsyncStorage.removeItem(LIFETIME_COUNT_KEY);
+      return 0;
+    }
+    return parsed;
   } catch (error) {
     console.log('Error getting lifetime dump count:', error);
     return 0;
