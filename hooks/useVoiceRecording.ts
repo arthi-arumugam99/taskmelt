@@ -35,7 +35,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('Sending audio for transcription...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -92,7 +92,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Transcription timeout - please try again with a shorter recording');
+          throw new Error('Request timeout after 45 seconds');
         }
         throw err;
       }
@@ -160,24 +160,21 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 32000,
         },
         ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
+          bitRate: 32000,
         },
         web: {
           mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
+          bitsPerSecond: 32000,
         },
       });
 
