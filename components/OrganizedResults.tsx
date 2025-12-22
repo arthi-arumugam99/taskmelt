@@ -257,8 +257,6 @@ interface OrganizedResultsProps {
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
   highlightedTaskIds?: string[];
-  showAllCategories?: boolean;
-  onToggleShowAll?: () => void;
   hideHighlightedTasks?: boolean;
 }
 
@@ -268,8 +266,6 @@ export default function OrganizedResults({
   onToggleTask,
   onToggleExpanded,
   highlightedTaskIds = [],
-  showAllCategories = false,
-  onToggleShowAll,
   hideHighlightedTasks = true,
 }: OrganizedResultsProps) {
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
@@ -285,14 +281,9 @@ export default function OrganizedResults({
     return priorityOrder[aPriority] - priorityOrder[bPriority];
   });
 
-  const highPriorityCount = sortedCategories.filter(c => c.priority === 'high').length;
-  const coreCategories = Math.max(2, highPriorityCount);
-  const visibleCategories = showAllCategories ? sortedCategories : sortedCategories.slice(0, coreCategories);
-  const hasMore = sortedCategories.length > coreCategories;
-
   return (
     <View style={styles.container}>
-      {visibleCategories.map((category, index) => (
+      {sortedCategories.map((category, index) => (
         <CategoryCard
           key={`${category.name}-${index}`}
           category={category}
@@ -302,15 +293,6 @@ export default function OrganizedResults({
           hideHighlightedTasks={hideHighlightedTasks}
         />
       ))}
-      {hasMore && onToggleShowAll && (
-        <TouchableOpacity onPress={onToggleShowAll} style={styles.showMoreButton}>
-          <Text style={styles.showMoreText}>
-            {showAllCategories 
-              ? 'Show less' 
-              : `Everything else is safely parked (+${sortedCategories.length - coreCategories} categories)`}
-          </Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -319,20 +301,6 @@ const styles = StyleSheet.create({
   container: {
     gap: 16,
   },
-  showMoreButton: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  showMoreText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '600' as const,
-  },
-
   categoryCard: {
     borderRadius: 20,
     padding: 16,
@@ -349,15 +317,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryEmoji: {
-    fontSize: 18,
+    fontSize: 20,
   },
   categoryName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600' as const,
     color: Colors.text,
   },
   categoryCount: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600' as const,
   },
   taskList: {
@@ -397,7 +365,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   timeEstimate: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textMuted,
   },
   subtaskHintButton: {
@@ -407,7 +375,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   subtaskHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: Colors.primary,
     fontWeight: '500' as const,
   },
@@ -427,19 +395,19 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.textMuted,
   },
   reflectionText: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textSecondary,
-    lineHeight: 20,
+    lineHeight: 22,
     fontStyle: 'italic' as const,
   },
   reflectionHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     marginBottom: 8,
   },
   hiddenTasksHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     marginBottom: 8,

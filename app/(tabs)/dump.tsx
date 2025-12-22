@@ -69,8 +69,7 @@ export default function DumpScreen() {
   const [inputText, setInputText] = useState('');
   const [currentSession, setCurrentSession] = useState<DumpSession | null>(null);
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [quickWinsExpanded, setQuickWinsExpanded] = useState(false);
+
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
   const { addDump, toggleTask } = useDumps();
@@ -655,59 +654,41 @@ ${text}`,
                 </View>
               )}
 
-              {quickWins.length > 0 && quickWins.length <= 3 && (
+              {quickWins.length > 0 && (
                 <View style={styles.quickWinsCard}>
                   <View style={styles.quickWinsHeader}>
-                    <Zap size={14} color="#F59E0B" fill="#F59E0B" />
-                    <Text style={styles.quickWinsTitle}>{quickWins.length} quick win{quickWins.length > 1 ? 's' : ''} below (≤5 min)</Text>
+                    <Zap size={16} color="#F59E0B" fill="#F59E0B" />
+                    <Text style={styles.quickWinsTitle}>{quickWins.length} Quick Win{quickWins.length > 1 ? 's' : ''} (≤5 min)</Text>
                   </View>
-                </View>
-              )}
-              {quickWins.length > 3 && (
-                <View style={styles.quickWinsCard}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setQuickWinsExpanded(!quickWinsExpanded);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.quickWinsHeader}>
-                      <Zap size={14} color="#F59E0B" fill="#F59E0B" />
-                      <Text style={styles.quickWinsTitle}>{quickWins.length} quick wins (≤5 min) • Tap to see</Text>
-                    </View>
-                  </TouchableOpacity>
-                  {quickWinsExpanded && (
-                    <View style={styles.quickWinsList}>
-                      {quickWins.map((task) => (
-                        <TouchableOpacity
-                          key={task.id}
-                          onPress={() => handleToggleTask(task.id)}
-                          style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
-                          activeOpacity={0.7}
+                  <View style={styles.quickWinsList}>
+                    {quickWins.map((task) => (
+                      <TouchableOpacity
+                        key={task.id}
+                        onPress={() => handleToggleTask(task.id)}
+                        style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={[
+                            styles.quickWinCheckbox,
+                            { borderColor: task.categoryColor },
+                            task.completed && { backgroundColor: task.categoryColor },
+                          ]}
                         >
-                          <View
-                            style={[
-                              styles.quickWinCheckbox,
-                              { borderColor: task.categoryColor },
-                              task.completed && { backgroundColor: task.categoryColor },
-                            ]}
-                          >
-                            {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
-                          </View>
-                          <Text
-                            style={[
-                              styles.quickWinText,
-                              task.completed && styles.quickWinTextCompleted,
-                            ]}
-                          >
-                            {task.task}
-                          </Text>
-                          <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+                          {task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.quickWinText,
+                            task.completed && styles.quickWinTextCompleted,
+                          ]}
+                        >
+                          {task.task}
+                        </Text>
+                        <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               )}
 
@@ -724,11 +705,6 @@ ${text}`,
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
                 highlightedTaskIds={[...(firstTask ? [firstTask.id] : []), ...quickWins.map(qw => qw.id)]}
-                showAllCategories={showAllCategories}
-                onToggleShowAll={() => {
-                  setShowAllCategories(!showAllCategories);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
                 hideHighlightedTasks={true}
               />
 
@@ -783,14 +759,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700' as const,
     color: Colors.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.textMuted,
     fontWeight: '500' as const,
   },
@@ -910,13 +886,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resultsTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700' as const,
     color: Colors.text,
     marginBottom: 4,
   },
   resultsSummary: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     paddingRight: 8,
@@ -943,7 +919,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   progressTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.text,
   },
@@ -951,12 +927,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   progressPercentage: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700' as const,
     color: Colors.primary,
   },
   progressLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.textSecondary,
   },
   progressBarContainer: {
@@ -1059,9 +1035,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   quickWinsTitle: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: Colors.textMuted,
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
   },
   quickWinsSubtitle: {
     fontSize: 12,
@@ -1081,6 +1057,7 @@ const styles = StyleSheet.create({
   },
   quickWinsList: {
     gap: 8,
+    marginTop: 12,
   },
   quickWinItem: {
     flexDirection: 'row',
@@ -1094,16 +1071,16 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   quickWinCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quickWinText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.text,
   },
   quickWinTextCompleted: {
@@ -1111,7 +1088,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   quickWinTime: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#F59E0B',
     fontWeight: '600' as const,
   },
@@ -1186,20 +1163,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   startHereTaskText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600' as const,
     color: Colors.text,
     marginBottom: 6,
-    lineHeight: 26,
+    lineHeight: 24,
   },
   startHereTime: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.primary,
     fontWeight: '600' as const,
     marginBottom: 6,
   },
   startHereHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
   },
