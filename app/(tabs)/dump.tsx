@@ -66,6 +66,7 @@ export default function DumpScreen() {
   const [inputText, setInputText] = useState('');
   const [currentSession, setCurrentSession] = useState<DumpSession | null>(null);
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
+  const [showAllQuickWins, setShowAllQuickWins] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
   const { addDump, toggleTask } = useDumps();
@@ -366,14 +367,27 @@ ${text}`,
   ) ?? 0;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const startHereTaskId = currentSession?.categories
+    .flatMap(cat => 
+      cat.items
+        .filter(item => !item.completed && !item.isReflection)
+        .map(item => ({ ...item, categoryColor: cat.color }))
+    )
+    .sort((a, b) => {
+      const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+      const bTime = parseInt(b.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+      return aTime - bTime;
+    })[0]?.id ?? null;
+
   const quickWins = currentSession?.categories.flatMap(cat => 
     cat.items
       .filter(item => {
+        if (item.id === startHereTaskId) return false;
         const estimate = item.timeEstimate?.toLowerCase() || '';
         const match = estimate.match(/(\d+)\s*min/);
         if (!match) return false;
         const minutes = parseInt(match[1], 10);
-        return minutes <= 5;
+        return minutes <= 5 && !item.completed;
       })
       .map(item => ({ ...item, categoryColor: cat.color }))
   ) ?? [];
@@ -589,59 +603,79 @@ ${text}`,
                         )}
                       </View>
                     </TouchableOpacity>
+                    <View style={styles.whyThisContainer}>
+                      <Text style={styles.whyThisText}>
+                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm.
+                      </Text>
+                    </View>
                   </View>
                 ) : null;
               })()}
 
-              {quickWins.length > 0 && (
-                <View style={styles.quickWinsCard}>
-                  <View style={styles.quickWinsHeader}>
-                    <View style={styles.quickWinsIconBadge}>
-                      <Zap size={16} color="#F59E0B" fill="#F59E0B" />
+              {quickWins.length > 0 && (() => {
+                const displayCount = 3;
+                const visibleQuickWins = showAllQuickWins ? quickWins : quickWins.slice(0, displayCount);
+                
+                return (
+                  <View style={styles.quickWinsCard}>
+                    <View style={styles.quickWinsHeader}>
+                      <View style={styles.quickWinsIconBadge}>
+                        <Zap size={16} color="#F59E0B" fill="#F59E0B" />
+                      </View>
+                      <View style={styles.quickWinsHeaderText}>
+                        <Text style={styles.quickWinsTitle}>Quick Wins</Text>
+                        <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
+                      </View>
+                      <View style={styles.quickWinsBadge}>
+                        <Text style={styles.quickWinsBadgeText}>{quickWins.length}</Text>
+                      </View>
                     </View>
-                    <View style={styles.quickWinsHeaderText}>
-                      <Text style={styles.quickWinsTitle}>Quick Wins</Text>
-                      <Text style={styles.quickWinsSubtitle}>≤5 min • Build momentum</Text>
+                    <View style={styles.quickWinsList}>
+                      {visibleQuickWins.map((task) => (
+                        <TouchableOpacity
+                          key={task.id}
+                          style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
+                          onPress={() => handleToggleTask(task.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View
+                            style={[
+                              styles.quickWinCheckbox,
+                              { borderColor: task.categoryColor },
+                              task.completed && { backgroundColor: task.categoryColor },
+                            ]}
+                          >
+                            {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                          </View>
+                          <Text
+                            style={[
+                              styles.quickWinText,
+                              task.completed && styles.quickWinTextCompleted,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {task.task}
+                          </Text>
+                          <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                    <View style={styles.quickWinsBadge}>
-                      <Text style={styles.quickWinsBadgeText}>{quickWins.filter(t => !t.completed).length}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.quickWinsList}>
-                    {quickWins.slice(0, 4).map((task) => (
+                    {quickWins.length > displayCount && (
                       <TouchableOpacity
-                        key={task.id}
-                        style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
-                        onPress={() => handleToggleTask(task.id)}
-                        activeOpacity={0.7}
+                        onPress={() => {
+                          setShowAllQuickWins(!showAllQuickWins);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        style={styles.quickWinsMoreButton}
                       >
-                        <View
-                          style={[
-                            styles.quickWinCheckbox,
-                            { borderColor: task.categoryColor },
-                            task.completed && { backgroundColor: task.categoryColor },
-                          ]}
-                        >
-                          {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
-                        </View>
-                        <Text
-                          style={[
-                            styles.quickWinText,
-                            task.completed && styles.quickWinTextCompleted,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {task.task}
+                        <Text style={styles.quickWinsMore}>
+                          {showAllQuickWins ? 'Show less' : `+${quickWins.length - displayCount} more if you want`}
                         </Text>
-                        <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
                       </TouchableOpacity>
-                    ))}
+                    )}
                   </View>
-                  {quickWins.length > 4 && (
-                    <Text style={styles.quickWinsMore}>+{quickWins.length - 4} more below</Text>
-                  )}
-                </View>
-              )}
+                );
+              })()}
 
               <OrganizedResults
                 categories={currentSession.categories}
@@ -1004,11 +1038,26 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     fontWeight: '600' as const,
   },
+  quickWinsMoreButton: {
+    marginTop: 4,
+    paddingVertical: 8,
+  },
   quickWinsMore: {
     fontSize: 12,
     color: '#B45309',
     textAlign: 'center',
-    marginTop: 8,
+    fontStyle: 'italic' as const,
+  },
+  whyThisContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  whyThisText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
     fontStyle: 'italic' as const,
   },
   startHereCard: {
