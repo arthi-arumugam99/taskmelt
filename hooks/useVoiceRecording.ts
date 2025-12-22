@@ -9,6 +9,8 @@ interface UseVoiceRecordingReturn {
   isRecording: boolean;
   isTranscribing: boolean;
   error: string | null;
+  liveTranscript: string;
+  recordingDuration: number;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<string | null>;
   cancelRecording: () => void;
@@ -17,11 +19,16 @@ interface UseVoiceRecordingReturn {
 export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [recordingDuration, setRecordingDuration] = useState(0);
   
   const recordingRef = useRef<Audio.Recording | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   const { mutateAsync: transcribeAudio, isPending: isTranscribing } = useMutation({
     mutationFn: async (formData: FormData): Promise<string> => {
@@ -160,6 +167,42 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       mediaRecorder.start(100);
       mediaRecorderRef.current = mediaRecorder;
+      
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        
+        recognition.onresult = (event: any) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+          
+          setLiveTranscript(prev => {
+            const updated = (prev + finalTranscript).trim();
+            return interimTranscript ? updated + ' ' + interimTranscript : updated;
+          });
+        };
+        
+        recognition.onerror = (event: any) => {
+          console.log('Speech recognition error:', event.error);
+        };
+        
+        recognition.start();
+        recognitionRef.current = recognition;
+        console.log('Live transcription started');
+      }
+      
       console.log('Web recording started');
     } catch (err: unknown) {
       console.error('Error starting web recording:', err);
@@ -178,6 +221,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const startRecording = useCallback(async () => {
     setError(null);
+    setLiveTranscript('');
+    setRecordingDuration(0);
+    recordingStartTimeRef.current = Date.now();
     
     try {
       if (Platform.OS === 'web') {
@@ -186,6 +232,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         await startRecordingMobile();
       }
       setIsRecording(true);
+      
+      durationIntervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+        setRecordingDuration(elapsed);
+      }, 1000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start recording';
       setError(message);
@@ -268,6 +319,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     
     setIsRecording(false);
     setError(null);
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
 
     try {
       let formData: FormData | null = null;
@@ -283,18 +344,33 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       }
 
       const transcribedText = await transcribeAudio(formData);
-      return transcribedText;
+      const finalText = liveTranscript || transcribedText;
+      setLiveTranscript('');
+      return finalText;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to process recording';
       setError(message);
       console.error('Recording stop error:', err);
+      setLiveTranscript('');
       return null;
     }
-  }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
+  }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio, liveTranscript]);
 
   const cancelRecording = useCallback(async () => {
     setIsRecording(false);
     setError(null);
+    setLiveTranscript('');
+    setRecordingDuration(0);
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
 
     if (Platform.OS === 'web') {
       if (mediaRecorderRef.current) {
@@ -325,6 +401,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     isRecording,
     isTranscribing,
     error,
+    liveTranscript,
+    recordingDuration,
     startRecording,
     stopRecording,
     cancelRecording,

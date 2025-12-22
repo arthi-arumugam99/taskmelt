@@ -60,7 +60,7 @@ export default function DumpScreen() {
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
   const { addDump, toggleTask } = useDumps();
-  const { isRecording, isTranscribing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -360,6 +360,26 @@ ${text}`,
                   </Text>
                 </View>
               )}
+
+              {isRecording && (
+                <View style={styles.recordingIndicator}>
+                  <View style={styles.recordingHeader}>
+                    <View style={styles.recordingDot} />
+                    <Text style={styles.recordingText}>Recording</Text>
+                    <Text style={styles.recordingDuration}>
+                      {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                    </Text>
+                  </View>
+                  {liveTranscript ? (
+                    <View style={styles.transcriptContainer}>
+                      <Text style={styles.transcriptLabel}>Live transcription:</Text>
+                      <Text style={styles.transcriptText}>{liveTranscript}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.listeningText}>Listening...</Text>
+                  )}
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -550,5 +570,55 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  recordingIndicator: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#EF4444',
+  },
+  recordingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    marginRight: 8,
+  },
+  recordingText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#EF4444',
+    flex: 1,
+  },
+  recordingDuration: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  transcriptContainer: {
+    marginTop: 8,
+  },
+  transcriptLabel: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 4,
+    fontWeight: '500' as const,
+  },
+  transcriptText: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  listeningText: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    fontStyle: 'italic' as const,
   },
 });
