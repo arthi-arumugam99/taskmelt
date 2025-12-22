@@ -246,6 +246,8 @@ interface OrganizedResultsProps {
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
   highlightedTaskIds?: string[];
+  showAllCategories?: boolean;
+  onToggleShowAll?: () => void;
 }
 
 export default function OrganizedResults({
@@ -254,6 +256,8 @@ export default function OrganizedResults({
   onToggleTask,
   onToggleExpanded,
   highlightedTaskIds = [],
+  showAllCategories = false,
+  onToggleShowAll,
 }: OrganizedResultsProps) {
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
@@ -261,9 +265,21 @@ export default function OrganizedResults({
     return null;
   }
 
+  const sortedCategories = [...nonEmptyCategories].sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    const aPriority = a.priority || 'medium';
+    const bPriority = b.priority || 'medium';
+    return priorityOrder[aPriority] - priorityOrder[bPriority];
+  });
+
+  const highPriorityCount = sortedCategories.filter(c => c.priority === 'high').length;
+  const coreCategories = Math.max(2, highPriorityCount);
+  const visibleCategories = showAllCategories ? sortedCategories : sortedCategories.slice(0, coreCategories);
+  const hasMore = sortedCategories.length > coreCategories;
+
   return (
     <View style={styles.container}>
-      {nonEmptyCategories.map((category, index) => (
+      {visibleCategories.map((category, index) => (
         <CategoryCard
           key={`${category.name}-${index}`}
           category={category}
@@ -272,6 +288,15 @@ export default function OrganizedResults({
           highlightedTaskIds={highlightedTaskIds}
         />
       ))}
+      {hasMore && onToggleShowAll && (
+        <TouchableOpacity onPress={onToggleShowAll} style={styles.showMoreButton}>
+          <Text style={styles.showMoreText}>
+            {showAllCategories 
+              ? 'Show less' 
+              : `Everything else is safely parked (+${sortedCategories.length - coreCategories} categories)`}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -279,6 +304,19 @@ export default function OrganizedResults({
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  showMoreButton: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  showMoreText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600' as const,
   },
 
   categoryCard: {

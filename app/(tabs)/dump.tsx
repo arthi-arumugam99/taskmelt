@@ -51,11 +51,14 @@ const resultSchema = z.object({
           ).optional(),
           hasSubtaskSuggestion: z.boolean().optional(),
           isReflection: z.boolean().optional(),
+          closesLoop: z.boolean().optional(),
         })
       ),
+      priority: z.enum(['high', 'medium', 'low']).optional(),
     })
   ),
   summary: z.string(),
+  reflectionInsight: z.string().optional(),
 });
 
 function generateId(): string {
@@ -68,6 +71,7 @@ export default function DumpScreen() {
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
   const [showAllQuickWins, setShowAllQuickWins] = useState(false);
   const [showQuickWinsWhy, setShowQuickWinsWhy] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
   const { addDump, toggleTask } = useDumps();
@@ -141,6 +145,23 @@ YOUR JOB:
 
 6. Use appropriate emojis for each category that match the context
 
+7. Identify tasks that "close a loop" (complete something unfinished):
+   - Replies/responses (email, text, call back)
+   - Confirmations/decisions that are pending
+   - Final steps that complete a project
+   - Mark these with closesLoop: true
+
+8. Assign priority levels to categories:
+   - high: Urgent work, important decisions, time-sensitive items
+   - medium: Regular work tasks, personal errands
+   - low: Nice-to-haves, long-term projects, reflections
+
+9. For "Notes & Reflections" category, if present:
+   - When there are emotional statements about feeling overwhelmed/unfinished
+   - Create a distilled insight that validates and reframes
+   - Example: "Today feels heavy because things are unfinished, not because you're incapable."
+   - Return this as reflectionInsight (one memorable sentence)
+
 OUTPUT FORMAT:
 Return JSON with dynamic categories based on the user's input:
 {
@@ -149,6 +170,7 @@ Return JSON with dynamic categories based on the user's input:
       "name": "Category Name (based on context)",
       "emoji": "📋",
       "color": "#FF6B6B or #4ECDC4 or #45B7D1 or #96CEB4 or #FFEAA7 or similar",
+      "priority": "high",
       "items": [
         {
           "task": "Clear, actionable task text",
@@ -161,12 +183,14 @@ Return JSON with dynamic categories based on the user's input:
             }
           ],
           "hasSubtaskSuggestion": true,
-          "isReflection": false
+          "isReflection": false,
+          "closesLoop": true
         }
       ]
     }
   ],
-  "summary": "Brief encouraging message about what was organized"
+  "summary": "Brief encouraging message about what was organized",
+  "reflectionInsight": "Optional distilled insight from Notes & Reflections (one memorable sentence)"
 }
 
 TONE: Warm, non-judgmental, practical. Like a supportive friend who's good at organizing.
@@ -202,6 +226,7 @@ ${text}`,
       
       const categories: Category[] = data.categories.map(cat => ({
         ...cat,
+        priority: cat.priority || 'medium',
         items: cat.items.map(item => ({
           ...item,
           id: generateId(),
@@ -213,6 +238,7 @@ ${text}`,
           })),
           isExpanded: false,
           isReflection: item.isReflection || false,
+          closesLoop: item.closesLoop || false,
         })),
       }));
 
@@ -222,6 +248,7 @@ ${text}`,
         categories,
         createdAt: new Date().toISOString(),
         summary: data.summary,
+        reflectionInsight: data.reflectionInsight,
       };
 
       setCurrentSession(session);
@@ -678,12 +705,56 @@ ${text}`,
                 );
               })()}
 
+              {currentSession.reflectionInsight && (
+                <View style={styles.insightCard}>
+                  <Text style={styles.insightText}>&ldquo;{currentSession.reflectionInsight}&rdquo;</Text>
+                </View>
+              )}
+
+              {(() => {
+                const loopClosers = currentSession.categories
+                  .flatMap(cat => 
+                    cat.items
+                      .filter(item => item.closesLoop && !item.completed && !item.isReflection)
+                      .map(item => ({ ...item, categoryName: cat.name, categoryEmoji: cat.emoji }))
+                  )
+                  .sort((a, b) => {
+                    const aTime = parseInt(a.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+                    const bTime = parseInt(b.timeEstimate?.match(/(\d+)/)?.[1] || '999', 10);
+                    return aTime - bTime;
+                  })[0];
+
+                return loopClosers ? (
+                  <View style={styles.loopCloserCard}>
+                    <View style={styles.loopCloserHeader}>
+                      <Text style={styles.loopCloserLabel}>🔄 Close One Loop</Text>
+                      <Text style={styles.loopCloserSubtitle}>Fastest way to feel lighter</Text>
+                    </View>
+                    <View style={styles.loopCloserTask}>
+                      <Text style={styles.loopCloserEmoji}>{loopClosers.categoryEmoji}</Text>
+                      <View style={styles.loopCloserContent}>
+                        <Text style={styles.loopCloserTaskText}>{loopClosers.task}</Text>
+                        {loopClosers.timeEstimate && (
+                          <Text style={styles.loopCloserTime}>{loopClosers.timeEstimate}</Text>
+                        )}
+                        <Text style={styles.loopCloserHint}>Find in {loopClosers.categoryName} below ↓</Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : null;
+              })()}
+
               <OrganizedResults
                 categories={currentSession.categories}
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
                 highlightedTaskIds={[startHereTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
+                showAllCategories={showAllCategories}
+                onToggleShowAll={() => {
+                  setShowAllCategories(!showAllCategories);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
               />
 
               <TouchableOpacity
@@ -1131,5 +1202,73 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  insightCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
+  insightText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: Colors.text,
+    fontStyle: 'italic' as const,
+    fontWeight: '500' as const,
+  },
+  loopCloserCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#86EFAC',
+  },
+  loopCloserHeader: {
+    marginBottom: 12,
+  },
+  loopCloserLabel: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#15803D',
+    marginBottom: 2,
+  },
+  loopCloserSubtitle: {
+    fontSize: 12,
+    color: '#22C55E',
+    fontStyle: 'italic' as const,
+  },
+  loopCloserTask: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+  },
+  loopCloserEmoji: {
+    fontSize: 20,
+  },
+  loopCloserContent: {
+    flex: 1,
+  },
+  loopCloserTaskText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  loopCloserTime: {
+    fontSize: 12,
+    color: '#22C55E',
+    fontWeight: '600' as const,
+    marginBottom: 4,
+  },
+  loopCloserHint: {
+    fontSize: 11,
+    color: '#15803D',
+    fontStyle: 'italic' as const,
   },
 });

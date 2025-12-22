@@ -9,6 +9,7 @@ export interface TaskItem {
   hasSubtaskSuggestion?: boolean;
   isExpanded?: boolean;
   isReflection?: boolean;
+  closesLoop?: boolean;
 }
 
 export interface Category {
@@ -16,6 +17,7 @@ export interface Category {
   emoji: string;
   color: string;
   items: TaskItem[];
+  priority?: 'high' | 'medium' | 'low';
 }
 
 export interface DumpSession {
@@ -24,4 +26,5 @@ export interface DumpSession {
   categories: Category[];
   createdAt: string;
   summary?: string;
+  reflectionInsight?: string;
 }
