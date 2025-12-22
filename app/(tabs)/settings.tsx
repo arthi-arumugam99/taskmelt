@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -13,10 +14,14 @@ import {
   Info,
   Heart,
   Sparkles,
+  Crown,
+  RefreshCw,
+  ChevronRight,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -43,7 +48,14 @@ function SettingRow({ icon, title, subtitle, onPress, destructive }: SettingRowP
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { dumps, clearAll } = useDumps();
+  const {
+    isProUser,
+    customerInfo,
+    restorePurchases,
+    isRestoring,
+  } = useRevenueCat();
 
   const handleClearAll = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -78,6 +90,32 @@ export default function SettingsScreen() {
     Alert.alert(
       'Rate TaskMelt',
       'Thank you for using TaskMelt! Your feedback helps us improve.',
+      [{ text: 'OK' }]
+    );
+  }, []);
+
+  const handleUpgrade = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/paywall');
+  }, [router]);
+
+  const handleRestorePurchases = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await restorePurchases();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Success', 'Your purchases have been restored.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to restore purchases';
+      Alert.alert('Restore Failed', message);
+    }
+  }, [restorePurchases]);
+
+  const handleManageSubscription = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      'Manage Subscription',
+      'To manage your subscription, go to Settings > Apple ID > Subscriptions on your device.',
       [{ text: 'OK' }]
     );
   }, []);
@@ -148,6 +186,68 @@ export default function SettingsScreen() {
               <Text style={styles.achievementText}>🎯 Great progress! Keep it up!</Text>
             </View>
           )}
+        </View>
+
+        {!isProUser ? (
+          <TouchableOpacity
+            style={styles.proCard}
+            onPress={handleUpgrade}
+            activeOpacity={0.8}
+          >
+            <View style={styles.proCardContent}>
+              <View style={styles.proIconContainer}>
+                <Crown size={24} color="#FFFFFF" />
+              </View>
+              <View style={styles.proTextContainer}>
+                <Text style={styles.proTitle}>Upgrade to Pro</Text>
+                <Text style={styles.proSubtitle}>Unlock unlimited brain dumps</Text>
+              </View>
+              <ChevronRight size={20} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.proActiveCard}>
+            <View style={styles.proActiveContent}>
+              <View style={styles.proActiveIconContainer}>
+                <Crown size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.proActiveTextContainer}>
+                <Text style={styles.proActiveTitle}>TaskMelt Pro</Text>
+                <Text style={styles.proActiveSubtitle}>
+                  {customerInfo?.activeSubscriptions?.length
+                    ? 'Active subscription'
+                    : 'Lifetime access'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+          <View style={styles.sectionContent}>
+            {isProUser ? (
+              <SettingRow
+                icon={<Crown size={20} color={Colors.primary} />}
+                title="Manage Subscription"
+                subtitle="View or cancel your subscription"
+                onPress={handleManageSubscription}
+              />
+            ) : (
+              <SettingRow
+                icon={<Crown size={20} color={Colors.primary} />}
+                title="Upgrade to Pro"
+                subtitle="Unlock all premium features"
+                onPress={handleUpgrade}
+              />
+            )}
+            <SettingRow
+              icon={<RefreshCw size={20} color={Colors.primary} />}
+              title={isRestoring ? 'Restoring...' : 'Restore Purchases'}
+              subtitle="Restore previous purchases"
+              onPress={handleRestorePurchases}
+            />
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -359,5 +459,71 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  proCard: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  proCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  proTextContainer: {
+    flex: 1,
+  },
+  proTitle: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  proSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  proActiveCard: {
+    backgroundColor: Colors.primary + '10',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.primary + '30',
+  },
+  proActiveContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proActiveIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Colors.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  proActiveTextContainer: {
+    flex: 1,
+  },
+  proActiveTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+  proActiveSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
 });
