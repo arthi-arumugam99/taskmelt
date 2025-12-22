@@ -288,6 +288,10 @@ ${text}`,
           const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
           if (subtaskIndex !== -1) {
             item.subtasks[subtaskIndex].completed = !item.subtasks[subtaskIndex].completed;
+            
+            const allSubtasksComplete = item.subtasks.every(st => st.completed);
+            item.completed = allSubtasksComplete;
+            
             taskFound = true;
             
             Haptics.impactAsync(

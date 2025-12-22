@@ -290,19 +290,25 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
               if (item.subtasks) {
                 const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
                 if (subtaskIndex !== -1) {
+                  const updatedSubtasks = item.subtasks.map((st) => {
+                    if (st.id === taskId) {
+                      const newCompletedState = !st.completed;
+                      return {
+                        ...st,
+                        completed: newCompletedState,
+                        completedAt: newCompletedState ? new Date().toISOString() : undefined,
+                      };
+                    }
+                    return st;
+                  });
+                  
+                  const allSubtasksComplete = updatedSubtasks.every(st => st.completed);
+                  
                   return {
                     ...item,
-                    subtasks: item.subtasks.map((st) => {
-                      if (st.id === taskId) {
-                        const newCompletedState = !st.completed;
-                        return {
-                          ...st,
-                          completed: newCompletedState,
-                          completedAt: newCompletedState ? new Date().toISOString() : undefined,
-                        };
-                      }
-                      return st;
-                    }),
+                    subtasks: updatedSubtasks,
+                    completed: allSubtasksComplete,
+                    completedAt: allSubtasksComplete ? new Date().toISOString() : undefined,
                   };
                 }
               }
