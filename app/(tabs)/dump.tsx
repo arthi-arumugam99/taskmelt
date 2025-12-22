@@ -100,9 +100,10 @@ export default function DumpScreen() {
     }
   }, [isRecording, micPulse]);
 
-  const { mutate: organizeMutate, isPending, isError, reset } = useMutation({
+  const { mutate: organizeMutate, isPending, isError, error: mutationError, reset } = useMutation({
     mutationFn: async (text: string) => {
       console.log('Organizing text:', text.substring(0, 100) + '...');
+      console.log('Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
       
       const result = await generateObject({
         messages: [
@@ -256,6 +257,11 @@ ${text}`,
     },
     onError: (error) => {
       console.error('Organization failed:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     },
   });
@@ -510,8 +516,13 @@ ${text}`,
               {isError && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>
-                    Oops! Something went wrong. Please try again.
+                    {mutationError instanceof Error && mutationError.message ? 
+                      `Error: ${mutationError.message}` : 
+                      'Oops! Something went wrong. Please try again.'}
                   </Text>
+                  {process.env.EXPO_PUBLIC_TOOLKIT_URL ? null : (
+                    <Text style={[styles.errorText, { marginTop: 8, fontSize: 12 }]}>Debug: Toolkit URL is not configured</Text>
+                  )}
                 </View>
               )}
 
