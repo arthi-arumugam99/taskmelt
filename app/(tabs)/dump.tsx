@@ -20,6 +20,8 @@ import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import { useRouter } from 'expo-router';
 import { DumpSession, Category } from '@/types/dump';
 import OrganizedResults from '@/components/OrganizedResults';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -72,7 +74,9 @@ export default function DumpScreen() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { addDump, toggleTask } = useDumps();
+  const { addDump, toggleTask, canCreateDump, remainingFreeDumps } = useDumps();
+  const { isProUser } = useRevenueCat();
+  const router = useRouter();
   const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
@@ -314,6 +318,12 @@ ${text}`,
   const handleOrganize = useCallback(() => {
     if (!inputText.trim() || isPending) return;
 
+    if (!canCreateDump(isProUser)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      router.push('/paywall');
+      return;
+    }
+
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -329,7 +339,7 @@ ${text}`,
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     organizeMutate(inputText);
-  }, [inputText, isPending, organizeMutate, buttonScale]);
+  }, [inputText, isPending, organizeMutate, buttonScale, canCreateDump, isProUser, router]);
 
   const handleReset = useCallback(() => {
     setInputText('');
@@ -568,6 +578,21 @@ ${text}`,
               <View style={styles.header}>
                 <Text style={styles.title}>taskmelt</Text>
                 <Text style={styles.subtitle}>Chaos in. Clarity out.</Text>
+                {!isProUser && remainingFreeDumps > 0 && (
+                  <View style={styles.freeLimitBadge}>
+                    <Text style={styles.freeLimitText}>
+                      {remainingFreeDumps} free {remainingFreeDumps === 1 ? 'dump' : 'dumps'} remaining
+                    </Text>
+                  </View>
+                )}
+                {!isProUser && remainingFreeDumps === 0 && (
+                  <TouchableOpacity 
+                    style={styles.upgradeBadge}
+                    onPress={() => router.push('/paywall')}
+                  >
+                    <Text style={styles.upgradeBadgeText}>Upgrade to Pro for unlimited dumps</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -911,6 +936,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textMuted,
     fontWeight: '500' as const,
+  },
+  freeLimitBadge: {
+    marginTop: 12,
+    backgroundColor: Colors.card,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  freeLimitText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '500' as const,
+  },
+  upgradeBadge: {
+    marginTop: 12,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  upgradeBadgeText: {
+    fontSize: 13,
+    color: Colors.background,
+    fontWeight: '600' as const,
   },
   inputContainer: {
     marginBottom: 20,

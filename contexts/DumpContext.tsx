@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const STORAGE_KEY = 'taskmelt_dumps';
+const LIFETIME_COUNT_KEY = 'taskmelt_lifetime_dump_count';
+const FREE_USER_DUMP_LIMIT = 3;
 
 async function loadLocalDumps(): Promise<DumpSession[]> {
   try {
@@ -26,6 +28,29 @@ async function saveLocalDumps(dumps: DumpSession[]): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(dumps));
   } catch (error) {
     console.log('Error saving local dumps:', error);
+  }
+}
+
+async function getLifetimeDumpCount(): Promise<number> {
+  try {
+    const count = await AsyncStorage.getItem(LIFETIME_COUNT_KEY);
+    return count ? parseInt(count, 10) : 0;
+  } catch (error) {
+    console.log('Error getting lifetime dump count:', error);
+    return 0;
+  }
+}
+
+async function incrementLifetimeDumpCount(): Promise<number> {
+  try {
+    const current = await getLifetimeDumpCount();
+    const newCount = current + 1;
+    await AsyncStorage.setItem(LIFETIME_COUNT_KEY, newCount.toString());
+    console.log('Lifetime dump count incremented to:', newCount);
+    return newCount;
+  } catch (error) {
+    console.log('Error incrementing lifetime dump count:', error);
+    return 0;
   }
 }
 
@@ -153,6 +178,14 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
 
+  const lifetimeCountQuery = useQuery({
+    queryKey: ['lifetimeDumpCount'],
+    queryFn: getLifetimeDumpCount,
+    staleTime: Infinity,
+  });
+
+  const lifetimeDumpCount = lifetimeCountQuery.data ?? 0;
+
   const dumpsQuery = useQuery({
     queryKey: ['dumps', user?.id ?? 'local', isAuthenticated],
     queryFn: async () => {
@@ -194,6 +227,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       const updated = [newDump, ...currentDumps];
       
       await saveLocalDumps(updated);
+      await incrementLifetimeDumpCount();
       
       if (isAuthenticated && user?.id) {
         await saveRemoteDump(user.id, newDump);
@@ -203,6 +237,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
+      queryClient.invalidateQueries({ queryKey: ['lifetimeDumpCount'] });
     },
   });
 
@@ -340,6 +375,15 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     return dumps.filter((d) => new Date(d.createdAt).toDateString() === today);
   }, [dumps]);
 
+  const canCreateDump = useCallback((isProUser: boolean) => {
+    if (isProUser) return true;
+    return lifetimeDumpCount < FREE_USER_DUMP_LIMIT;
+  }, [lifetimeDumpCount]);
+
+  const remainingFreeDumps = useMemo(() => {
+    return Math.max(0, FREE_USER_DUMP_LIMIT - lifetimeDumpCount);
+  }, [lifetimeDumpCount]);
+
   return {
     dumps,
     latestDump,
@@ -351,5 +395,9 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     deleteDump,
     clearAll,
     refetch,
+    lifetimeDumpCount,
+    canCreateDump,
+    remainingFreeDumps,
+    FREE_USER_DUMP_LIMIT,
   };
 });
