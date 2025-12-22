@@ -34,20 +34,34 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     mutationFn: async (formData: FormData): Promise<string> => {
       console.log('Sending audio for transcription...');
       
-      const response = await fetch(STT_API_URL, {
-        method: 'POST',
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      
+      try {
+        const response = await fetch(STT_API_URL, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('STT API error:', errorText);
-        throw new Error('Failed to transcribe audio');
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('STT API error:', errorText);
+          throw new Error('Failed to transcribe audio');
+        }
+
+        const result = await response.json();
+        console.log('Transcription result:', result);
+        return result.text;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw new Error('Transcription timeout - please try again with a shorter recording');
+        }
+        throw err;
       }
-
-      const result = await response.json();
-      console.log('Transcription result:', result);
-      return result.text;
     },
   });
 
@@ -341,6 +355,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       if (!formData) {
         throw new Error('No audio data captured');
+      }
+
+      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 10) {
+        console.log('Using live transcript from browser (faster)');
+        const finalText = liveTranscript;
+        setLiveTranscript('');
+        return finalText;
       }
 
       const transcribedText = await transcribeAudio(formData);

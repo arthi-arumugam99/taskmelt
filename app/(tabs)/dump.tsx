@@ -124,117 +124,50 @@ export default function DumpScreen() {
         messages: [
           {
             role: 'user',
-            content: `You are a compassionate productivity assistant helping someone organize their overwhelming thoughts.
+            content: `Parse this brain dump into organized tasks. Create dynamic categories based on context (e.g., "Work Today", "Personal", "This Week", "Notes & Reflections").
 
-INPUT: A messy, unstructured brain dump of thoughts, tasks, worries, and ideas.
+For each task:
+- Rewrite as clear action (verb + object)
+- Add time estimate if possible
+- Suggest 2-3 subtasks for compound tasks (mark hasSubtaskSuggestion: true)
+- For vague tasks, add clarifying note in parentheses
+- Mark pure reflections with isReflection: true
 
-YOUR JOB:
-1. Parse the chaos into individual items
-2. Categorize each item dynamically based on context. Don't force items into predefined categories. Instead, create categories that make sense for what the user shared. Examples:
-   - For work tasks: "Work Today", "Meetings", "Email/Communication", "Projects"
-   - For personal: "Home Tasks", "Health & Wellness", "Social", "Creative Projects"
-   - For urgent items: "Do Now", "Today", "This Week"
-   - For concerns: "To Think About", "Decisions to Make", "Questions to Answer"
-   - Always include: "Notes & Reflections" for pure feelings/worries without clear actions
+Prioritize:
+- high: Urgent, time-sensitive
+- medium: Regular tasks
+- low: Nice-to-haves, reflections
 
-3. For each actionable item:
-   - Rewrite as a clear, specific action (verb + object)
-   - Estimate time if possible
-   - Note any missing info needed (dates, details)
-   - For vague/meta tasks containing words like "at least", "one", "something", "deliverable", add a clarifying note in parentheses
-     Example: "Ship at least one deliverable today" → "Ship one deliverable today (e.g., onboarding copy draft)"
-   - For compound tasks (e.g., "prepare slides", "plan event"), optionally suggest 2-3 subtasks but mark with hasSubtaskSuggestion=true (don't auto-expand)
-   - For tasks with dependencies (e.g., "cancel free trial" where service is unclear), create a 2-step chain:
-     1. First task: "Identify which service the free trial is for"
-     2. Second task: "Cancel [service name] free trial"
+If user seems depleted (overwhelmed/tired/anxious), prioritize body-based Quick Wins (stretch, breathe, walk).
 
-4. For non-actionable items:
-   - Place in "Notes & Reflections" category
-   - Acknowledge the feeling
-   - Suggest it may resolve when related tasks are done
-   - Mark with isReflection: true
-
-5. For fuzzy/vague goals (e.g., "get inbox to zero", "be more organized"):
-   - Convert into time-boxed action: "Clear inbox for 20 minutes"
-   - Make them concrete and achievable
-   - Avoid leaving vague statements as tasks
-
-6. Use appropriate emojis for each category that match the context
-
-7. Assign priority levels to categories:
-   - high: Urgent work, important decisions, time-sensitive items
-   - medium: Regular work tasks, personal errands
-   - low: Nice-to-haves, long-term projects, reflections
-
-8. EMOTIONAL STATE DETECTION:
-   - If the input contains words indicating depletion (overwhelmed, tired, fog, stuck, anxious, drained, exhausted):
-   - Prioritize body-based tasks as Quick Wins (stretch, breathe, water, walk, etc.)
-   - Avoid money/admin tasks in the "If you do nothing else" suggestion
-   - This helps prevent nervous system overload
-
-8. For "Notes & Reflections" category, if present:
-   - When there are emotional statements about feeling overwhelmed/unfinished
-   - Create a distilled insight that validates and reframes
-   - Example: "Today feels heavy because things are unfinished, not because you're incapable."
-   - Return this as reflectionInsight (one memorable sentence)
-
-OUTPUT FORMAT:
-Return JSON with dynamic categories based on the user's input:
+Return JSON:
 {
-  "categories": [
-    {
-      "name": "Category Name (based on context)",
-      "emoji": "📋",
-      "color": "#FF6B6B or #4ECDC4 or #45B7D1 or #96CEB4 or #FFEAA7 or similar",
-      "priority": "high",
-      "items": [
-        {
-          "task": "Clear, actionable task text",
-          "original": "What user wrote that mapped to this",
-          "timeEstimate": "5 min",
-          "subtasks": [
-            {
-              "task": "Subtask 1 (optional)",
-              "timeEstimate": "2 min"
-            }
-          ],
-          "hasSubtaskSuggestion": true,
-          "isReflection": false
-        }
-      ]
-    }
-  ],
-  "summary": "Brief encouraging message about what was organized",
-  "reflectionInsight": "Optional distilled insight from Notes & Reflections (one memorable sentence)"
+  "categories": [{
+    "name": "Category Name",
+    "emoji": "📋",
+    "color": "#FF6B6B",
+    "priority": "high",
+    "items": [{
+      "task": "Clear action",
+      "original": "User's words",
+      "timeEstimate": "5 min",
+      "subtasks": [{"task": "...", "timeEstimate": "..."}],
+      "hasSubtaskSuggestion": true,
+      "isReflection": false
+    }]
+  }],
+  "summary": "Brief encouraging message",
+  "reflectionInsight": "Optional insight sentence"
 }
 
-TONE: Warm, non-judgmental, practical. Like a supportive friend who's good at organizing.
-
-RULES:
-- Never create tasks that weren't implied in the input
-- Create categories that reflect the USER'S life context, not generic templates
-- Group similar items together under meaningful category names
-- When in doubt, ask for clarity rather than assume
-- "Notes & Reflections" is valid - not everything needs to be a task
-- Keep task rewrites concise (<15 words)
-- If input is very short, output can be short too
-- Use colors that are vibrant and distinct for each category
-- Only suggest subtasks for genuinely compound tasks (>10 min estimated)
-- Keep subtasks minimal (2-3 max) and actionable
-- For tasks with multiple steps (e.g., "fix keyboard" → check batteries + order if needed), consider 2-step breakdowns
-- Time estimates should be realistic: Quick Wins ≤5 min, standard tasks 10-30 min, projects >30 min
-- For depleted emotional states, bias toward restorative actions first
-- Occasionally include validating language for small tasks: "Small doesn't mean unimportant"
-
-Here's what the user needs to organize:
-
+Input:
 ${text}`,
           },
         ],
         schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+              setTimeout(() => reject(new Error('Request timeout after 45 seconds')), 45000)
             )
           ]);
           
@@ -648,7 +581,10 @@ ${text}`,
                         <Text style={styles.organizeButtonText}>Melting chaos...</Text>
                       </>
                     ) : (
-                      <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
+                      <>
+                        <Zap size={20} color={Colors.background} style={{ marginRight: 8 }} />
+                        <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
+                      </>
                     )}
                   </TouchableOpacity>
                 </Animated.View>
