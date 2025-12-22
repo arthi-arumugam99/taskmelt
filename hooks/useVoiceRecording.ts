@@ -415,7 +415,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       setLiveTranscript('');
       
       if (!finalText || finalText.trim().length === 0) {
-        throw new Error('No speech detected. Please speak clearly and try again.');
+        console.log('Empty transcription received - returning null');
+        return null;
       }
       
       return finalText;
