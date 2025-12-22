@@ -104,6 +104,10 @@ export default function DumpScreen() {
       console.log('Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
       console.log('Platform:', Platform.OS);
       
+      if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
+        throw new Error('AI service not configured. Please restart the app.');
+      }
+      
       try {
         const result = await generateObject({
         messages: [
@@ -553,8 +557,10 @@ ${text}`,
                   <Text style={styles.errorText}>
                     {mutationError instanceof Error && mutationError.message ? 
                       mutationError.message.includes('Network request failed') ?
-                        'Unable to connect to AI service. Please check your internet connection and try again.' :
-                        `Error: ${mutationError.message}` : 
+                        'Unable to connect to AI service. Please check your internet connection or try again in a moment.' :
+                      mutationError.message.includes('not configured') ?
+                        mutationError.message :
+                        `Something went wrong: ${mutationError.message}` : 
                       'Oops! Something went wrong. Please try again.'}
                   </Text>
                   <TouchableOpacity 
