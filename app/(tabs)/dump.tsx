@@ -13,7 +13,7 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap, Check } from 'lucide-react-native';
+import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -584,29 +584,17 @@ ${text}`,
                     <View style={styles.startHereHeader}>
                       <Text style={styles.startHereLabel}>If you do nothing else today, do this 👇</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.startHereTask}
-                      onPress={() => handleToggleTask(startHereTask.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        style={[
-                          styles.startHereCheckbox,
-                          { borderColor: startHereTask.categoryColor },
-                        ]}
-                      >
-                        <Check size={16} color={startHereTask.categoryColor} strokeWidth={3} />
-                      </View>
+                    <View style={styles.startHereTask}>
                       <View style={styles.startHereContent}>
                         <Text style={styles.startHereTaskText}>{startHereTask.task}</Text>
                         {startHereTask.timeEstimate && (
                           <Text style={styles.startHereTime}>{startHereTask.timeEstimate}</Text>
                         )}
                       </View>
-                    </TouchableOpacity>
+                    </View>
                     <View style={styles.whyThisContainer}>
                       <Text style={styles.whyThisText}>
-                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm.
+                        💡 This was chosen because it&apos;s low effort and helps reduce overwhelm. Find it below in its category.
                       </Text>
                     </View>
                   </View>
@@ -641,29 +629,25 @@ ${text}`,
                       </View>
                     </View>
                     {showQuickWinsWhy && (
-                      <View style={[styles.whyThisContainer, { marginBottom: 12 }]}>
+                      <View style={[styles.whyThisContainer, { marginTop: 0, marginBottom: 12 }]}>
                         <Text style={styles.whyThisText}>
                           💡 These quick tasks (≤5 min) are perfect for building momentum when you&apos;re feeling stuck or overwhelmed.
                         </Text>
                       </View>
                     )}
+                    <Text style={styles.quickWinsSuggestion}>These tasks appear below in their categories ↓</Text>
                     <View style={styles.quickWinsList}>
                       {visibleQuickWins.map((task) => (
-                        <TouchableOpacity
+                        <View
                           key={task.id}
                           style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
-                          onPress={() => handleToggleTask(task.id)}
-                          activeOpacity={0.7}
                         >
                           <View
                             style={[
-                              styles.quickWinCheckbox,
-                              { borderColor: task.categoryColor },
-                              task.completed && { backgroundColor: task.categoryColor },
+                              styles.quickWinDot,
+                              { backgroundColor: task.categoryColor },
                             ]}
-                          >
-                            {task.completed && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
-                          </View>
+                          />
                           <Text
                             style={[
                               styles.quickWinText,
@@ -674,7 +658,7 @@ ${text}`,
                             {task.task}
                           </Text>
                           <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
-                        </TouchableOpacity>
+                        </View>
                       ))}
                     </View>
                     {quickWins.length > displayCount && (
@@ -699,7 +683,7 @@ ${text}`,
                 summary={currentSession.summary}
                 onToggleTask={handleToggleTask}
                 onToggleExpanded={handleToggleExpanded}
-                hiddenTaskIds={[startHereTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
+                highlightedTaskIds={[startHereTaskId, ...quickWins.map(t => t.id)].filter((id): id is string => id !== null)}
               />
 
               <TouchableOpacity
@@ -1135,5 +1119,17 @@ const styles = StyleSheet.create({
   startHereTime: {
     fontSize: 13,
     color: Colors.textMuted,
+  },
+  quickWinsSuggestion: {
+    fontSize: 11,
+    color: '#B45309',
+    fontStyle: 'italic' as const,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  quickWinDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

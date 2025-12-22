@@ -35,9 +35,10 @@ interface TaskItemRowProps {
   onToggle: (taskId: string) => void;
   onToggleExpanded?: (taskId: string) => void;
   depth?: number;
+  isHighlighted?: boolean;
 }
 
-function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 }: TaskItemRowProps) {
+function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0, isHighlighted = false }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [confetti, setConfetti] = useState<Confetti[]>([]);
 
@@ -118,7 +119,11 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 
 
   return (
     <>
-      <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 }]}>
+      <Animated.View style={[
+        styles.taskRow,
+        { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 },
+        isHighlighted && styles.taskRowHighlighted,
+      ]}>
         <View style={styles.taskRowContent}>
           <TouchableOpacity
             style={[
@@ -190,9 +195,10 @@ interface CategoryCardProps {
   category: Category;
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
+  highlightedTaskIds?: string[];
 }
 
-function CategoryCard({ category, onToggleTask, onToggleExpanded }: CategoryCardProps) {
+function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTaskIds = [] }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
   const actionableItems = category.items.filter((i) => !i.isReflection);
@@ -226,6 +232,7 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded }: CategoryCard
             accentColor={accentColor}
             onToggle={onToggleTask}
             onToggleExpanded={onToggleExpanded}
+            isHighlighted={highlightedTaskIds.includes(item.id)}
           />
         ))}
       </View>
@@ -238,7 +245,7 @@ interface OrganizedResultsProps {
   summary?: string;
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
-  hiddenTaskIds?: string[];
+  highlightedTaskIds?: string[];
 }
 
 export default function OrganizedResults({
@@ -246,13 +253,9 @@ export default function OrganizedResults({
   summary,
   onToggleTask,
   onToggleExpanded,
-  hiddenTaskIds = [],
+  highlightedTaskIds = [],
 }: OrganizedResultsProps) {
-  const filteredCategories = categories.map(cat => ({
-    ...cat,
-    items: cat.items.filter(item => !hiddenTaskIds.includes(item.id)),
-  }));
-  const nonEmptyCategories = filteredCategories.filter((c) => c.items.length > 0);
+  const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
   if (nonEmptyCategories.length === 0) {
     return null;
@@ -266,6 +269,7 @@ export default function OrganizedResults({
           category={category}
           onToggleTask={onToggleTask}
           onToggleExpanded={onToggleExpanded}
+          highlightedTaskIds={highlightedTaskIds}
         />
       ))}
     </View>
@@ -381,5 +385,14 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     marginBottom: 8,
+  },
+  taskRowHighlighted: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
