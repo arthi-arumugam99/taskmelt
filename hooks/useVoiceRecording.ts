@@ -97,6 +97,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const startRecordingWeb = useCallback(async () => {
     try {
       console.log('Requesting web audio permissions...');
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Voice recording is not supported in this browser');
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       audioChunksRef.current = [];
@@ -114,8 +119,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       mediaRecorder.start(100);
       mediaRecorderRef.current = mediaRecorder;
       console.log('Web recording started');
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error starting web recording:', err);
+      
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          throw new Error('Microphone access denied. Please allow microphone permissions in your browser settings and try again.');
+        }
+        if (err.name === 'NotFoundError') {
+          throw new Error('No microphone found. Please connect a microphone and try again.');
+        }
+      }
       throw err;
     }
   }, []);
