@@ -173,8 +173,7 @@ export default function PaywallScreen() {
   }, [restorePurchases]);
 
   const formatPrice = (pkg: PurchasesPackage | undefined, fallback: string): string => {
-    if (!pkg) return fallback;
-    return pkg.product.priceString;
+    return fallback;
   };
 
   const isProcessing = isPurchasing || isRestoring;
