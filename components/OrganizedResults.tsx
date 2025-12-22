@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
-import { Check, ChevronDown, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Category, TaskItem } from '@/types/dump';
@@ -111,19 +111,6 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 
   return (
     <>
       <Animated.View style={[styles.taskRow, { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 }]}>
-        {item.hasSubtaskSuggestion && item.subtasks && item.subtasks.length > 0 && (
-          <TouchableOpacity
-            style={styles.expandButton}
-            onPress={() => onToggleExpanded?.(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            {item.isExpanded ? (
-              <ChevronDown size={16} color={Colors.textMuted} />
-            ) : (
-              <ChevronRight size={16} color={Colors.textMuted} />
-            )}
-          </TouchableOpacity>
-        )}
         <TouchableOpacity
           style={[
             styles.checkbox,
@@ -148,7 +135,10 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0 
             <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
           )}
           {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
-            <Text style={styles.subtaskHint}>Tap → to break down</Text>
+            <TouchableOpacity onPress={() => onToggleExpanded?.(item.id)} style={styles.subtaskHintButton}>
+              <ChevronRight size={12} color={Colors.primary} />
+              <Text style={styles.subtaskHint}>Tap to break down</Text>
+            </TouchableOpacity>
           )}
         </View>
         {confetti.map((particle) => (
@@ -247,11 +237,6 @@ export default function OrganizedResults({
 
   return (
     <View style={styles.container}>
-      {summary && (
-        <View style={styles.summaryContainer}>
-          <Text style={styles.summaryText}>{summary}</Text>
-        </View>
-      )}
       {nonEmptyCategories.map((category, index) => (
         <CategoryCard
           key={`${category.name}-${index}`}
@@ -268,18 +253,7 @@ const styles = StyleSheet.create({
   container: {
     gap: 16,
   },
-  summaryContainer: {
-    backgroundColor: Colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  summaryText: {
-    fontSize: 15,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-  },
+
   categoryCard: {
     borderRadius: 20,
     padding: 16,
@@ -318,13 +292,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
-  expandButton: {
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-  },
+
   checkbox: {
     width: 24,
     height: 24,
@@ -351,11 +319,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
   },
+  subtaskHintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
   subtaskHint: {
     fontSize: 11,
     color: Colors.primary,
-    marginTop: 4,
-    fontStyle: 'italic' as const,
+    fontWeight: '500' as const,
   },
   confettiParticle: {
     position: 'absolute',
