@@ -31,13 +31,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const recognitionRef = useRef<any>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
+  const chunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isStoppingRef = useRef(false);
 
-  const { mutateAsync: transcribeAudio, isPending: isTranscribing } = useMutation({
+  const { mutateAsync: transcribeAudio, isPending: isTranscribing, reset: resetTranscription } = useMutation({
     mutationFn: async (formData: FormData): Promise<string> => {
-      console.log('Sending audio for transcription...');
-      
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
       try {
         const response = await fetch(STT_API_URL, {
@@ -55,12 +55,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
 
         const responseText = await response.text();
-        console.log('Transcription raw response:', responseText);
-        
         const trimmedResponse = responseText.trim();
         
         if (!trimmedResponse) {
-          throw new Error('Empty response from transcription service');
+          return '';
         }
         
         let transcribedText: string;
@@ -75,12 +73,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             } else if (Array.isArray(result) && result.length > 0) {
               transcribedText = result[0].text || result[0] || '';
             } else {
-              console.log('Unexpected JSON structure, using as string:', result);
               transcribedText = JSON.stringify(result);
             }
-          } catch (parseError) {
-            console.error('Failed to parse JSON response:', parseError);
-            console.log('Treating response as plain text');
+          } catch {
             transcribedText = trimmedResponse;
           }
         } else {
@@ -88,45 +83,101 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
         
         if (!transcribedText || transcribedText.trim().length === 0) {
-          console.log('Empty transcription received - audio may have been silence');
-          console.log('Full response was:', responseText);
           return '';
         }
         
-        console.log('Transcription result:', transcribedText.substring(0, 100));
         return transcribedText;
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Transcription timeout');
+          console.log('Chunk transcription timeout - skipping');
+          return '';
         }
         throw err;
       }
     },
   });
 
+  const processLiveChunk = useCallback(async () => {
+    if (!recordingRef.current || isStoppingRef.current || Platform.OS === 'web') return;
+    
+    try {
+      const status = await recordingRef.current.getStatusAsync();
+      if (!status.isRecording) return;
+      
+      const durationMillis = status.durationMillis || 0;
+      if (durationMillis < 1500) return;
+      
+      console.log('📦 Processing live chunk...');
+      
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      
+      if (uri) {
+        const uriParts = uri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+        const audioFile = {
+          uri,
+          name: `chunk_${Date.now()}.${fileType}`,
+          type: `audio/${fileType}`,
+        };
+        
+        const formData = new FormData();
+        formData.append('audio', audioFile as unknown as Blob);
+        
+        const chunkText = await transcribeAudio(formData);
+        if (chunkText && chunkText.trim()) {
+          console.log('✨ Live chunk:', chunkText.substring(0, 50));
+          setLiveTranscript(prev => prev ? `${prev} ${chunkText}` : chunkText);
+        }
+      }
+      
+      const newRecording = new Audio.Recording();
+      await newRecording.prepareToRecordAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 32000,
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 32000,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 32000,
+        },
+      });
+      await newRecording.startAsync();
+      recordingRef.current = newRecording;
+    } catch (err) {
+      console.log('Chunk processing skipped:', err instanceof Error ? err.message : 'Unknown');
+    }
+  }, [transcribeAudio]);
+
   const startRecordingMobile = useCallback(async () => {
     try {
-      console.log('Checking mobile audio permissions...');
+      console.log('🎤 Starting mobile live recording...');
       
       const { status: existingStatus } = await Audio.getPermissionsAsync();
-      console.log('Current permission status:', existingStatus);
-      
       let finalStatus = existingStatus;
       
       if (existingStatus !== 'granted') {
-        console.log('Requesting microphone permission...');
         const { status } = await Audio.requestPermissionsAsync();
         finalStatus = status;
-        console.log('Permission request result:', status);
       }
       
       if (finalStatus !== 'granted') {
-        console.error('Permission not granted. Status:', finalStatus);
-        
         Alert.alert(
           'Microphone Permission Required',
-          'Please allow microphone access to use voice recording. You can enable it in your device settings.',
+          'Please allow microphone access to use voice recording.',
           [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -141,26 +192,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             },
           ]
         );
-        
         throw new Error('Microphone permission denied');
       }
-      
-      console.log('Permission granted, setting up audio mode...');
 
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        console.log('Audio mode configured successfully');
-      } catch (audioModeErr) {
-        console.error('Error setting audio mode:', audioModeErr);
-      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
 
-      console.log('Creating recording instance...');
       const recording = new Audio.Recording();
-      
-      console.log('Preparing to record...');
       await recording.prepareToRecordAsync({
         android: {
           extension: '.m4a',
@@ -168,35 +208,38 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
           sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 24000,
+          bitRate: 32000,
         },
         ios: {
           extension: '.m4a',
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.LOW,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
           sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 24000,
+          bitRate: 32000,
         },
         web: {
           mimeType: 'audio/webm',
-          bitsPerSecond: 24000,
+          bitsPerSecond: 32000,
         },
       });
 
-      console.log('Starting recording...');
       await recording.startAsync();
       recordingRef.current = recording;
-      console.log('Mobile recording started successfully');
+      console.log('✅ Mobile recording started');
+      
+      chunkIntervalRef.current = setInterval(async () => {
+        await processLiveChunk();
+      }, 2000);
     } catch (err) {
       console.error('Error starting mobile recording:', err);
       throw err;
     }
-  }, []);
+  }, [processLiveChunk]);
 
   const startRecordingWeb = useCallback(async () => {
     try {
-      console.log('Requesting web audio permissions...');
+      console.log('🌐 Starting web recording with live transcription...');
       
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Voice recording is not supported in this browser');
@@ -212,7 +255,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType,
-        audioBitsPerSecond: 24000,
+        audioBitsPerSecond: 32000,
       });
 
       mediaRecorder.ondataavailable = (event) => {
@@ -259,6 +302,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             const updated = (prev + finalTranscript).trim();
             return interimTranscript ? updated + ' ' + interimTranscript : updated;
           });
+          
+          console.log('🎯 Live:', interimTranscript || finalTranscript);
         };
         
         recognition.onerror = (event: any) => {
@@ -268,20 +313,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         };
         
         recognition.onstart = () => {
-          console.log('Live transcription started - instant feedback enabled');
+          console.log('✅ Live transcription active');
         };
         
         recognition.start();
         recognitionRef.current = recognition;
       }
       
-      console.log('Web recording started');
+      console.log('✅ Web recording started');
     } catch (err: unknown) {
       console.error('Error starting web recording:', err);
       
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          throw new Error('Microphone access denied. Please allow microphone permissions in your browser settings and try again.');
+          throw new Error('Microphone access denied. Please allow microphone permissions in your browser settings.');
         }
         if (err.name === 'NotFoundError') {
           throw new Error('No microphone found. Please connect a microphone and try again.');
@@ -296,7 +341,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setLiveTranscript('');
     setRecordingDuration(0);
     setConfidence(0);
+    isStoppingRef.current = false;
     recordingStartTimeRef.current = Date.now();
+    resetTranscription();
     
     try {
       if (Platform.OS === 'web') {
@@ -315,9 +362,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       setError(message);
       console.error('Recording start error:', err);
     }
-  }, [startRecordingMobile, startRecordingWeb]);
+  }, [startRecordingMobile, startRecordingWeb, resetTranscription]);
 
   const stopRecordingMobile = useCallback(async (): Promise<FormData | null> => {
+    isStoppingRef.current = true;
+    
+    if (chunkIntervalRef.current) {
+      clearInterval(chunkIntervalRef.current);
+      chunkIntervalRef.current = null;
+    }
+    
     const recording = recordingRef.current;
     if (!recording) return null;
 
@@ -331,10 +385,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       recordingRef.current = null;
 
       if (!uri) {
-        throw new Error('No recording URI available');
+        return null;
       }
 
-      console.log('Mobile recording stopped, URI:', uri);
+      console.log('🎤 Processing final chunk...');
 
       const uriParts = uri.split('.');
       const fileType = uriParts[uriParts.length - 1];
@@ -390,6 +444,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const stopRecording = useCallback(async (): Promise<string | null> => {
     if (!isRecording) return null;
     
+    isStoppingRef.current = true;
     setIsRecording(false);
     setError(null);
     
@@ -398,12 +453,26 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       durationIntervalRef.current = null;
     }
     
+    if (chunkIntervalRef.current) {
+      clearInterval(chunkIntervalRef.current);
+      chunkIntervalRef.current = null;
+    }
+    
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
 
     try {
+      const currentTranscript = liveTranscript.trim();
+      
+      if (Platform.OS === 'web' && currentTranscript) {
+        console.log('✨ Instant result from live transcription');
+        setLiveTranscript('');
+        setConfidence(0);
+        return currentTranscript;
+      }
+
       let formData: FormData | null = null;
 
       if (Platform.OS === 'web') {
@@ -413,29 +482,27 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       }
 
       if (!formData) {
-        throw new Error('No audio data captured');
-      }
-
-      if (Platform.OS === 'web' && liveTranscript && liveTranscript.trim().length > 0) {
-        console.log('✨ Instant transcription from live recognition');
-        const finalText = liveTranscript.trim();
+        const result = currentTranscript || null;
         setLiveTranscript('');
         setConfidence(0);
-        return finalText;
+        return result;
       }
 
-      console.log('Fast-track API transcription...');
+      console.log('📤 Processing final chunk...');
       const startTime = Date.now();
       const transcribedText = await transcribeAudio(formData);
       const elapsed = Date.now() - startTime;
-      console.log(`✅ Transcribed in ${elapsed}ms`);
+      console.log(`✅ Final chunk processed in ${elapsed}ms`);
       
-      const finalText = transcribedText || liveTranscript;
+      const finalText = currentTranscript
+        ? `${currentTranscript} ${transcribedText}`.trim()
+        : transcribedText;
+      
       setLiveTranscript('');
       setConfidence(0);
       
       if (!finalText || finalText.trim().length === 0) {
-        console.log('No speech detected');
+        console.log('No speech detected in recording');
         return null;
       }
       
@@ -444,12 +511,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const message = err instanceof Error ? err.message : 'Failed to process recording';
       setError(message);
       console.error('Recording stop error:', err);
+      const fallback = liveTranscript.trim() || null;
       setLiveTranscript('');
-      return null;
+      return fallback;
     }
   }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio, liveTranscript]);
 
   const cancelRecording = useCallback(async () => {
+    isStoppingRef.current = true;
     setIsRecording(false);
     setError(null);
     setLiveTranscript('');
@@ -459,6 +528,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
+    }
+    
+    if (chunkIntervalRef.current) {
+      clearInterval(chunkIntervalRef.current);
+      chunkIntervalRef.current = null;
     }
     
     if (recognitionRef.current) {
