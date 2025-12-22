@@ -418,27 +418,74 @@ ${text}`,
     }
   }, [currentSession]);
 
-  const totalTasks = currentSession?.categories.reduce((acc, cat) => {
-    return acc + cat.items.reduce((itemAcc, item) => {
-      if (item.isReflection) return itemAcc;
-      if (item.subtasks && item.subtasks.length > 0) {
-        return itemAcc + item.subtasks.length;
+  const { totalTasks, completedTasks } = React.useMemo(() => {
+    if (!currentSession) return { totalTasks: 0, completedTasks: 0 };
+    
+    let total = 0;
+    let completed = 0;
+    
+    for (const cat of currentSession.categories) {
+      for (const item of cat.items) {
+        if (item.isReflection) continue;
+        
+        if (item.subtasks && item.subtasks.length > 0) {
+          total += item.subtasks.length;
+          completed += item.subtasks.filter(st => st.completed).length;
+        } else {
+          total += 1;
+          if (item.completed) completed += 1;
+        }
       }
-      return itemAcc + 1;
-    }, 0);
-  }, 0) ?? 0;
-  
-  const completedTasks = currentSession?.categories.reduce((acc, cat) => {
-    return acc + cat.items.reduce((itemAcc, item) => {
-      if (item.isReflection) return itemAcc;
-      if (item.subtasks && item.subtasks.length > 0) {
-        return itemAcc + item.subtasks.filter(st => st.completed).length;
-      }
-      return itemAcc + (item.completed ? 1 : 0);
-    }, 0);
-  }, 0) ?? 0;
+    }
+    
+    return { totalTasks: total, completedTasks: completed };
+  }, [currentSession]);
   
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const nextMomentumTask = React.useMemo(() => {
+    if (!currentSession || completedTasks === 0 || completedTasks === totalTasks) return null;
+    
+    const incompleteTasks: { task: string; timeEstimate?: string; id: string; categoryColor: string; categoryName: string }[] = [];
+    
+    for (const cat of currentSession.categories) {
+      for (const item of cat.items) {
+        if (item.isReflection || item.completed) continue;
+        
+        if (item.subtasks && item.subtasks.length > 0) {
+          for (const st of item.subtasks) {
+            if (!st.completed) {
+              incompleteTasks.push({ 
+                task: st.task, 
+                timeEstimate: st.timeEstimate, 
+                id: st.id, 
+                categoryColor: cat.color,
+                categoryName: cat.name 
+              });
+            }
+          }
+        } else {
+          incompleteTasks.push({ 
+            task: item.task, 
+            timeEstimate: item.timeEstimate, 
+            id: item.id, 
+            categoryColor: cat.color,
+            categoryName: cat.name 
+          });
+        }
+      }
+    }
+    
+    incompleteTasks.sort((a, b) => {
+      const aEst = a.timeEstimate?.match(/(\d+)/);
+      const bEst = b.timeEstimate?.match(/(\d+)/);
+      const aMin = aEst ? parseInt(aEst[1]) : 999;
+      const bMin = bEst ? parseInt(bEst[1]) : 999;
+      return aMin - bMin;
+    });
+    
+    return incompleteTasks[0] || null;
+  }, [currentSession, completedTasks, totalTasks]);
 
   const quickWins = currentSession?.categories.flatMap(cat => 
     cat.items
@@ -655,7 +702,7 @@ ${text}`,
                     )}
                   </View>
                   <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBarFill, { width: completedTasks === 0 ? '15%' : `${completionRate}%` }]} />
+                    <Animated.View style={[styles.progressBarFill, { width: `${completionRate}%` }]} />
                   </View>
                 </View>
               )}
@@ -689,6 +736,37 @@ ${text}`,
                       <Text style={styles.startHereHint}>Shortest task • Builds momentum</Text>
                     </View>
                   </TouchableOpacity>
+                </View>
+              )}
+
+              {completedTasks > 0 && completedTasks < totalTasks && nextMomentumTask && (
+                <View style={styles.momentumCard}>
+                  <View style={styles.momentumHeader}>
+                    <Text style={styles.momentumEmoji}>🔥</Text>
+                    <View style={styles.momentumHeaderText}>
+                      <Text style={styles.momentumTitle}>You&apos;re on a roll</Text>
+                      <Text style={styles.momentumSubtitle}>Keep going?</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleToggleTask(nextMomentumTask.id)}
+                    style={styles.momentumTask}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.momentumCheckbox,
+                        { borderColor: nextMomentumTask.categoryColor },
+                      ]}
+                    />
+                    <View style={styles.momentumContent}>
+                      <Text style={styles.momentumTaskText}>{nextMomentumTask.task}</Text>
+                      {nextMomentumTask.timeEstimate && (
+                        <Text style={styles.momentumTime}>{nextMomentumTask.timeEstimate}</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.momentumHint}>Just one more small win</Text>
                 </View>
               )}
 
@@ -1313,5 +1391,69 @@ const styles = StyleSheet.create({
   loopCloserTaskTextCompleted: {
     textDecorationLine: 'line-through',
     color: Colors.textMuted,
+  },
+  momentumCard: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+  },
+  momentumHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  momentumEmoji: {
+    fontSize: 24,
+  },
+  momentumHeaderText: {
+    flex: 1,
+  },
+  momentumTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#C2410C',
+  },
+  momentumSubtitle: {
+    fontSize: 13,
+    color: '#EA580C',
+  },
+  momentumTask: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 10,
+  },
+  momentumCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginTop: 2,
+  },
+  momentumContent: {
+    flex: 1,
+  },
+  momentumTaskText: {
+    fontSize: 15,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  momentumTime: {
+    fontSize: 13,
+    color: '#EA580C',
+    fontWeight: '500' as const,
+  },
+  momentumHint: {
+    fontSize: 12,
+    color: '#C2410C',
+    fontStyle: 'italic' as const,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

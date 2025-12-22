@@ -283,6 +283,26 @@ export default function OrganizedResults({
   }
 
   const sortedCategories = [...nonEmptyCategories].sort((a, b) => {
+    const aActionableItems = a.items.filter(i => !i.isReflection);
+    const bActionableItems = b.items.filter(i => !i.isReflection);
+    
+    const aCompletedCount = aActionableItems.filter(i => i.completed).length;
+    const bCompletedCount = bActionableItems.filter(i => i.completed).length;
+    
+    const aAllComplete = aActionableItems.length > 0 && aCompletedCount === aActionableItems.length;
+    const bAllComplete = bActionableItems.length > 0 && bCompletedCount === bActionableItems.length;
+    
+    if (aAllComplete !== bAllComplete) {
+      return aAllComplete ? 1 : -1;
+    }
+    
+    const aCompletionRate = aActionableItems.length > 0 ? aCompletedCount / aActionableItems.length : 0;
+    const bCompletionRate = bActionableItems.length > 0 ? bCompletedCount / bActionableItems.length : 0;
+    
+    if (Math.abs(aCompletionRate - bCompletionRate) > 0.01) {
+      return aCompletionRate - bCompletionRate;
+    }
+    
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const aPriority = a.priority || 'medium';
     const bPriority = b.priority || 'medium';
