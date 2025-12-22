@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     isLoading: true,
     isInitialized: false,
   });
+  const isIdentifyingRef = useRef(false);
+  const lastIdentifiedUserIdRef = useRef<string | null>(null);
+
+  const identifyWithRevenueCat = useCallback(async (userId: string, email?: string | null) => {
+    if (isIdentifyingRef.current || lastIdentifiedUserIdRef.current === userId) {
+      console.log('RevenueCat: Skipping identification (already in progress or completed):', userId);
+      return;
+    }
+
+    try {
+      isIdentifyingRef.current = true;
+      console.log('RevenueCat: Identifying user:', userId);
+      await Purchases.logIn(userId);
+      
+      if (email) {
+        try {
+          await Purchases.setEmail(email);
+        } catch (emailError: any) {
+          if (emailError?.code === 16 || emailError?.message?.includes('another request in flight')) {
+            console.log('RevenueCat: setEmail skipped (concurrent request):', emailError.message);
+          } else {
+            throw emailError;
+          }
+        }
+      }
+      
+      lastIdentifiedUserIdRef.current = userId;
+      console.log('RevenueCat: User identified successfully');
+    } catch (error) {
+      console.log('RevenueCat: Identify error:', error);
+    } finally {
+      isIdentifyingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -64,6 +98,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           identifyWithRevenueCat(session.user.id, session.user.email);
         } else if (!session && Platform.OS !== 'web') {
           try {
+            lastIdentifiedUserIdRef.current = null;
             await Purchases.logOut();
             console.log('RevenueCat: Logged out');
           } catch (error) {
@@ -76,20 +111,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     );
 
     return () => subscription.unsubscribe();
-  }, [queryClient]);
-
-  const identifyWithRevenueCat = async (userId: string, email?: string | null) => {
-    try {
-      console.log('RevenueCat: Identifying user:', userId);
-      await Purchases.logIn(userId);
-      if (email) {
-        await Purchases.setEmail(email);
-      }
-      console.log('RevenueCat: User identified successfully');
-    } catch (error) {
-      console.log('RevenueCat: Identify error:', error);
-    }
-  };
+  }, [queryClient, identifyWithRevenueCat]);
 
   const signUpMutation = useMutation({
     mutationFn: async ({ email, password, name }: { email: string; password: string; name?: string }) => {
