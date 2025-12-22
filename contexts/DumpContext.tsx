@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { DumpSession } from '@/types/dump';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const STORAGE_KEY = 'taskmelt_dumps';
 
-async function loadDumps(): Promise<DumpSession[]> {
+async function loadLocalDumps(): Promise<DumpSession[]> {
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -14,48 +16,184 @@ async function loadDumps(): Promise<DumpSession[]> {
     }
     return [];
   } catch (error) {
-    console.log('Error loading dumps:', error);
+    console.log('Error loading local dumps:', error);
     return [];
   }
 }
 
-async function saveDumps(dumps: DumpSession[]): Promise<void> {
+async function saveLocalDumps(dumps: DumpSession[]): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(dumps));
   } catch (error) {
-    console.log('Error saving dumps:', error);
+    console.log('Error saving local dumps:', error);
   }
+}
+
+async function loadRemoteDumps(userId: string): Promise<DumpSession[]> {
+  try {
+    console.log('Sync: Loading remote dumps for user:', userId);
+    const { data, error } = await supabase
+      .from('dumps')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.log('Sync: Error loading remote dumps:', error);
+      return [];
+    }
+
+    console.log('Sync: Loaded', data?.length ?? 0, 'remote dumps');
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      rawText: row.raw_text,
+      categories: row.categories,
+      createdAt: row.created_at,
+      summary: row.summary,
+      reflectionInsight: row.reflection_insight,
+    }));
+  } catch (error) {
+    console.log('Sync: Error loading remote dumps:', error);
+    return [];
+  }
+}
+
+async function saveRemoteDump(userId: string, dump: DumpSession): Promise<void> {
+  try {
+    console.log('Sync: Saving dump to remote:', dump.id);
+    const { error } = await supabase.from('dumps').upsert({
+      id: dump.id,
+      user_id: userId,
+      raw_text: dump.rawText,
+      categories: dump.categories,
+      created_at: dump.createdAt,
+      summary: dump.summary,
+      reflection_insight: dump.reflectionInsight,
+    });
+
+    if (error) {
+      console.log('Sync: Error saving remote dump:', error);
+    } else {
+      console.log('Sync: Dump saved to remote successfully');
+    }
+  } catch (error) {
+    console.log('Sync: Error saving remote dump:', error);
+  }
+}
+
+async function deleteRemoteDump(userId: string, dumpId: string): Promise<void> {
+  try {
+    console.log('Sync: Deleting remote dump:', dumpId);
+    const { error } = await supabase
+      .from('dumps')
+      .delete()
+      .eq('id', dumpId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.log('Sync: Error deleting remote dump:', error);
+    }
+  } catch (error) {
+    console.log('Sync: Error deleting remote dump:', error);
+  }
+}
+
+async function clearRemoteDumps(userId: string): Promise<void> {
+  try {
+    console.log('Sync: Clearing all remote dumps for user:', userId);
+    const { error } = await supabase
+      .from('dumps')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      console.log('Sync: Error clearing remote dumps:', error);
+    }
+  } catch (error) {
+    console.log('Sync: Error clearing remote dumps:', error);
+  }
+}
+
+function mergeDumps(local: DumpSession[], remote: DumpSession[]): DumpSession[] {
+  const merged = new Map<string, DumpSession>();
+  
+  remote.forEach((dump) => merged.set(dump.id, dump));
+  local.forEach((dump) => {
+    if (!merged.has(dump.id)) {
+      merged.set(dump.id, dump);
+    }
+  });
+
+  return Array.from(merged.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }
 
 export const [DumpProvider, useDumps] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { user, isAuthenticated } = useAuth();
 
   const dumpsQuery = useQuery({
-    queryKey: ['dumps'],
-    queryFn: loadDumps,
-    staleTime: Infinity,
+    queryKey: ['dumps', user?.id ?? 'local', isAuthenticated],
+    queryFn: async () => {
+      const localDumps = await loadLocalDumps();
+      
+      if (isAuthenticated && user?.id) {
+        const remoteDumps = await loadRemoteDumps(user.id);
+        const merged = mergeDumps(localDumps, remoteDumps);
+        
+        const localOnlyDumps = localDumps.filter(
+          (local) => !remoteDumps.some((remote) => remote.id === local.id)
+        );
+        
+        if (localOnlyDumps.length > 0) {
+          console.log('Sync: Uploading', localOnlyDumps.length, 'local-only dumps to remote');
+          for (const dump of localOnlyDumps) {
+            await saveRemoteDump(user.id, dump);
+          }
+        }
+        
+        await saveLocalDumps(merged);
+        return merged;
+      }
+      
+      return localDumps;
+    },
+    staleTime: 1000 * 60 * 5,
   });
 
   const dumps = useMemo(() => dumpsQuery.data ?? [], [dumpsQuery.data]);
 
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['dumps'] });
+  }, [isAuthenticated, user?.id, queryClient]);
+
   const { mutate: addDumpMutate } = useMutation({
     mutationFn: async (newDump: DumpSession) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
       const updated = [newDump, ...currentDumps];
-      await saveDumps(updated);
+      
+      await saveLocalDumps(updated);
+      
+      if (isAuthenticated && user?.id) {
+        await saveRemoteDump(user.id, newDump);
+      }
+      
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps'], data);
+      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
     },
   });
 
   const { mutate: toggleTaskMutate } = useMutation({
     mutationFn: async ({ dumpId, taskId }: { dumpId: string; taskId: string }) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
+      let updatedDump: DumpSession | null = null;
+      
       const updated = currentDumps.map((dump) => {
         if (dump.id !== dumpId) return dump;
-        return {
+        const newDump = {
           ...dump,
           categories: dump.categories.map((category) => ({
             ...category,
@@ -96,34 +234,53 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
             }),
           })),
         };
+        updatedDump = newDump;
+        return newDump;
       });
-      await saveDumps(updated);
+      
+      await saveLocalDumps(updated);
+      
+      if (isAuthenticated && user?.id && updatedDump) {
+        await saveRemoteDump(user.id, updatedDump);
+      }
+      
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps'], data);
+      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
     },
   });
 
   const { mutate: deleteDumpMutate } = useMutation({
     mutationFn: async (dumpId: string) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
       const updated = currentDumps.filter((d) => d.id !== dumpId);
-      await saveDumps(updated);
+      
+      await saveLocalDumps(updated);
+      
+      if (isAuthenticated && user?.id) {
+        await deleteRemoteDump(user.id, dumpId);
+      }
+      
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps'], data);
+      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
     },
   });
 
   const { mutate: clearAllMutate } = useMutation({
     mutationFn: async () => {
-      await saveDumps([]);
+      await saveLocalDumps([]);
+      
+      if (isAuthenticated && user?.id) {
+        await clearRemoteDumps(user.id);
+      }
+      
       return [];
     },
     onSuccess: () => {
-      queryClient.setQueryData(['dumps'], []);
+      queryClient.setQueryData(['dumps', user?.id ?? 'local'], []);
     },
   });
 
@@ -152,6 +309,10 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     clearAllMutate();
   }, [clearAllMutate]);
 
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['dumps', user?.id ?? 'local'] });
+  }, [queryClient, user?.id]);
+
   const latestDump = useMemo(() => dumps[0] ?? null, [dumps]);
 
   const todaysDumps = useMemo(() => {
@@ -164,9 +325,11 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     latestDump,
     todaysDumps,
     isLoading: dumpsQuery.isLoading,
+    isSyncing: dumpsQuery.isFetching,
     addDump,
     toggleTask,
     deleteDump,
     clearAll,
+    refetch,
   };
 });
