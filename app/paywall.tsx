@@ -228,9 +228,9 @@ export default function PaywallScreen() {
             {(yearlyPackage || allPackages.length === 0) && (
               <PricingCard
                 title="Yearly"
-                price={formatPrice(yearlyPackage, '$39.99')}
+                price={formatPrice(yearlyPackage, '$69.99')}
                 period="/year"
-                savings="Save 58%"
+                savings="Save 17%"
                 isSelected={selectedPlan === 'yearly'}
                 isBestValue
                 onSelect={() => handleSelectPlan('yearly')}
@@ -240,7 +240,7 @@ export default function PaywallScreen() {
             {(monthlyPackage || allPackages.length === 0) && (
               <PricingCard
                 title="Monthly"
-                price={formatPrice(monthlyPackage, '$7.99')}
+                price={formatPrice(monthlyPackage, '$6.99')}
                 period="/month"
                 isSelected={selectedPlan === 'monthly'}
                 onSelect={() => handleSelectPlan('monthly')}
@@ -250,7 +250,7 @@ export default function PaywallScreen() {
             {(lifetimePackage || allPackages.length === 0) && (
               <PricingCard
                 title="Lifetime"
-                price={formatPrice(lifetimePackage, '$79.99')}
+                price={formatPrice(lifetimePackage, '$99.99')}
                 period="one-time"
                 savings="Pay once, own forever"
                 isSelected={selectedPlan === 'lifetime'}
