@@ -47,10 +47,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const startRecordingMobile = useCallback(async () => {
     try {
       console.log('Requesting mobile audio permissions...');
-      const { status } = await Audio.requestPermissionsAsync();
+      const { status, canAskAgain } = await Audio.requestPermissionsAsync();
       
       if (status !== 'granted') {
-        throw new Error('Microphone permission not granted');
+        if (status === 'denied' && !canAskAgain) {
+          throw new Error('Microphone access denied. Please enable it in your device settings.');
+        }
+        throw new Error('Microphone permission is required to record audio. Please allow access and try again.');
       }
 
       await Audio.setAudioModeAsync({
