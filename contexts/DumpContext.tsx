@@ -186,8 +186,13 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
 
   const lifetimeDumpCount = lifetimeCountQuery.data ?? 0;
 
+  const dumpQueryKey = useMemo(
+    () => ['dumps', user?.id ?? 'local', isAuthenticated] as const,
+    [user?.id, isAuthenticated]
+  );
+
   const dumpsQuery = useQuery({
-    queryKey: ['dumps', user?.id ?? 'local', isAuthenticated],
+    queryKey: dumpQueryKey,
     queryFn: async () => {
       const localDumps = await loadLocalDumps();
       
@@ -223,7 +228,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
 
   const { mutate: addDumpMutate } = useMutation({
     mutationFn: async (newDump: DumpSession) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       const updated = [newDump, ...currentDumps];
       
       await saveLocalDumps(updated);
@@ -236,14 +241,14 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
+      queryClient.setQueryData(dumpQueryKey, data);
       queryClient.invalidateQueries({ queryKey: ['lifetimeDumpCount'] });
     },
   });
 
   const { mutate: toggleTaskMutate } = useMutation({
     mutationFn: async ({ dumpId, taskId }: { dumpId: string; taskId: string }) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       let updatedDump: DumpSession | null = null;
       
       const updated = currentDumps.map((dump) => {
@@ -302,13 +307,13 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
+      queryClient.setQueryData(dumpQueryKey, data);
     },
   });
 
   const { mutate: deleteDumpMutate } = useMutation({
     mutationFn: async (dumpId: string) => {
-      const currentDumps = queryClient.getQueryData<DumpSession[]>(['dumps', user?.id ?? 'local']) ?? [];
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       const updated = currentDumps.filter((d) => d.id !== dumpId);
       
       await saveLocalDumps(updated);
@@ -320,7 +325,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       return updated;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['dumps', user?.id ?? 'local'], data);
+      queryClient.setQueryData(dumpQueryKey, data);
     },
   });
 
@@ -335,7 +340,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       return [];
     },
     onSuccess: () => {
-      queryClient.setQueryData(['dumps', user?.id ?? 'local'], []);
+      queryClient.setQueryData(dumpQueryKey, []);
     },
   });
 
@@ -365,8 +370,8 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
   }, [clearAllMutate]);
 
   const refetch = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['dumps', user?.id ?? 'local'] });
-  }, [queryClient, user?.id]);
+    queryClient.invalidateQueries({ queryKey: dumpQueryKey });
+  }, [queryClient, dumpQueryKey]);
 
   const latestDump = useMemo(() => dumps[0] ?? null, [dumps]);
 
