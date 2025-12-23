@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
-    flexShrink: 1,
+    marginRight: 8,
   },
   categoryEmoji: {
     fontSize: 20,
@@ -457,12 +457,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800' as const,
     color: Colors.text,
-    flex: 1,
-    flexWrap: 'wrap' as const,
+    flexShrink: 1,
   },
   categoryCount: {
     fontSize: 16,
     fontWeight: '800' as const,
+    flexShrink: 0,
   },
   taskList: {
     gap: 8,

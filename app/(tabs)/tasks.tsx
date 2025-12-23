@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2 } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, List, Clock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -23,6 +23,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type FilterType = 'all' | 'pending' | 'completed';
 type SortType = 'newest' | 'oldest' | 'category';
+type ViewMode = 'category' | 'chronological';
 
 interface FlatTask {
   task: TaskItem;
@@ -40,6 +41,7 @@ export default function TasksScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('newest');
+  const [viewMode, setViewMode] = useState<ViewMode>('chronological');
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState<{ task: TaskItem; dumpId: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -114,12 +116,34 @@ export default function TasksScreen() {
       result = result.filter((t) => t.task.completed);
     }
 
-    if (sortBy === 'newest') {
-      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else if (sortBy === 'oldest') {
-      result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    } else if (sortBy === 'category') {
-      result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    if (viewMode === 'chronological') {
+      result.sort((a, b) => {
+        const aTime = a.task.timeEstimate || '';
+        const bTime = b.task.timeEstimate || '';
+        const aHasTime = /\d/.test(aTime);
+        const bHasTime = /\d/.test(bTime);
+        
+        if (aHasTime && !bHasTime) return -1;
+        if (!aHasTime && bHasTime) return 1;
+        if (aHasTime && bHasTime) {
+          const aMatch = aTime.match(/(\d+):(\d+)/);
+          const bMatch = bTime.match(/(\d+):(\d+)/);
+          if (aMatch && bMatch) {
+            const aMinutes = parseInt(aMatch[1]) * 60 + parseInt(aMatch[2]);
+            const bMinutes = parseInt(bMatch[1]) * 60 + parseInt(bMatch[2]);
+            return aMinutes - bMinutes;
+          }
+        }
+        return 0;
+      });
+    } else {
+      if (sortBy === 'newest') {
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } else if (sortBy === 'oldest') {
+        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      } else if (sortBy === 'category') {
+        result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+      }
     }
 
     if (cardAnimations.current.length !== result.length) {
@@ -129,7 +153,7 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay]);
+  }, [allTasks, searchQuery, filter, sortBy, viewMode, showAllDates, selectedDate, isSameDay]);
 
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
@@ -246,10 +270,23 @@ export default function TasksScreen() {
             <View>
               <Text style={styles.title}>Tasks</Text>
               <Text style={styles.subtitle}>
-                {stats.completed}/{stats.total} completed
+                {viewMode === 'chronological' ? 'Timeline View' : `${stats.completed}/${stats.total} completed`}
               </Text>
             </View>
             <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.iconButton, viewMode === 'chronological' && styles.iconButtonActive]}
+                onPress={() => {
+                  setViewMode(viewMode === 'chronological' ? 'category' : 'chronological');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }}
+              >
+                {viewMode === 'chronological' ? (
+                  <Clock size={20} color={viewMode === 'chronological' ? Colors.background : Colors.primary} />
+                ) : (
+                  <List size={20} color={Colors.primary} />
+                )}
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
@@ -317,25 +354,27 @@ export default function TasksScreen() {
                 </View>
               </View>
 
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>Sort by</Text>
-                <View style={styles.filterButtons}>
-                  {(['newest', 'oldest', 'category'] as SortType[]).map((s) => (
-                    <TouchableOpacity
-                      key={s}
-                      style={[styles.filterButton, sortBy === s && styles.filterButtonActive]}
-                      onPress={() => {
-                        setSortBy(s);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                    >
-                      <Text style={[styles.filterButtonText, sortBy === s && styles.filterButtonTextActive]}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              {viewMode === 'category' && (
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterLabel}>Sort by</Text>
+                  <View style={styles.filterButtons}>
+                    {(['newest', 'oldest', 'category'] as SortType[]).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        style={[styles.filterButton, sortBy === s && styles.filterButtonActive]}
+                        onPress={() => {
+                          setSortBy(s);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                      >
+                        <Text style={[styles.filterButtonText, sortBy === s && styles.filterButtonTextActive]}>
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
           )}
           </Animated.View>
@@ -369,6 +408,13 @@ export default function TasksScreen() {
             <Text style={styles.statLabel}>Done</Text>
           </View>
         </View>
+
+        {viewMode === 'chronological' && (
+          <View style={styles.viewModeCard}>
+            <Clock size={20} color={Colors.primary} />
+            <Text style={styles.viewModeText}>Tasks organized by time</Text>
+          </View>
+        )}
 
         {filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
@@ -443,13 +489,27 @@ export default function TasksScreen() {
                       {item.task.task}
                     </Text>
                     <View style={styles.taskMeta}>
-                      <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
-                        <Text style={styles.categoryBadgeText}>
-                          {item.categoryEmoji} {item.categoryName}
-                        </Text>
-                      </View>
+                      {viewMode === 'category' && (
+                        <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                          <Text style={styles.categoryBadgeText}>
+                            {item.categoryEmoji} {item.categoryName}
+                          </Text>
+                        </View>
+                      )}
                       {item.task.timeEstimate && (
-                        <Text style={styles.timeEstimate}>{item.task.timeEstimate}</Text>
+                        <View style={[styles.timeBadge, viewMode === 'chronological' && { backgroundColor: item.categoryColor + '20' }]}>
+                          <Clock size={12} color={viewMode === 'chronological' ? item.categoryColor : Colors.textMuted} />
+                          <Text style={[styles.timeEstimate, viewMode === 'chronological' && { color: item.categoryColor, fontWeight: '700' }]}>
+                            {item.task.timeEstimate}
+                          </Text>
+                        </View>
+                      )}
+                      {viewMode === 'chronological' && (
+                        <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                          <Text style={styles.categoryBadgeText}>
+                            {item.categoryEmoji} {item.categoryName}
+                          </Text>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -520,6 +580,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 2,
+  },
+  iconButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   title: {
     fontSize: 36,
@@ -707,10 +771,36 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     flexShrink: 1,
   },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
   timeEstimate: {
     fontSize: 12,
     color: Colors.textMuted,
     fontWeight: '500' as const,
+  },
+  viewModeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.accent1,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: Colors.border,
+    marginBottom: 16,
+  },
+  viewModeText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.text,
   },
   editButton: {
     padding: 14,
