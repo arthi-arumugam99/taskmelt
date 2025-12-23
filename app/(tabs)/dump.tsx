@@ -121,10 +121,10 @@ export default function DumpScreen() {
           
           const result = await Promise.race([
             generateObject({
-        messages: [
-          {
-            role: 'user',
-            content: `Organize this brain dump into actionable tasks with categories.
+              messages: [
+                {
+                  role: 'user',
+                  content: `Organize this brain dump into actionable tasks with categories.
 
 Rules:
 - Create 2-4 categories based on context
@@ -139,9 +139,9 @@ Rules:
 
 Input:
 ${text}`,
-          },
-        ],
-        schema: resultSchema,
+                },
+              ],
+              schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
               setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000)
@@ -149,20 +149,25 @@ ${text}`,
           ]);
           
           console.log('AI Response received successfully');
-          console.log('Categories count:', result.categories?.length ?? 0);
+          console.log('Response type:', typeof result);
+          console.log('Categories count:', result?.categories?.length ?? 0);
+          
+          if (!result || typeof result !== 'object') {
+            throw new Error('Invalid response from AI service');
+          }
+          
+          if (!result.categories || !Array.isArray(result.categories)) {
+            throw new Error('AI response missing categories');
+          }
+          
           return result;
         } catch (err) {
           lastError = err instanceof Error ? err : new Error(String(err));
           console.error(`Attempt ${attempt} failed:`, lastError.message);
+          console.error('Error details:', err);
           
           if (attempt === maxRetries) {
             console.error('All retry attempts failed');
-            console.error('Error type:', typeof err);
-            console.error('Error constructor:', err?.constructor?.name);
-            if (err instanceof Error) {
-              console.error('Error name:', err.name);
-              console.error('Error stack:', err.stack);
-            }
             break;
           }
           
@@ -172,14 +177,15 @@ ${text}`,
       }
       
       if (lastError) {
-        if (lastError.message.includes('timeout')) {
+        const errorMsg = lastError.message.toLowerCase();
+        if (errorMsg.includes('timeout')) {
           throw new Error('The AI is taking longer than usual. Please try again or consider shortening your brain dump.');
-        } else if (lastError.message.includes('Network request failed')) {
+        } else if (errorMsg.includes('json') || errorMsg.includes('parse')) {
+          throw new Error('AI returned an invalid response. Please try again.');
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
           throw new Error('Connection issue. Please check your internet and try again.');
-        } else if (lastError.message.includes('fetch')) {
-          throw new Error('Network error. Please check your connection and try again.');
         } else {
-          throw new Error('Unable to process your brain dump. Please try again.');
+          throw new Error(`Unable to process: ${lastError.message}`);
         }
       }
       
