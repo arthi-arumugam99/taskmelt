@@ -111,20 +111,15 @@ export default function DumpScreen() {
         throw new Error('AI service not configured. Please restart the app.');
       }
       
-      const maxRetries = 2;
-      let lastError: Error | null = null;
+      console.log('Calling generateObject...');
+      console.log('Input length:', text.length, 'characters');
       
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          console.log(`Attempt ${attempt}/${maxRetries} - Calling generateObject...`);
-          console.log('Input length:', text.length, 'characters');
-          
-          const result = await Promise.race([
-            generateObject({
-              messages: [
-                {
-                  role: 'user',
-                  content: `Organize this brain dump into actionable tasks with categories.
+      const result = await Promise.race([
+        generateObject({
+          messages: [
+            {
+              role: 'user',
+              content: `Organize this brain dump into actionable tasks with categories.
 
 Rules:
 - Create 2-4 categories based on context
@@ -139,57 +134,28 @@ Rules:
 
 Input:
 ${text}`,
-                },
-              ],
-              schema: resultSchema,
-            }),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000)
-            )
-          ]);
-          
-          console.log('AI Response received successfully');
-          console.log('Response type:', typeof result);
-          console.log('Categories count:', result?.categories?.length ?? 0);
-          
-          if (!result || typeof result !== 'object') {
-            throw new Error('Invalid response from AI service');
-          }
-          
-          if (!result.categories || !Array.isArray(result.categories)) {
-            throw new Error('AI response missing categories');
-          }
-          
-          return result;
-        } catch (err) {
-          lastError = err instanceof Error ? err : new Error(String(err));
-          console.error(`Attempt ${attempt} failed:`, lastError.message);
-          console.error('Error details:', err);
-          
-          if (attempt === maxRetries) {
-            console.error('All retry attempts failed');
-            break;
-          }
-          
-          console.log(`Waiting ${2 * attempt} seconds before retry...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-        }
+            },
+          ],
+          schema: resultSchema,
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('AI timeout - please try a shorter brain dump')), 30000)
+        )
+      ]);
+      
+      console.log('AI Response received successfully');
+      console.log('Response type:', typeof result);
+      console.log('Categories count:', result?.categories?.length ?? 0);
+      
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid AI response. Please try again.');
       }
       
-      if (lastError) {
-        const errorMsg = lastError.message.toLowerCase();
-        if (errorMsg.includes('timeout')) {
-          throw new Error('The AI is taking longer than usual. Please try again or consider shortening your brain dump.');
-        } else if (errorMsg.includes('json') || errorMsg.includes('parse')) {
-          throw new Error('AI returned an invalid response. Please try again.');
-        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-          throw new Error('Connection issue. Please check your internet and try again.');
-        } else {
-          throw new Error(`Unable to process: ${lastError.message}`);
-        }
+      if (!result.categories || !Array.isArray(result.categories)) {
+        throw new Error('AI response missing categories. Please try again.');
       }
       
-      throw new Error('Processing failed. Please try again.');
+      return result;
     },
     onSuccess: (data) => {
       console.log('Organization successful:', data);

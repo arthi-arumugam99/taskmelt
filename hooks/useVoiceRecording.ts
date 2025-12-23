@@ -50,7 +50,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const transcribeAudio = useCallback(async (formData: FormData): Promise<string> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
       console.log('📤 Sending audio to STT API...');
@@ -91,7 +91,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       clearTimeout(timeoutId);
       if (err instanceof Error && err.name === 'AbortError') {
         console.error('⏱️ STT request timed out');
-        throw new Error('Transcription timed out');
+        throw new Error('Transcription timeout - try shorter audio');
       }
       console.error('❌ STT error:', err);
       throw err;
