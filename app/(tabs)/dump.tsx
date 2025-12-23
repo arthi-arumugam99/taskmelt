@@ -213,6 +213,14 @@ ${text}`,
 
       setCurrentSession(session);
       addDump(session);
+      
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        router.push({
+          pathname: '/(tabs)/tasks',
+          params: { animated: 'true', date: session.createdAt }
+        });
+      }, 800);
     },
     onError: (error) => {
       console.error('Organization failed:', error);

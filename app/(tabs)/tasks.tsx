@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Search, X, Filter, Edit2 } from 'lucide-react-native';
@@ -15,6 +17,9 @@ import { useDumps } from '@/contexts/DumpContext';
 import { DumpSession, TaskItem } from '@/types/dump';
 import TaskEditModal from '@/components/TaskEditModal';
 import DayScroller from '@/components/DayScroller';
+import { useLocalSearchParams } from 'expo-router';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type FilterType = 'all' | 'pending' | 'completed';
 type SortType = 'newest' | 'oldest' | 'category';
@@ -30,14 +35,26 @@ interface FlatTask {
 
 export default function TasksScreen() {
   const { dumps, toggleTask, updateTask, deleteTask } = useDumps();
+  const params = useLocalSearchParams<{ animated?: string; date?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState<{ task: TaskItem; dumpId: string } | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showAllDates, setShowAllDates] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    if (params.date) {
+      return new Date(params.date);
+    }
+    return new Date();
+  });
+  const [showAllDates, setShowAllDates] = useState(!params.date);
+  
+  const cardAnimations = useRef<Animated.Value[]>([]);
+  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(-50)).current;
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   const allTasks = useMemo(() => {
     const tasks: FlatTask[] = [];
@@ -105,6 +122,12 @@ export default function TasksScreen() {
       result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
 
+    if (cardAnimations.current.length !== result.length) {
+      cardAnimations.current = result.map((_, i) => 
+        cardAnimations.current[i] || new Animated.Value(0)
+      );
+    }
+
     return result;
   }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay]);
 
@@ -152,14 +175,73 @@ export default function TasksScreen() {
     }
   }, [editingTask, deleteTask]);
 
+  useEffect(() => {
+    if (params.animated === 'true' && !hasAnimated && filteredTasks.length > 0) {
+      setHasAnimated(true);
+      
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerAnim, {
+          toValue: 0,
+          duration: 500,
+          delay: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      filteredTasks.forEach((_, index) => {
+        Animated.sequence([
+          Animated.delay(300 + index * 80),
+          Animated.spring(cardAnimations.current[index], {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    } else if (!params.animated) {
+      slideAnim.setValue(0);
+      fadeAnim.setValue(1);
+      headerAnim.setValue(0);
+      cardAnimations.current.forEach(anim => anim.setValue(1));
+    }
+  }, [params.animated, filteredTasks, hasAnimated, slideAnim, fadeAnim, headerAnim]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <Animated.View 
+        style={[
+          styles.pageWrapper,
+          {
+            transform: [{ translateX: slideAnim }],
+            opacity: fadeAnim,
+          }
+        ]}
       >
-        <View style={styles.header}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View 
+            style={[
+              styles.header,
+              {
+                transform: [{ translateY: headerAnim }],
+              }
+            ]}
+          >
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.title}>Tasks</Text>
@@ -256,7 +338,7 @@ export default function TasksScreen() {
               </View>
             </View>
           )}
-        </View>
+          </Animated.View>
 
         <DayScroller
           selectedDate={selectedDate}
@@ -303,8 +385,40 @@ export default function TasksScreen() {
           </View>
         ) : (
           <View style={styles.taskList}>
-            {filteredTasks.map((item) => (
-              <View key={item.task.id} style={styles.taskCard}>
+            {filteredTasks.map((item, index) => {
+              const animValue = cardAnimations.current[index] || new Animated.Value(1);
+              const scale = animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.3, 1],
+              });
+              const translateY = animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-100, 0],
+              });
+              const opacity = animValue.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0, 0.5, 1],
+              });
+              const rotate = animValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['-10deg', '0deg'],
+              });
+
+              return (
+              <Animated.View 
+                key={item.task.id} 
+                style={[
+                  styles.taskCard,
+                  {
+                    transform: [
+                      { scale },
+                      { translateY },
+                      { rotate },
+                    ],
+                    opacity,
+                  }
+                ]}
+              >
                 <TouchableOpacity
                   style={styles.taskRow}
                   onPress={() => handleToggleTask(item.dumpId, item.task.id)}
@@ -346,11 +460,12 @@ export default function TasksScreen() {
                 >
                   <Edit2 size={16} color={Colors.textMuted} />
                 </TouchableOpacity>
-              </View>
-            ))}
+              </Animated.View>
+            )})}
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
 
       {editingTask && (
         <TaskEditModal
@@ -370,6 +485,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  pageWrapper: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
