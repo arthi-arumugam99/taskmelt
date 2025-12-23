@@ -125,7 +125,7 @@ export default function DumpScreen() {
         try {
           console.log(`Attempt ${attempt}/${maxRetries}...`);
           
-          const result = await Promise.race([
+          const rawResult = await Promise.race([
             generateObject({
               messages: [
                 {
@@ -137,7 +137,7 @@ RULES:
 2. Complex tasks (>30min) need subtasks. Tasks with "prepare/plan/organize" need subtasks.
 3. scheduledTime: 24h format "HH:MM" ONLY for specific times ("meeting at 2pm" → "14:00")
 4. duration: "15m", "30m", "1h", "2h" for all tasks
-5. priority: high (urgent/deadlines), medium (important), low (optional)
+5. priority: MUST be exactly "high", "medium", or "low" (no other values allowed). high=urgent/deadlines, medium=important, low=optional
 6. Categories: Work, Personal, Health, Finance, Home, etc. (2-5 max)
 7. Order: scheduled items first, then high→medium→low priority
 8. Feelings/thoughts → isReflection: true
@@ -155,15 +155,40 @@ ${text}`,
           ]);
           
           console.log('✓ AI Response received');
-          console.log('Categories:', result?.categories?.length ?? 0);
+          console.log('Categories:', rawResult?.categories?.length ?? 0);
           
-          if (!result || typeof result !== 'object') {
+          if (!rawResult || typeof rawResult !== 'object') {
             throw new Error('Invalid AI response format');
           }
           
-          if (!result.categories || !Array.isArray(result.categories)) {
+          if (!rawResult.categories || !Array.isArray(rawResult.categories)) {
             throw new Error('Missing categories in response');
           }
+          
+          // Sanitize priority values to ensure they're valid
+          const validPriorities = ['high', 'medium', 'low'];
+          const sanitizePriority = (p: string | undefined): 'high' | 'medium' | 'low' => {
+            if (p && validPriorities.includes(p.toLowerCase())) {
+              return p.toLowerCase() as 'high' | 'medium' | 'low';
+            }
+            return 'medium';
+          };
+          
+          const result = {
+            ...rawResult,
+            categories: rawResult.categories.map((cat: any) => ({
+              ...cat,
+              priority: sanitizePriority(cat.priority),
+              items: cat.items.map((item: any) => ({
+                ...item,
+                priority: sanitizePriority(item.priority),
+                subtasks: item.subtasks?.map((st: any) => ({
+                  ...st,
+                  priority: sanitizePriority(st.priority),
+                })),
+              })),
+            })),
+          };
           
           return result;
         } catch (error) {
@@ -192,15 +217,15 @@ ${text}`,
       console.log('Organization successful:', data);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
-      const categories: Category[] = data.categories.map(cat => ({
+      const categories: Category[] = data.categories.map((cat: any) => ({
         ...cat,
         priority: cat.priority || 'medium',
-        items: cat.items.map(item => ({
+        items: cat.items.map((item: any) => ({
           ...item,
           id: generateId(),
           completed: false,
           priority: item.priority || 'medium',
-          subtasks: item.subtasks?.map(subtask => ({
+          subtasks: item.subtasks?.map((subtask: any) => ({
             ...subtask,
             id: generateId(),
             completed: false,
