@@ -5,6 +5,7 @@ import { useCallback, useMemo, useEffect } from 'react';
 import { DumpSession, TaskItem } from '@/types/dump';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const STORAGE_KEY = 'taskmelt_dumps';
 const LIFETIME_COUNT_KEY = 'taskmelt_lifetime_dump_count';
@@ -191,6 +192,7 @@ function mergeDumps(local: DumpSession[], remote: DumpSession[]): DumpSession[] 
 export const [DumpProvider, useDumps] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
+  const { scheduleTaskNotification, cancelTaskNotifications, scheduleSmartNudge } = useNotifications();
 
   const lifetimeCountQuery = useQuery({
     queryKey: ['lifetimeDumpCount'],
@@ -254,6 +256,14 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
         await saveRemoteDump(user.id, newDump);
       }
       
+      newDump.categories.forEach((category) => {
+        category.items.forEach((item) => {
+          if (!item.isReflection && (item.dueDate || item.timeEstimate)) {
+            scheduleTaskNotification(item, category.name, category.emoji, newDump.id);
+          }
+        });
+      });
+      
       return updated;
     },
     onSuccess: (data) => {
@@ -266,6 +276,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     mutationFn: async ({ dumpId, taskId }: { dumpId: string; taskId: string }) => {
       const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       let updatedDump: DumpSession | null = null;
+      let taskCompleted = false;
       
       const updated = currentDumps.map((dump) => {
         if (dump.id !== dumpId) return dump;
@@ -276,6 +287,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
             items: category.items.map((item) => {
               if (item.id === taskId) {
                 const newCompletedState = !item.completed;
+                taskCompleted = newCompletedState;
                 return {
                   ...item,
                   completed: newCompletedState,
@@ -293,6 +305,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
                   const updatedSubtasks = item.subtasks.map((st) => {
                     if (st.id === taskId) {
                       const newCompletedState = !st.completed;
+                      taskCompleted = newCompletedState;
                       return {
                         ...st,
                         completed: newCompletedState,
@@ -319,6 +332,10 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
         updatedDump = newDump;
         return newDump;
       });
+      
+      if (taskCompleted) {
+        await cancelTaskNotifications(dumpId, taskId);
+      }
       
       await saveLocalDumps(updated);
       
@@ -355,6 +372,8 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     mutationFn: async ({ dumpId, taskId, updatedTask }: { dumpId: string; taskId: string; updatedTask: TaskItem }) => {
       const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       let updatedDump: DumpSession | null = null;
+      let categoryName = '';
+      let categoryEmoji = '';
       
       const updated = currentDumps.map((dump) => {
         if (dump.id !== dumpId) return dump;
@@ -364,9 +383,16 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
             ...category,
             items: category.items.map((item) => {
               if (item.id === taskId) {
+                categoryName = category.name;
+                categoryEmoji = category.emoji;
                 return updatedTask;
               }
               if (item.subtasks) {
+                const hasSubtask = item.subtasks.some(st => st.id === taskId);
+                if (hasSubtask) {
+                  categoryName = category.name;
+                  categoryEmoji = category.emoji;
+                }
                 return {
                   ...item,
                   subtasks: item.subtasks.map((st) => 
@@ -381,6 +407,12 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
         updatedDump = newDump;
         return newDump;
       });
+      
+      if (categoryName && (updatedTask.dueDate || updatedTask.timeEstimate) && !updatedTask.completed) {
+        await scheduleTaskNotification(updatedTask, categoryName, categoryEmoji, dumpId);
+      } else if (updatedTask.completed) {
+        await cancelTaskNotifications(dumpId, taskId);
+      }
       
       await saveLocalDumps(updated);
       
@@ -399,6 +431,8 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     mutationFn: async ({ dumpId, taskId }: { dumpId: string; taskId: string }) => {
       const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
       let updatedDump: DumpSession | null = null;
+      
+      await cancelTaskNotifications(dumpId, taskId);
       
       const updated = currentDumps.map((dump) => {
         if (dump.id !== dumpId) return dump;
@@ -500,6 +534,39 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     const today = new Date().toDateString();
     return dumps.filter((d) => new Date(d.createdAt).toDateString() === today);
   }, [dumps]);
+
+  useEffect(() => {
+    if (dumps.length === 0) return;
+
+    let pendingCount = 0;
+    const categoryBreakdown = new Map<string, { emoji: string; name: string; count: number }>();
+
+    dumps.forEach((dump) => {
+      dump.categories.forEach((category) => {
+        category.items.forEach((item) => {
+          if (!item.isReflection && !item.completed) {
+            pendingCount++;
+            const key = category.name;
+            const existing = categoryBreakdown.get(key);
+            if (existing) {
+              existing.count++;
+            } else {
+              categoryBreakdown.set(key, {
+                emoji: category.emoji,
+                name: category.name,
+                count: 1,
+              });
+            }
+          }
+        });
+      });
+    });
+
+    const breakdown = Array.from(categoryBreakdown.values())
+      .sort((a, b) => b.count - a.count);
+
+    scheduleSmartNudge(pendingCount, breakdown);
+  }, [dumps, scheduleSmartNudge]);
 
   const canCreateDump = useCallback((isProUser: boolean) => {
     if (isProUser) return true;
