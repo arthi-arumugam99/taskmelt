@@ -8,9 +8,11 @@ import {
   TextInput,
   Animated,
   Dimensions,
+  PanResponder,
+  LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, List, Clock } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, List, Clock, GripVertical } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -51,6 +53,10 @@ export default function TasksScreen() {
     return new Date();
   });
   const [showAllDates, setShowAllDates] = useState(true);
+  const [manualOrder, setManualOrder] = useState<string[]>([]);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [cardLayouts, setCardLayouts] = useState<{ y: number; height: number }[]>([]);
+  const scrollViewRef = useRef<ScrollView>(null);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -109,7 +115,16 @@ export default function TasksScreen() {
       result = result.filter((t) => t.task.completed);
     }
 
-    if (viewMode === 'chronological') {
+    if (manualOrder.length > 0) {
+      result.sort((a, b) => {
+        const aIndex = manualOrder.indexOf(a.task.id);
+        const bIndex = manualOrder.indexOf(b.task.id);
+        if (aIndex === -1 && bIndex === -1) return 0;
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+    } else if (viewMode === 'chronological') {
       result.sort((a, b) => {
         const aScheduledTime = a.task.scheduledTime || '';
         const bScheduledTime = b.task.scheduledTime || '';
@@ -158,7 +173,7 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy, viewMode, showAllDates, selectedDate, isSameDay]);
+  }, [allTasks, searchQuery, filter, sortBy, viewMode, showAllDates, selectedDate, isSameDay, manualOrder]);
 
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
@@ -203,6 +218,66 @@ export default function TasksScreen() {
       setEditingTask(null);
     }
   }, [editingTask, deleteTask]);
+
+  const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+    const newOrder = [...filteredTasks.map(t => t.task.id)];
+    const [removed] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, removed);
+    setManualOrder(newOrder);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [filteredTasks]);
+
+  const handleCardLayout = useCallback((index: number, event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    setCardLayouts(prev => {
+      const newLayouts = [...prev];
+      newLayouts[index] = { y, height };
+      return newLayouts;
+    });
+  }, []);
+
+  const createPanResponder = useCallback((index: number) => {
+    const pan = new Animated.ValueXY();
+    
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        setDraggingIndex(index);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        pan.setValue({ x: 0, y: gestureState.dy });
+        
+        const currentY = (cardLayouts[index]?.y || 0) + gestureState.dy;
+        let targetIndex = index;
+        
+        for (let i = 0; i < cardLayouts.length; i++) {
+          if (i === index) continue;
+          const layout = cardLayouts[i];
+          if (!layout) continue;
+          
+          if (currentY > layout.y && currentY < layout.y + layout.height) {
+            targetIndex = i;
+            break;
+          }
+        }
+        
+        if (targetIndex !== index) {
+          handleReorder(index, targetIndex);
+        }
+      },
+      onPanResponderRelease: () => {
+        setDraggingIndex(null);
+        Animated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+        }).start();
+      },
+    });
+  }, [cardLayouts, handleReorder]);
 
   useEffect(() => {
     if (params.animated === 'true' && !hasAnimated && filteredTasks.length > 0) {
@@ -259,9 +334,11 @@ export default function TasksScreen() {
         ]}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={draggingIndex === null}
         >
           <Animated.View 
             style={[
@@ -442,6 +519,7 @@ export default function TasksScreen() {
         ) : (
           <View style={styles.taskList}>
             {filteredTasks.map((item, index) => {
+              const panResponder = createPanResponder(index);
               const animValue = cardAnimations.current[index] || new Animated.Value(1);
               const scale = animValue.interpolate({
                 inputRange: [0, 1],
@@ -462,7 +540,8 @@ export default function TasksScreen() {
 
               return (
               <Animated.View 
-                key={item.task.id} 
+                key={item.task.id}
+                onLayout={(e) => handleCardLayout(index, e)}
                 style={[
                   styles.taskCard,
                   {
@@ -471,10 +550,14 @@ export default function TasksScreen() {
                       { translateY },
                       { rotate },
                     ],
-                    opacity,
+                    opacity: draggingIndex === index ? 0.7 : opacity,
+                    zIndex: draggingIndex === index ? 1000 : 1,
                   }
                 ]}
               >
+                <View {...panResponder.panHandlers} style={styles.dragHandle}>
+                  <GripVertical size={20} color={Colors.textMuted} />
+                </View>
                 <TouchableOpacity
                   style={styles.taskRow}
                   onPress={() => handleToggleTask(item.dumpId, item.task.id)}
@@ -539,7 +622,8 @@ export default function TasksScreen() {
                   <Edit2 size={16} color={Colors.textMuted} />
                 </TouchableOpacity>
               </Animated.View>
-            )})}
+            );
+            })}
           </View>
         )}
 
@@ -752,6 +836,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
+  },
+  dragHandle: {
+    padding: 14,
+    paddingRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   taskRow: {
     flex: 1,
