@@ -130,187 +130,27 @@ export default function DumpScreen() {
               messages: [
                 {
                   role: 'user',
-                  content: `You are an elite AI productivity assistant. Transform this brain dump into a perfectly organized, actionable productivity system.
+                  content: `Organize this brain dump into actionable tasks.
 
-**🎯 CORE MISSION:**
-Create a smart, time-aware task system that orders by IMPORTANCE & LOGIC—not by the order things were mentioned.
+RULES:
+1. Group related tasks under parent tasks with subtasks (e.g., multiple emails → "Handle emails" with subtasks)
+2. Complex tasks (>30min) need subtasks. Tasks with "prepare/plan/organize" need subtasks.
+3. scheduledTime: 24h format "HH:MM" ONLY for specific times ("meeting at 2pm" → "14:00")
+4. duration: "15m", "30m", "1h", "2h" for all tasks
+5. priority: high (urgent/deadlines), medium (important), low (optional)
+6. Categories: Work, Personal, Health, Finance, Home, etc. (2-5 max)
+7. Order: scheduled items first, then high→medium→low priority
+8. Feelings/thoughts → isReflection: true
+9. Set hasSubtaskSuggestion: true on parent tasks with subtasks
 
-**⚡ INTELLIGENT TIME HANDLING:**
-1. **scheduledTime**: ONLY for specific appointment times
-   - Examples: "9:30" (9:30am), "14:00" (2pm), "15:45" (3:45pm)
-   - Format: 24-hour "HH:MM" format
-   - Use for: meetings, appointments, deadlines with specific times
-   - "meeting at 2pm" → scheduledTime: "14:00"
-   - "pick up kids at 3:30" → scheduledTime: "15:30"
-   - "gym at 6am" → scheduledTime: "06:00"
-
-2. **duration**: Estimated time to complete the task
-   - Examples: "15m", "30m", "1h", "2h", "3h"
-   - Use for ALL actionable tasks
-   - Be realistic: emails (10-15m), calls (30m), reports (2-3h)
-
-3. **timeEstimate**: Human-readable combined info (LEGACY, populate for compatibility)
-   - Examples: "30 mins", "1 hour", "2 hours"
-
-**🧠 CRITICAL: SMART TASK GROUPING & BREAKDOWN**
-
-⚠️ YOU MUST GROUP RELATED TASKS AND CREATE SUBTASKS ⚠️
-
-This is THE MOST IMPORTANT RULE. Users complain when you don't do this right.
-
-**GROUPING RULES (DO THIS FIRST):**
-1. If you see multiple tasks about the SAME THING → Create ONE parent task with ALL as subtasks
-   - "Reply to email X", "Reply to email Y", "Reply to email Z" → Parent: "Handle email responses" + 3 subtasks
-   - "Respond to Slack message 1", "Respond to Slack message 2" → Parent: "Respond to Slack messages" + 2 subtasks
-   - "Open document", "Write conclusion", "Send file" → Parent: "Complete and send document" + 3 subtasks
-
-2. If tasks are STEPS in a larger workflow → Create parent with workflow name
-   - "Check invoice status", "Open bank app", "Send payment" → Parent: "Process invoice payment" + 3 subtasks
-   - "Find charger", "Plug in device" → Parent: "Charge device" + 2 subtasks
-
-3. If tasks mention "then", "after", "and then" → They're a sequence, make them subtasks
-
-**BREAKDOWN RULES (AFTER GROUPING):**
-1. Complex tasks (>30 min) → MUST have subtasks
-2. Tasks with "prepare", "plan", "organize", "setup", "create", "research" → MUST have subtasks
-3. Each subtask MUST have: task, duration, priority, scheduledTime (if applicable)
-4. Set hasSubtaskSuggestion: true on parent task
-5. Make 2-6 subtasks per complex task
-6. Each subtask must be actionable and atomic
-
-**CRITICAL EXAMPLES - STUDY THESE:**
-
-❌ WRONG (What you're doing now):
-Input: "reply to update request email, respond to slack messages, respond to slack message needing decision"
-Bad output: 3 separate tasks
-
-✅ CORRECT (What you MUST do):
-Parent: { task: "Handle communications", hasSubtaskSuggestion: true, duration: "45m", subtasks: [...] }
-Subtasks:
-- Reply to update request email (10m, high)
-- Respond to slack messages (15m, medium)  
-- Respond to slack message needing decision (20m, high)
-
-❌ WRONG:
-Input: "open document and review, write conclusion, send file, check file"
-Bad output: 4 separate tasks
-
-✅ CORRECT:
-Parent: { task: "Complete and finalize document", hasSubtaskSuggestion: true, duration: "1h", subtasks: [...] }
-Subtasks:
-- Open document and review current state (10m, high)
-- Write and add conclusion (20m, high)
-- Double check and rename file (5m, medium)
-- Send finished file (5m, high)
-
-"prepare presentation" →
-  Parent: { task: "Prepare presentation", hasSubtaskSuggestion: true, subtasks: [...] }
-  Subtasks:
-  - Research topic and gather data (1h, medium)
-  - Create slide outline (30m, medium)
-  - Design slides with visuals (2h, medium)
-  - Practice delivery and timing (30m, low)
-
-"weekly meal prep" →
-  Parent: { task: "Weekly meal prep", hasSubtaskSuggestion: true, subtasks: [...] }
-  Subtasks:
-  - Plan meals for the week (20m, medium)
-  - Create grocery list (10m, medium)
-  - Go grocery shopping (1h, medium)
-  - Cook and portion meals (3h, high)
-
-"organize team meeting" →
-  Parent: { task: "Organize team meeting", hasSubtaskSuggestion: true, subtasks: [...] }
-  Subtasks:
-  - Choose meeting time and date (15m, high)
-  - Send calendar invites to team (10m, high)
-  - Prepare meeting agenda (30m, medium)
-  - Book conference room (5m, medium)
-
-"plan vacation" →
-  Parent: { task: "Plan vacation", hasSubtaskSuggestion: true, subtasks: [...] }
-  Subtasks:
-  - Research destinations and activities (1h, medium)
-  - Compare flights and prices (30m, medium)
-  - Book flights and accommodation (45m, high)
-  - Create day-by-day itinerary (1h, low)
-
-"write blog post" →
-  Subtasks:
-  - Brainstorm topics and outline (30m, medium)
-  - Research and gather sources (1h, medium)
-  - Write first draft (2h, high)
-  - Edit and proofread (45m, medium)
-  - Add images and format (30m, low)
-
-"deep clean apartment" →
-  Subtasks:
-  - Declutter and organize (1h, medium)
-  - Clean kitchen and appliances (45m, high)
-  - Clean bathroom thoroughly (30m, high)
-  - Vacuum and mop floors (45m, medium)
-
-**WHEN TO BREAK DOWN:**
-- Preparing anything → subtasks
-- Planning anything → subtasks
-- Organizing anything → subtasks
-- Creating anything substantial → subtasks
-- Any task mentioning "and" (e.g., "clean and organize") → subtasks
-- Any task that takes more than 30 minutes → subtasks
-
-**📊 PRIORITY ASSIGNMENT:**
-Assign priority to EVERY task:
-- **high**: Urgent, time-sensitive, deadlines today, meetings, critical
-- **medium**: Important but flexible, regular work tasks
-- **low**: Nice-to-have, optional, can be postponed
-
-**🎨 SMART CATEGORIZATION:**
-Create 2-5 logical categories:
-- Common: Work, Personal, Health, Finance, Home, Learning, Social
-- Use context clues: gym→Health, emails→Work, groceries→Personal/Home
-- Assign category priority based on urgency of items within
-- Put time-sensitive items in high-priority categories
-
-**📋 INTELLIGENT ORDERING WITHIN CATEGORIES:**
-1. ⏰ Scheduled items FIRST (sorted by scheduledTime chronologically)
-2. 🔥 High-priority unscheduled tasks
-3. 📌 Medium-priority tasks  
-4. 💭 Low-priority tasks
-5. 📝 Reflections/notes LAST
-
-Example category order:
-- "Meeting with Sarah" (scheduledTime: "10:00", priority: high)
-- "Submit report" (priority: high, duration: "2h")
-- "Review emails" (priority: medium, duration: "30m")
-- "Update website" (priority: low, duration: "1h")
-- Reflection: "Feeling overwhelmed with deadlines"
-
-**🎯 CATEGORY ORDER:**
-Order categories by:
-1. Categories with scheduled items first
-2. High-priority categories
-3. Medium-priority categories
-4. Low-priority categories
-
-**💡 SPECIAL ITEMS:**
-- Mark thoughts/feelings/reflections with isReflection: true
-- These get their own category or go to "Notes & Reflections"
-- No priority, no duration for reflections
-
-**📝 EXTRACT EVERYTHING:**
-- Every task, action, idea, thought mentioned
-- Every meeting, appointment, deadline
-- Every wish, goal, concern
-- Be thorough but smart—combine duplicates
-
-**INPUT TO ORGANIZE:**
+INPUT:
 ${text}`,
                 },
               ],
               schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 45000)
+              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 60000)
             )
           ]);
           
