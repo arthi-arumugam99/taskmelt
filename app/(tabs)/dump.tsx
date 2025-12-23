@@ -109,26 +109,26 @@ export default function DumpScreen() {
       }
       
       let lastError: Error | null = null;
-      const maxRetries = 2;
+      const maxRetries = 3;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(`Attempt ${attempt}/${maxRetries}...`);
           
-          const truncatedText = text.length > 2000 ? text.substring(0, 2000) + '...' : text;
+          const truncatedText = text.length > 1500 ? text.substring(0, 1500) : text;
           
           const rawResult = await Promise.race([
             generateObject({
               messages: [
                 {
                   role: 'user',
-                  content: `Convert to tasks. Rules: priority must be "high"/"medium"/"low". Group related items. duration: "15m"/"30m"/"1h". scheduledTime: "HH:MM" only if time mentioned. Max 4 categories.\n\n${truncatedText}`,
+                  content: `Parse into tasks. Output JSON with categories array. Each category has name, emoji, color (hex), items array. Each item has task (string), priority ("high" or "medium" or "low"), duration (optional like "15m"), subtasks (optional array). Add summary string. Max 3-4 categories.\n\nInput:\n${truncatedText}`,
                 },
               ],
               schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 90000)
+              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 120000)
             )
           ]);
           
@@ -179,9 +179,12 @@ export default function DumpScreen() {
           console.error(`Attempt ${attempt} failed:`, error);
           lastError = error as Error;
           
+          const isTimeout = (error as Error)?.message?.includes('timeout');
+          
           if (attempt < maxRetries) {
-            console.log('Retrying in 1 second...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const delay = isTimeout ? 500 : 1500;
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
       }
