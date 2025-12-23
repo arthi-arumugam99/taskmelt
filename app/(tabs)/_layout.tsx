@@ -57,12 +57,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="history"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }
