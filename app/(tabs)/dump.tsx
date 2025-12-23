@@ -313,7 +313,7 @@ ${text}`,
           {!currentSession ? (
             <>
               <View style={styles.header}>
-                <Text style={styles.title}>taskmelt</Text>
+                <Text style={styles.title}>task<Text style={styles.titleItalic}>melt</Text></Text>
                 <Text style={styles.subtitle}>Chaos in. Clarity out.</Text>
                 {!isProUser && remainingFreeDumps > 0 && (
                   <View style={styles.freeLimitBadge}>
@@ -477,7 +477,9 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 8,
     letterSpacing: -1,
-    textTransform: 'uppercase' as const,
+  },
+  titleItalic: {
+    fontStyle: 'italic' as const,
   },
   subtitle: {
     fontSize: 16,

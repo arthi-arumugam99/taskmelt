@@ -260,7 +260,7 @@ export default function SettingsScreen() {
                 <Crown size={20} color={Colors.primary} />
               </View>
               <View style={styles.proActiveTextContainer}>
-                <Text style={styles.proActiveTitle}>taskmelt Pro</Text>
+                <Text style={styles.proActiveTitle}>task<Text style={styles.proActiveTitleItalic}>melt</Text> Pro</Text>
                 <Text style={styles.proActiveSubtitle}>
                   {customerInfo?.activeSubscriptions?.length
                     ? 'Active subscription'
@@ -636,6 +636,9 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.text,
     marginBottom: 2,
+  },
+  proActiveTitleItalic: {
+    fontStyle: 'italic' as const,
   },
   proActiveSubtitle: {
     fontSize: 13,

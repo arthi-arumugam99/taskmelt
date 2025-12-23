@@ -199,7 +199,7 @@ export default function PaywallScreen() {
           <View style={styles.iconContainer}>
             <Crown size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>taskmelt Pro</Text>
+          <Text style={styles.heroTitle}>task<Text style={styles.heroTitleItalic}>melt</Text> Pro</Text>
           <Text style={styles.heroSubtitle}>
             Unlock the full potential of your productivity
           </Text>
@@ -342,6 +342,9 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.text,
     marginBottom: 8,
+  },
+  heroTitleItalic: {
+    fontStyle: 'italic' as const,
   },
   heroSubtitle: {
     fontSize: 16,
