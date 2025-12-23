@@ -42,19 +42,12 @@ const resultSchema = z.object({
       items: z.array(
         z.object({
           task: z.string(),
-          priority: z.enum(['high', 'medium', 'low']).default('medium'),
+          priority: z.enum(['high', 'medium', 'low']),
           duration: z.string().optional(),
-          scheduledTime: z.string().optional(),
-          subtasks: z.array(
-            z.object({
-              task: z.string(),
-              priority: z.enum(['high', 'medium', 'low']).default('medium'),
-            })
-          ).optional(),
         })
       ),
     })
-  ),
+  ).max(3),
   summary: z.string(),
 });
 
@@ -109,26 +102,26 @@ export default function DumpScreen() {
       }
       
       let lastError: Error | null = null;
-      const maxRetries = 3;
+      const maxRetries = 2;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(`Attempt ${attempt}/${maxRetries}...`);
           
-          const truncatedText = text.length > 1500 ? text.substring(0, 1500) : text;
+          const truncatedText = text.length > 800 ? text.substring(0, 800) : text;
           
           const rawResult = await Promise.race([
             generateObject({
               messages: [
                 {
                   role: 'user',
-                  content: `Parse into tasks. Output JSON with categories array. Each category has name, emoji, color (hex), items array. Each item has task (string), priority ("high" or "medium" or "low"), duration (optional like "15m"), subtasks (optional array). Add summary string. Max 3-4 categories.\n\nInput:\n${truncatedText}`,
+                  content: `Extract tasks from this text. Return max 3 categories with tasks.\n\n${truncatedText}`,
                 },
               ],
               schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 120000)
+              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 90000)
             )
           ]);
           
@@ -143,7 +136,6 @@ export default function DumpScreen() {
             throw new Error('Missing categories in response');
           }
           
-          // Sanitize priority values to ensure they're valid
           const validPriorities = ['high', 'medium', 'low'];
           const sanitizePriority = (p: string | undefined): 'high' | 'medium' | 'low' => {
             if (p && validPriorities.includes(p.toLowerCase())) {
@@ -154,22 +146,15 @@ export default function DumpScreen() {
           
           const result = {
             ...rawResult,
-            categories: rawResult.categories.map((cat: any) => ({
+            categories: rawResult.categories.slice(0, 3).map((cat: any) => ({
               ...cat,
               items: cat.items.map((item: any) => ({
                 ...item,
                 priority: sanitizePriority(item.priority),
                 original: item.task,
                 timeEstimate: item.duration,
-                hasSubtaskSuggestion: !!item.subtasks?.length,
                 isReflection: false,
                 closesLoop: false,
-                subtasks: item.subtasks?.map((st: any) => ({
-                  ...st,
-                  priority: sanitizePriority(st.priority),
-                  duration: item.duration,
-                  timeEstimate: item.duration,
-                })),
               })),
             })),
           };
@@ -179,12 +164,9 @@ export default function DumpScreen() {
           console.error(`Attempt ${attempt} failed:`, error);
           lastError = error as Error;
           
-          const isTimeout = (error as Error)?.message?.includes('timeout');
-          
           if (attempt < maxRetries) {
-            const delay = isTimeout ? 500 : 1500;
-            console.log(`Retrying in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            console.log(`Retrying in 1000ms...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
       }
