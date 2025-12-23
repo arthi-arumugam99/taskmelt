@@ -482,7 +482,7 @@ ${text}`,
                 {!isProUser && remainingFreeDumps === 0 && (
                   <TouchableOpacity 
                     style={styles.upgradeBadge}
-                    onPress={() => router.push('/paywall')}
+                    onPress={() => router.push('/paywall' as any)}
                   >
                     <Text style={styles.upgradeBadgeText}>Upgrade to Pro for unlimited dumps</Text>
                   </TouchableOpacity>
