@@ -90,14 +90,14 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
     if (listRef.current && todayIndex >= 0 && containerWidth > 0 && !hasScrolled.current) {
       hasScrolled.current = true;
       requestAnimationFrame(() => {
-        listRef.current?.scrollToIndex({ 
-          index: todayIndex, 
-          animated: false, 
-          viewPosition: 0.5 
+        const offset = (todayIndex * DAY_WIDTH) - (containerWidth / 2) + (DAY_WIDTH / 2) + horizontalPadding;
+        listRef.current?.scrollToOffset({ 
+          offset: Math.max(0, offset), 
+          animated: false 
         });
       });
     }
-  }, [todayIndex, containerWidth]);
+  }, [todayIndex, containerWidth, horizontalPadding]);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
@@ -132,11 +132,12 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
 
   const onScrollToIndexFailed = useCallback(() => {
     setTimeout(() => {
-      if (todayIndex >= 0) {
-        listRef.current?.scrollToIndex({ index: todayIndex, animated: false, viewPosition: 0.5 });
+      if (todayIndex >= 0 && containerWidth > 0) {
+        const offset = (todayIndex * DAY_WIDTH) - (containerWidth / 2) + (DAY_WIDTH / 2) + horizontalPadding;
+        listRef.current?.scrollToOffset({ offset: Math.max(0, offset), animated: false });
       }
     }, 100);
-  }, [todayIndex]);
+  }, [todayIndex, containerWidth, horizontalPadding]);
 
   const contentContainerStyle = React.useMemo(() => ({
     paddingHorizontal: horizontalPadding,
