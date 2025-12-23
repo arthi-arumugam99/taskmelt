@@ -141,13 +141,45 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         staysActiveInBackground: false,
       });
 
-      console.log('🎙️ Creating recording with preset...');
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        undefined,
-        100
-      );
+      console.log('🎙️ Creating recording...');
+      
+      const recordingOptions = {
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      };
 
+      const recording = new Audio.Recording();
+      
+      try {
+        await recording.prepareToRecordAsync(recordingOptions);
+        console.log('✅ Recording prepared');
+      } catch (prepareError) {
+        console.error('❌ Prepare error:', prepareError);
+        throw prepareError;
+      }
+      
+      await recording.startAsync();
       recordingRef.current = recording;
       
       const status = await recording.getStatusAsync();
@@ -341,14 +373,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       console.log('📼 Recording URI:', uri);
 
-      const uriParts = uri.split('.');
-      const fileType = uriParts[uriParts.length - 1] || (Platform.OS === 'ios' ? 'wav' : 'm4a');
-      console.log('📁 File type:', fileType);
+      const fileType = Platform.OS === 'ios' ? 'wav' : 'm4a';
+      const mimeType = Platform.OS === 'ios' ? 'audio/wav' : 'audio/m4a';
+      console.log('📁 File type:', fileType, 'MIME:', mimeType);
 
       const audioFile = {
         uri,
         name: `recording.${fileType}`,
-        type: `audio/${fileType === 'wav' ? 'wav' : 'mp4'}`,
+        type: mimeType,
       };
       console.log('📦 Audio file object:', JSON.stringify(audioFile));
 
