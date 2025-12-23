@@ -78,23 +78,23 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
     return result;
   }, []);
 
-  const selectedIndex = React.useMemo(() => 
-    days.findIndex(d => isSameDay(d, selectedDate)),
-    [days, selectedDate]
+  const todayIndex = React.useMemo(() => 
+    days.findIndex(d => isSameDay(d, today)),
+    [days, today]
   );
 
   useEffect(() => {
-    if (listRef.current && selectedIndex >= 0 && !hasScrolled.current) {
+    if (listRef.current && todayIndex >= 0 && !hasScrolled.current) {
       hasScrolled.current = true;
       requestAnimationFrame(() => {
         listRef.current?.scrollToIndex({ 
-          index: selectedIndex, 
+          index: todayIndex, 
           animated: false, 
           viewPosition: 0.5 
         });
       });
     }
-  }, [selectedIndex]);
+  }, [todayIndex]);
 
   const handleDatePress = useCallback((date: Date) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,11 +122,13 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
     );
   }, [selectedDate, today, handleDatePress]);
 
-  const onScrollToIndexFailed = useCallback((info: { index: number }) => {
+  const onScrollToIndexFailed = useCallback(() => {
     setTimeout(() => {
-      listRef.current?.scrollToIndex({ index: info.index, animated: false, viewPosition: 0.5 });
+      if (todayIndex >= 0) {
+        listRef.current?.scrollToIndex({ index: todayIndex, animated: false, viewPosition: 0.5 });
+      }
     }, 100);
-  }, []);
+  }, [todayIndex]);
 
   return (
     <View style={styles.container}>
