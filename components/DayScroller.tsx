@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 
@@ -11,7 +11,6 @@ interface DayScrollerProps {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_WIDTH = 56;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function isSameDay(date1: Date, date2: Date): boolean {
   return (
@@ -21,9 +20,51 @@ function isSameDay(date1: Date, date2: Date): boolean {
   );
 }
 
+function DayItemComponent({ 
+  date, 
+  isSelected, 
+  isToday, 
+  onPress 
+}: { 
+  date: Date; 
+  isSelected: boolean; 
+  isToday: boolean; 
+  onPress: () => void;
+}) {
+  return (
+  <TouchableOpacity
+    style={[
+      styles.dayItem,
+      isSelected && styles.dayItemSelected,
+      isToday && !isSelected && styles.dayItemToday,
+    ]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <Text style={[
+      styles.dayName,
+      isSelected && styles.dayNameSelected,
+      isToday && !isSelected && styles.dayNameToday,
+    ]}>
+      {DAYS[date.getDay()]}
+    </Text>
+    <Text style={[
+      styles.dayNumber,
+      isSelected && styles.dayNumberSelected,
+      isToday && !isSelected && styles.dayNumberToday,
+    ]}>
+      {date.getDate()}
+    </Text>
+  </TouchableOpacity>
+  );
+}
+
+const DayItem = React.memo(DayItemComponent);
+
 export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerProps) {
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlatList<Date>>(null);
   const today = React.useMemo(() => new Date(), []);
+  const hasScrolled = useRef(false);
   
   const days = React.useMemo(() => {
     const result: Date[] = [];
@@ -31,6 +72,7 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
     for (let i = -30; i <= 30; i++) {
       const date = new Date(baseDate);
       date.setDate(baseDate.getDate() + i);
+      date.setHours(0, 0, 0, 0);
       result.push(date);
     }
     return result;
@@ -42,65 +84,70 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
   );
 
   useEffect(() => {
-    if (scrollRef.current && selectedIndex >= 0) {
-      const offset = (selectedIndex * DAY_WIDTH) - (SCREEN_WIDTH / 2) + (DAY_WIDTH / 2) + 10;
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ x: Math.max(0, offset), animated: false });
-      }, 100);
+    if (listRef.current && selectedIndex >= 0 && !hasScrolled.current) {
+      hasScrolled.current = true;
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToIndex({ 
+          index: selectedIndex, 
+          animated: false, 
+          viewPosition: 0.5 
+        });
+      });
     }
   }, [selectedIndex]);
 
-  const handleDatePress = (date: Date) => {
+  const handleDatePress = useCallback((date: Date) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onDateSelect(date);
-  };
+  }, [onDateSelect]);
+
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: DAY_WIDTH,
+    offset: DAY_WIDTH * index,
+    index,
+  }), []);
+
+  const keyExtractor = useCallback((_: Date, index: number) => index.toString(), []);
+
+  const renderItem: ListRenderItem<Date> = useCallback(({ item: date }) => {
+    const isSelected = isSameDay(date, selectedDate);
+    const isToday = isSameDay(date, today);
+    return (
+      <DayItem
+        date={date}
+        isSelected={isSelected}
+        isToday={isToday}
+        onPress={() => handleDatePress(date)}
+      />
+    );
+  }, [selectedDate, today, handleDatePress]);
+
+  const onScrollToIndexFailed = useCallback((info: { index: number }) => {
+    setTimeout(() => {
+      listRef.current?.scrollToIndex({ index: info.index, animated: false, viewPosition: 0.5 });
+    }, 100);
+  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.monthLabel}>
         {MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
       </Text>
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
+        ref={listRef}
+        data={days}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        snapToInterval={DAY_WIDTH}
-        decelerationRate="fast"
-      >
-        {days.map((date, index) => {
-          const isSelected = isSameDay(date, selectedDate);
-          const isToday = isSameDay(date, today);
-
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dayItem,
-                isSelected && styles.dayItemSelected,
-                isToday && !isSelected && styles.dayItemToday,
-              ]}
-              onPress={() => handleDatePress(date)}
-              activeOpacity={0.7}
-            >
-              <Text style={[
-                styles.dayName,
-                isSelected && styles.dayNameSelected,
-                isToday && !isSelected && styles.dayNameToday,
-              ]}>
-                {DAYS[date.getDay()]}
-              </Text>
-              <Text style={[
-                styles.dayNumber,
-                isSelected && styles.dayNumberSelected,
-                isToday && !isSelected && styles.dayNumberToday,
-              ]}>
-                {date.getDate()}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        getItemLayout={getItemLayout}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={11}
+        removeClippedSubviews={true}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+      />
     </View>
   );
 }
@@ -134,6 +181,7 @@ const styles = StyleSheet.create({
   dayItem: {
     width: DAY_WIDTH - 8,
     marginHorizontal: 4,
+    marginVertical: 2,
     paddingVertical: 10,
     borderRadius: 14,
     alignItems: 'center',

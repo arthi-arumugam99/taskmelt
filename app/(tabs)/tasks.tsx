@@ -52,7 +52,7 @@ export default function TasksScreen() {
     }
     return new Date();
   });
-  const [showAllDates, setShowAllDates] = useState(true);
+  const [showAllDates, setShowAllDates] = useState(false);
   const [manualOrder, setManualOrder] = useState<string[]>([]);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [cardLayouts, setCardLayouts] = useState<{ y: number; height: number }[]>([]);
@@ -206,12 +206,12 @@ export default function TasksScreen() {
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
       ? allTasks 
-      : allTasks.filter((t) => isSameDay(new Date(t.createdAt), selectedDate));
+      : allTasks.filter((t) => isSameDay(getTaskDate(t), selectedDate));
     const total = tasksForStats.length;
     const completed = tasksForStats.filter((t) => t.task.completed).length;
     const pending = total - completed;
     return { total, completed, pending };
-  }, [allTasks, showAllDates, selectedDate, isSameDay]);
+  }, [allTasks, showAllDates, selectedDate, isSameDay, getTaskDate]);
 
   const handleDateSelect = useCallback((date: Date) => {
     setSelectedDate(date);
@@ -314,39 +314,29 @@ export default function TasksScreen() {
   }, [cardLayouts, handleReorder]);
 
   useEffect(() => {
-    if (params.animated === 'true' && !hasAnimated && filteredTasks.length > 0) {
+    if (params.animated === 'true' && !hasAnimated) {
       setHasAnimated(true);
       
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 600,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 400,
-          delay: 200,
+          duration: 200,
           useNativeDriver: true,
         }),
         Animated.timing(headerAnim, {
           toValue: 0,
-          duration: 500,
-          delay: 100,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]).start();
 
-      filteredTasks.forEach((_, index) => {
-        Animated.sequence([
-          Animated.delay(300 + index * 80),
-          Animated.spring(cardAnimations.current[index], {
-            toValue: 1,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          }),
-        ]).start();
+      cardAnimations.current.forEach((anim) => {
+        anim.setValue(1);
       });
     } else if (!params.animated) {
       slideAnim.setValue(0);
@@ -354,7 +344,7 @@ export default function TasksScreen() {
       headerAnim.setValue(0);
       cardAnimations.current.forEach(anim => anim.setValue(1));
     }
-  }, [params.animated, filteredTasks, hasAnimated, slideAnim, fadeAnim, headerAnim]);
+  }, [params.animated, hasAnimated, slideAnim, fadeAnim, headerAnim]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -586,34 +576,14 @@ export default function TasksScreen() {
           <View style={styles.taskList}>
             {filteredTasks.map((item, index) => {
               const panResponder = createPanResponder(index);
-              const animValue = cardAnimations.current[index] || new Animated.Value(1);
-              const scale = animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.3, 1],
-              });
-              const translateY = animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-100, 0],
-              });
-              const opacity = animValue.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0, 0.5, 1],
-              });
-              const rotate = animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['-10deg', '0deg'],
-              });
 
               if (compactView) {
                 return (
-                  <Animated.View
+                  <View
                     key={item.task.id}
                     style={[
                       styles.compactCard,
-                      {
-                        transform: [{ scale }, { translateY }],
-                        opacity: draggingIndex === index ? 0.7 : opacity,
-                      }
+                      draggingIndex === index && { opacity: 0.7 },
                     ]}
                   >
                     <TouchableOpacity
@@ -646,25 +616,17 @@ export default function TasksScreen() {
                       )}
                       <Text style={styles.compactEmoji}>{item.categoryEmoji}</Text>
                     </TouchableOpacity>
-                  </Animated.View>
+                  </View>
                 );
               }
 
               return (
-              <Animated.View 
+              <View 
                 key={item.task.id}
                 onLayout={(e) => handleCardLayout(index, e)}
                 style={[
                   styles.taskCard,
-                  {
-                    transform: [
-                      { scale },
-                      { translateY },
-                      { rotate },
-                    ],
-                    opacity: draggingIndex === index ? 0.7 : opacity,
-                    zIndex: draggingIndex === index ? 1000 : 1,
-                  }
+                  draggingIndex === index && { opacity: 0.7, zIndex: 1000 },
                 ]}
               >
                 <View {...panResponder.panHandlers} style={styles.dragHandle}>
@@ -789,7 +751,7 @@ export default function TasksScreen() {
                 >
                   <Edit2 size={16} color={Colors.textMuted} />
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
             );
             })}
           </View>
