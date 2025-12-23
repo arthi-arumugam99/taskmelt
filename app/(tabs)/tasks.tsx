@@ -12,7 +12,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, List, Clock, GripVertical, ChevronDown, ChevronRight } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -25,7 +25,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type FilterType = 'all' | 'pending' | 'completed';
 type SortType = 'newest' | 'oldest' | 'category';
-type ViewMode = 'category' | 'chronological';
+
 
 interface FlatTask {
   task: TaskItem;
@@ -43,7 +43,6 @@ export default function TasksScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('newest');
-  const [viewMode, setViewMode] = useState<ViewMode>('chronological');
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState<{ task: TaskItem; dumpId: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -124,7 +123,7 @@ export default function TasksScreen() {
         if (bIndex === -1) return -1;
         return aIndex - bIndex;
       });
-    } else if (viewMode === 'chronological') {
+    } else {
       result.sort((a, b) => {
         const aScheduledTime = a.task.scheduledTime || '';
         const bScheduledTime = b.task.scheduledTime || '';
@@ -158,14 +157,14 @@ export default function TasksScreen() {
         const bCreated = new Date(b.createdAt).getTime();
         return bCreated - aCreated;
       });
-    } else {
-      if (sortBy === 'newest') {
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      } else if (sortBy === 'oldest') {
-        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      } else if (sortBy === 'category') {
-        result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-      }
+    }
+
+    if (sortBy === 'newest') {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (sortBy === 'category') {
+      result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
 
     if (cardAnimations.current.length !== result.length) {
@@ -175,7 +174,7 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy, viewMode, showAllDates, selectedDate, isSameDay, manualOrder]);
+  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay, manualOrder]);
 
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
@@ -359,9 +358,7 @@ export default function TasksScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.title}>Tasks</Text>
-              <Text style={styles.subtitle}>
-                {viewMode === 'chronological' ? 'By Time' : 'By Category'}
-              </Text>
+              <Text style={styles.subtitle}>Organized by priority & time</Text>
               {!showAllDates && (
                 <TouchableOpacity onPress={handleShowAll} style={{ marginTop: 4 }}>
                   <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Filtered by date • Tap to show all</Text>
@@ -369,19 +366,6 @@ export default function TasksScreen() {
               )}
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={[styles.iconButton, viewMode === 'chronological' && styles.iconButtonActive]}
-                onPress={() => {
-                  setViewMode(viewMode === 'chronological' ? 'category' : 'chronological');
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                }}
-              >
-                {viewMode === 'chronological' ? (
-                  <Clock size={20} color={viewMode === 'chronological' ? Colors.background : Colors.primary} />
-                ) : (
-                  <List size={20} color={Colors.primary} />
-                )}
-              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
@@ -449,27 +433,25 @@ export default function TasksScreen() {
                 </View>
               </View>
 
-              {viewMode === 'category' && (
-                <View style={styles.filterGroup}>
-                  <Text style={styles.filterLabel}>Sort by</Text>
-                  <View style={styles.filterButtons}>
-                    {(['newest', 'oldest', 'category'] as SortType[]).map((s) => (
-                      <TouchableOpacity
-                        key={s}
-                        style={[styles.filterButton, sortBy === s && styles.filterButtonActive]}
-                        onPress={() => {
-                          setSortBy(s);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                      >
-                        <Text style={[styles.filterButtonText, sortBy === s && styles.filterButtonTextActive]}>
-                          {s.charAt(0).toUpperCase() + s.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Sort by</Text>
+                <View style={styles.filterButtons}>
+                  {(['newest', 'oldest', 'category'] as SortType[]).map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.filterButton, sortBy === s && styles.filterButtonActive]}
+                      onPress={() => {
+                        setSortBy(s);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                    >
+                      <Text style={[styles.filterButtonText, sortBy === s && styles.filterButtonTextActive]}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
+              </View>
             </View>
           )}
           </Animated.View>
@@ -504,12 +486,7 @@ export default function TasksScreen() {
           </View>
         </View>
 
-        {viewMode === 'chronological' && (
-          <View style={styles.viewModeCard}>
-            <Clock size={20} color={Colors.primary} />
-            <Text style={styles.viewModeText}>Tasks organized by time</Text>
-          </View>
-        )}
+
 
         {filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
@@ -1097,6 +1074,6 @@ const styles = StyleSheet.create({
   subtaskCountText: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: Colors.textSecondary,
+    color: Colors.text,
   },
 });

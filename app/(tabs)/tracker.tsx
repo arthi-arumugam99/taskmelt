@@ -212,16 +212,24 @@ export default function TrackerScreen() {
   }, [currentMonth]);
 
   const handlePrevMonth = () => {
+    const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    setCurrentMonth(prevMonth);
   };
 
   const handleNextMonth = () => {
+    const today = new Date();
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    if (nextMonth > today) return;
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    setCurrentMonth(nextMonth);
   };
 
   const handleDatePress = (date: Date) => {
+    const today = new Date();
+    if (date > today) return;
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(date);
   };
@@ -374,6 +382,7 @@ export default function TrackerScreen() {
               const isToday = isSameDay(date, today);
               const completionLevel = getCompletionLevel(date);
               const isFuture = date > today;
+              const isPast = !isSameDay(date, today) && date < today;
 
               return (
                 <TouchableOpacity
@@ -391,7 +400,7 @@ export default function TrackerScreen() {
                     isToday && !isSelected && styles.todayDay,
                   ]}
                   onPress={() => handleDatePress(date)}
-                  disabled={isFuture}
+                  disabled={isFuture || isPast}
                 >
                   <Text
                     style={[
@@ -432,11 +441,7 @@ export default function TrackerScreen() {
 
         <View style={styles.habitsSection}>
           <View style={styles.habitsSectionHeader}>
-            <Text style={styles.habitsSectionTitle}>
-              {isSameDay(selectedDate, today) 
-                ? "Today's Habits" 
-                : selectedDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
-            </Text>
+            <Text style={styles.habitsSectionTitle}>Today&apos;s Habits</Text>
             <Text style={styles.habitProgress}>
               {todayProgress.completed}/{todayProgress.total}
             </Text>
@@ -445,7 +450,6 @@ export default function TrackerScreen() {
           <View style={styles.habitsList}>
             {habits.map((habit) => {
               const isCompleted = completedToday.includes(habit.id);
-              const isFuture = selectedDate > today;
               
               return (
                 <TouchableOpacity
@@ -454,9 +458,8 @@ export default function TrackerScreen() {
                     styles.habitItem,
                     isCompleted && styles.habitItemCompleted,
                   ]}
-                  onPress={() => !isFuture && toggleHabit(habit.id)}
+                  onPress={() => toggleHabit(habit.id)}
                   onLongPress={() => deleteHabit(habit.id)}
-                  disabled={isFuture}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.habitCheck, { borderColor: habit.color }, isCompleted && { backgroundColor: habit.color }]}>

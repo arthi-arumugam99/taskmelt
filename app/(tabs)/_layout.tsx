@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Brain, ListTodo, Calendar, Settings } from "lucide-react-native";
+import { Brain, ListTodo, Calendar, Settings, TrendingUp } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
 
@@ -55,6 +55,13 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="insights"
+        options={{
+          title: "Insights",
+          tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} />,
         }}
       />
     </Tabs>
