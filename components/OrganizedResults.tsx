@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   Animated,
   Pressable,
 } from 'react-native';
-import { Check, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight, Trash2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { Category, TaskItem } from '@/types/dump';
+import DayScroller from './DayScroller';
 
 function hexToRGBA(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -36,11 +37,12 @@ interface TaskItemRowProps {
   onToggle: (taskId: string) => void;
   onToggleExpanded?: (taskId: string) => void;
   onLongPress?: (task: TaskItem, categoryColor: string) => void;
+  onDelete?: (taskId: string) => void;
   depth?: number;
   isHighlighted?: boolean;
 }
 
-function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, onLongPress, depth = 0, isHighlighted = false }: TaskItemRowProps) {
+function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, onLongPress, onDelete, depth = 0, isHighlighted = false }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [confetti, setConfetti] = useState<Confetti[]>([]);
 
@@ -166,6 +168,18 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, onLongPres
                 </TouchableOpacity>
               )}
             </View>
+            {onDelete && (
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  onDelete(item.id);
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Trash2 size={16} color={Colors.error} />
+              </TouchableOpacity>
+            )}
           </View>
           {confetti.map((particle) => (
             <Animated.View
@@ -197,6 +211,7 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, onLongPres
           onToggle={onToggle}
           onToggleExpanded={onToggleExpanded}
           onLongPress={onLongPress}
+          onDelete={onDelete}
           depth={depth + 1}
         />
       ))}
@@ -209,11 +224,12 @@ interface CategoryCardProps {
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
   onLongPress?: (task: TaskItem, categoryColor: string) => void;
+  onDeleteTask?: (taskId: string) => void;
   highlightedTaskIds?: string[];
   hideHighlightedTasks?: boolean;
 }
 
-function CategoryCard({ category, onToggleTask, onToggleExpanded, onLongPress, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
+function CategoryCard({ category, onToggleTask, onToggleExpanded, onLongPress, onDeleteTask, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
   const isReflectionCategory = category.name.toLowerCase().includes('reflection') || category.name.toLowerCase().includes('notes');
@@ -276,6 +292,7 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, onLongPress, h
             onToggle={onToggleTask}
             onToggleExpanded={onToggleExpanded}
             onLongPress={onLongPress}
+            onDelete={onDeleteTask}
             isHighlighted={false}
           />
         ))}
@@ -290,6 +307,7 @@ interface OrganizedResultsProps {
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
   onLongPress?: (task: TaskItem, categoryColor: string) => void;
+  onDeleteTask?: (taskId: string) => void;
   highlightedTaskIds?: string[];
   hideHighlightedTasks?: boolean;
 }
@@ -300,9 +318,33 @@ export default function OrganizedResults({
   onToggleTask,
   onToggleExpanded,
   onLongPress,
+  onDeleteTask,
   highlightedTaskIds = [],
   hideHighlightedTasks = true,
 }: OrganizedResultsProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const tasksByDate = useMemo(() => {
+    const result: Record<string, TaskItem[]> = {};
+    categories.forEach(category => {
+      category.items.forEach(item => {
+        if (!item.isReflection) {
+          const dateKey = new Date().toISOString().split('T')[0];
+          if (!result[dateKey]) result[dateKey] = [];
+          result[dateKey].push(item);
+        }
+      });
+    });
+    return result;
+  }, [categories]);
+
+  const taskCountByDate = useMemo(() => {
+    const result: Record<string, number> = {};
+    Object.keys(tasksByDate).forEach(dateKey => {
+      result[dateKey] = tasksByDate[dateKey].length;
+    });
+    return result;
+  }, [tasksByDate]);
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
   if (nonEmptyCategories.length === 0) {
@@ -359,6 +401,11 @@ export default function OrganizedResults({
 
   return (
     <View style={styles.container}>
+      <DayScroller
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+        taskCountByDate={taskCountByDate}
+      />
       {sortedCategories.map((category, index) => (
         <CategoryCard
           key={`${category.name}-${index}`}
@@ -366,6 +413,7 @@ export default function OrganizedResults({
           onToggleTask={onToggleTask}
           onToggleExpanded={onToggleExpanded}
           onLongPress={onLongPress}
+          onDeleteTask={onDeleteTask}
           highlightedTaskIds={highlightedTaskIds}
           hideHighlightedTasks={hideHighlightedTasks}
         />
@@ -409,7 +457,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800' as const,
     color: Colors.text,
-    flexShrink: 1,
+    flex: 1,
+    flexWrap: 'wrap' as const,
   },
   categoryCount: {
     fontSize: 16,
@@ -429,6 +478,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
+    flex: 1,
+  },
+  deleteButton: {
+    padding: 4,
+    marginLeft: 4,
   },
   checkbox: {
     width: 24,
@@ -448,6 +502,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 22,
     fontWeight: '600' as const,
+    flexWrap: 'wrap' as const,
   },
   taskTextCompleted: {
     textDecorationLine: 'line-through',

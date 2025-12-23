@@ -74,7 +74,7 @@ export default function DumpScreen() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { dumps, addDump, toggleTask, canCreateDump, remainingFreeDumps } = useDumps();
+  const { dumps, addDump, toggleTask, deleteTask, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
   const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, confidence, startRecording, stopRecording } = useVoiceRecording();
@@ -218,14 +218,6 @@ ${text}`,
 
       setCurrentSession(session);
       addDump(session);
-      
-      setTimeout(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        router.push({
-          pathname: '/(tabs)/tasks',
-          params: { animated: 'true', date: session.createdAt }
-        });
-      }, 800);
     },
     onError: (error) => {
       console.error('Organization failed:', error);
@@ -611,6 +603,7 @@ ${text}`,
                     summary={dumpToUse.summary}
                     onToggleTask={handleToggleTask}
                     onToggleExpanded={handleToggleExpanded}
+                    onDeleteTask={(taskId) => deleteTask(currentSession.id, taskId)}
                     highlightedTaskIds={[]}
                     hideHighlightedTasks={false}
                   />
