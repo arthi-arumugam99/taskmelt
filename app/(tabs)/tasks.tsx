@@ -10,9 +10,10 @@ import {
   Dimensions,
   PanResponder,
   LayoutChangeEvent,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -37,7 +38,7 @@ interface FlatTask {
 }
 
 export default function TasksScreen() {
-  const { dumps, toggleTask, updateTask, deleteTask, clearAll } = useDumps();
+  const { dumps, toggleTask, updateTask, deleteTask, clearAll, addDump } = useDumps();
   const params = useLocalSearchParams<{ animated?: string; date?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -56,6 +57,8 @@ export default function TasksScreen() {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [cardLayouts, setCardLayouts] = useState<{ y: number; height: number }[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [newTaskText, setNewTaskText] = useState('');
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -456,20 +459,20 @@ export default function TasksScreen() {
           )}
           </Animated.View>
 
+        <DayScroller
+          selectedDate={selectedDate}
+          onDateSelect={handleDateSelect}
+        />
+        
         {!showAllDates && (
-          <>
-            <DayScroller
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-            />
-            <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
-              <Text style={styles.showAllText}>Show all dates</Text>
-              <X size={16} color={Colors.primary} />
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
+            <Text style={styles.showAllText}>Show all dates</Text>
+            <X size={16} color={Colors.primary} />
+          </TouchableOpacity>
         )}
 
-        <View style={styles.statsCard}>
+        <View style={styles.dateActionsRow}>
+          <View style={styles.statsCard}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total</Text>
@@ -484,9 +487,17 @@ export default function TasksScreen() {
             <Text style={[styles.statNumber, { color: Colors.accent2Dark }]}>{stats.completed}</Text>
             <Text style={styles.statLabel}>Done</Text>
           </View>
+          </View>
+          <TouchableOpacity
+            style={styles.addTaskButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowAddTaskModal(true);
+            }}
+          >
+            <Plus size={20} color={Colors.background} strokeWidth={3} />
+          </TouchableOpacity>
         </View>
-
-
 
         {filteredTasks.length === 0 ? (
           <View style={styles.emptyState}>
@@ -682,6 +693,80 @@ export default function TasksScreen() {
         </ScrollView>
       </Animated.View>
 
+      <Modal
+        visible={showAddTaskModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddTaskModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Task</Text>
+              <TouchableOpacity onPress={() => {
+                setShowAddTaskModal(false);
+                setNewTaskText('');
+              }}>
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Task</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={newTaskText}
+                onChangeText={setNewTaskText}
+                placeholder="e.g., Buy groceries"
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                numberOfLines={3}
+                autoFocus
+              />
+              <Text style={styles.dateLabel}>
+                For: {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.modalButton, !newTaskText.trim() && styles.modalButtonDisabled]}
+              onPress={() => {
+                if (!newTaskText.trim()) return;
+                
+                const newDump: DumpSession = {
+                  id: Date.now().toString(),
+                  rawText: newTaskText.trim(),
+                  createdAt: selectedDate.toISOString(),
+                  categories: [
+                    {
+                      name: 'Quick Add',
+                      emoji: '⚡',
+                      color: Colors.primary,
+                      items: [
+                        {
+                          id: Date.now().toString() + '_task',
+                          task: newTaskText.trim(),
+                          completed: false,
+                          isReflection: false,
+                        }
+                      ]
+                    }
+                  ]
+                };
+                
+                addDump(newDump);
+                setNewTaskText('');
+                setShowAddTaskModal(false);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
+              disabled={!newTaskText.trim()}
+            >
+              <Text style={styles.modalButtonText}>Add Task</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {editingTask && (
         <TaskEditModal
           visible={true}
@@ -813,11 +898,11 @@ const styles = StyleSheet.create({
     color: Colors.background,
   },
   statsCard: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: Colors.accent1,
     borderRadius: 20,
     padding: 20,
-    marginBottom: 20,
     borderWidth: 3,
     borderColor: Colors.border,
     shadowColor: '#000',
@@ -1009,7 +1094,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
-    marginTop: 20,
+    marginTop: 16,
   },
   clearAllText: {
     fontSize: 16,
@@ -1075,5 +1160,89 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700' as const,
     color: Colors.textSecondary,
+  },
+  dateActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+    marginBottom: 20,
+  },
+  addTaskButton: {
+    width: 56,
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    color: Colors.text,
+  },
+  modalBody: {
+    gap: 12,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
+  },
+  modalInput: {
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: Colors.text,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textMuted,
+  },
+  modalButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 24,
+    borderWidth: 3,
+    borderColor: Colors.border,
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalButtonText: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    color: Colors.background,
   },
 });

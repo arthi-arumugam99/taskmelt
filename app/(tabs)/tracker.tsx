@@ -228,7 +228,11 @@ export default function TrackerScreen() {
 
   const handleDatePress = (date: Date) => {
     const today = new Date();
-    if (!isSameDay(date, today)) return;
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    if (checkDate < today) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(date);
@@ -381,14 +385,19 @@ export default function TrackerScreen() {
               const isSelected = isSameDay(date, selectedDate);
               const isToday = isSameDay(date, today);
               const completionLevel = getCompletionLevel(date);
-              const isFuture = date > today;
+              
+              const todayDate = new Date(today);
+              todayDate.setHours(0, 0, 0, 0);
+              const checkDate = new Date(date);
+              checkDate.setHours(0, 0, 0, 0);
+              const isPast = checkDate < todayDate;
 
               return (
                 <TouchableOpacity
                   key={index}
                   style={[
                     styles.dayCell,
-                    !isFuture && completionLevel > 0 && {
+                    !isPast && completionLevel > 0 && {
                       backgroundColor: completionLevel === 3 
                         ? Colors.accent2Dark 
                         : completionLevel === 2 
@@ -399,7 +408,7 @@ export default function TrackerScreen() {
                     isToday && !isSelected && styles.todayDay,
                   ]}
                   onPress={() => handleDatePress(date)}
-                  disabled={!isToday}
+                  disabled={isPast}
                 >
                   <Text
                     style={[
@@ -407,7 +416,7 @@ export default function TrackerScreen() {
                       completionLevel > 0 && styles.dayTextWithActivity,
                       isSelected && styles.selectedDayText,
                       isToday && !isSelected && styles.todayDayText,
-                      isFuture && styles.futureDayText,
+                      isPast && styles.pastDayText,
                     ]}
                   >
                     {date.getDate()}
@@ -712,11 +721,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
     position: 'relative',
+    margin: 2,
   },
   selectedDay: {
     backgroundColor: Colors.primary,
-    borderWidth: 3,
-    borderColor: Colors.border,
   },
   todayDay: {
     borderWidth: 2,
@@ -738,9 +746,9 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '800' as const,
   },
-  futureDayText: {
+  pastDayText: {
     color: Colors.textMuted,
-    opacity: 0.5,
+    opacity: 0.3,
   },
   completedBadge: {
     position: 'absolute',
