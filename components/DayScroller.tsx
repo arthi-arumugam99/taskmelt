@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ListRenderItem, LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 
@@ -65,6 +65,9 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
   const listRef = useRef<FlatList<Date>>(null);
   const today = React.useMemo(() => new Date(), []);
   const hasScrolled = useRef(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  const horizontalPadding = containerWidth > 0 ? (containerWidth - DAY_WIDTH) / 2 : 0;
   
   const days = React.useMemo(() => {
     const result: Date[] = [];
@@ -84,7 +87,7 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
   );
 
   useEffect(() => {
-    if (listRef.current && todayIndex >= 0 && !hasScrolled.current) {
+    if (listRef.current && todayIndex >= 0 && containerWidth > 0 && !hasScrolled.current) {
       hasScrolled.current = true;
       requestAnimationFrame(() => {
         listRef.current?.scrollToIndex({ 
@@ -94,7 +97,12 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
         });
       });
     }
-  }, [todayIndex]);
+  }, [todayIndex, containerWidth]);
+
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    setContainerWidth(width);
+  }, []);
 
   const handleDatePress = useCallback((date: Date) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -130,6 +138,10 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
     }, 100);
   }, [todayIndex]);
 
+  const contentContainerStyle = React.useMemo(() => ({
+    paddingHorizontal: horizontalPadding,
+  }), [horizontalPadding]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.monthLabel}>
@@ -142,13 +154,14 @@ export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerP
         keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={contentContainerStyle}
         getItemLayout={getItemLayout}
         initialNumToRender={15}
         maxToRenderPerBatch={10}
         windowSize={11}
         removeClippedSubviews={true}
         onScrollToIndexFailed={onScrollToIndexFailed}
+        onLayout={handleLayout}
       />
     </View>
   );
@@ -177,9 +190,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase' as const,
     letterSpacing: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 10,
-  },
+
   dayItem: {
     width: DAY_WIDTH - 8,
     marginHorizontal: 4,
