@@ -13,7 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Zap, Minimize2, Maximize2, Eye, EyeOff } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Minimize2, Maximize2, Eye, EyeOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -59,7 +59,6 @@ export default function TasksScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
-  const [focusMode, setFocusMode] = useState(false);
   const [compactView, setCompactView] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(false);
   
@@ -184,16 +183,6 @@ export default function TasksScreen() {
       result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
 
-    if (focusMode) {
-      const pendingTasks = result.filter(t => !t.task.completed);
-      const highPriority = pendingTasks.filter(t => t.task.priority === 'high');
-      const mediumPriority = pendingTasks.filter(t => t.task.priority === 'medium');
-      const withTime = pendingTasks.filter(t => t.task.scheduledTime);
-      
-      const focused = [...new Set([...highPriority, ...withTime.slice(0, 3), ...mediumPriority.slice(0, 2)])];
-      result = focused.slice(0, 5);
-    }
-
     if (cardAnimations.current.length !== result.length) {
       cardAnimations.current = result.map((_, i) => 
         cardAnimations.current[i] || new Animated.Value(0)
@@ -201,7 +190,7 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay, getTaskDate, manualOrder, focusMode, hideCompleted]);
+  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay, getTaskDate, manualOrder, hideCompleted]);
 
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
@@ -384,15 +373,6 @@ export default function TasksScreen() {
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
-                style={[styles.iconButton, focusMode && styles.iconButtonActive]}
-                onPress={() => {
-                  setFocusMode(!focusMode);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                }}
-              >
-                <Zap size={20} color={focusMode ? Colors.background : Colors.accent3Dark} />
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
                   setShowFilters(!showFilters);
@@ -481,15 +461,6 @@ export default function TasksScreen() {
             </View>
           )}
 
-          {focusMode && (
-            <View style={styles.focusModeCard}>
-              <Zap size={18} color={Colors.accent3Dark} />
-              <Text style={styles.focusModeText}>Focus Mode: Top 5 priorities</Text>
-              <TouchableOpacity onPress={() => setFocusMode(false)}>
-                <X size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
           </Animated.View>
 
         <DayScroller
@@ -1268,24 +1239,6 @@ const styles = StyleSheet.create({
   },
   quickActionTextActive: {
     color: Colors.background,
-  },
-  focusModeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: Colors.accent3 + '30',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.accent3Dark,
-    marginBottom: 16,
-  },
-  focusModeText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.accent3Dark,
   },
   compactCard: {
     backgroundColor: Colors.card,
