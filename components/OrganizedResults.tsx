@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Pressable,
 } from 'react-native';
 import { Check, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -34,11 +35,12 @@ interface TaskItemRowProps {
   accentColor: string;
   onToggle: (taskId: string) => void;
   onToggleExpanded?: (taskId: string) => void;
+  onLongPress?: (task: TaskItem, categoryColor: string) => void;
   depth?: number;
   isHighlighted?: boolean;
 }
 
-function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0, isHighlighted = false }: TaskItemRowProps) {
+function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, onLongPress, depth = 0, isHighlighted = false }: TaskItemRowProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [confetti, setConfetti] = useState<Confetti[]>([]);
 
@@ -57,7 +59,7 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0,
 
     setConfetti(newConfetti);
 
-    newConfetti.forEach((particle, index) => {
+    newConfetti.forEach((particle) => {
       Animated.parallel([
         Animated.timing(particle.translateY, {
           toValue: -100 - Math.random() * 50,
@@ -119,64 +121,74 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0,
 
   return (
     <>
-      <Animated.View style={[
-        styles.taskRow,
-        { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 },
-        isHighlighted && styles.taskRowHighlighted,
-      ]}>
-        <View style={styles.taskRowContent}>
-          <TouchableOpacity
-            style={[
-              styles.checkbox,
-              { borderColor: accentColor },
-              item.completed && { backgroundColor: accentColor },
-            ]}
-            onPress={handlePress}
-            activeOpacity={0.7}
-          >
-            {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-          </TouchableOpacity>
-          <View style={styles.taskContent}>
-            <Text
+      <Pressable
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress?.(item, accentColor);
+        }}
+      >
+        <Animated.View style={[
+          styles.taskRow,
+          { transform: [{ scale: scaleAnim }], marginLeft: depth * 16 },
+          isHighlighted && styles.taskRowHighlighted,
+        ]}>
+          <View style={styles.taskRowContent}>
+            <TouchableOpacity
               style={[
-                styles.taskText,
-                item.completed && styles.taskTextCompleted,
+                styles.checkbox,
+                { borderColor: accentColor },
+                item.completed && { backgroundColor: accentColor },
               ]}
+              onPress={handlePress}
+              activeOpacity={0.7}
             >
-              {item.task}
-            </Text>
-            {item.timeEstimate && (
-              <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
-            )}
-            {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
-              <TouchableOpacity onPress={() => onToggleExpanded?.(item.id)} style={styles.subtaskHintButton}>
-                <ChevronRight size={12} color={Colors.primary} />
-                <Text style={styles.subtaskHint}>Tap to break down</Text>
-              </TouchableOpacity>
-            )}
+              {item.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+            </TouchableOpacity>
+            <View style={styles.taskContent}>
+              <Text
+                style={[
+                  styles.taskText,
+                  item.completed && styles.taskTextCompleted,
+                ]}
+              >
+                {item.task}
+              </Text>
+              {item.timeEstimate && (
+                <Text style={styles.timeEstimate}>{item.timeEstimate}</Text>
+              )}
+              {item.notes && (
+                <Text style={styles.taskNotes} numberOfLines={2}>{item.notes}</Text>
+              )}
+              {item.hasSubtaskSuggestion && !item.isExpanded && item.subtasks && item.subtasks.length > 0 && (
+                <TouchableOpacity onPress={() => onToggleExpanded?.(item.id)} style={styles.subtaskHintButton}>
+                  <ChevronRight size={12} color={Colors.primary} />
+                  <Text style={styles.subtaskHint}>Tap to break down</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-        {confetti.map((particle) => (
-          <Animated.View
-            key={particle.id}
-            style={[
-              styles.confettiParticle,
-              {
-                backgroundColor: particle.color,
-                transform: [
-                  { translateX: particle.translateX },
-                  { translateY: particle.translateY },
-                  { rotate: particle.rotation.interpolate({
-                    inputRange: [0, 360],
-                    outputRange: ['0deg', '360deg'],
-                  }) },
-                ],
-                opacity: particle.opacity,
-              },
-            ]}
-          />
-        ))}
-      </Animated.View>
+          {confetti.map((particle) => (
+            <Animated.View
+              key={particle.id}
+              style={[
+                styles.confettiParticle,
+                {
+                  backgroundColor: particle.color,
+                  transform: [
+                    { translateX: particle.translateX },
+                    { translateY: particle.translateY },
+                    { rotate: particle.rotation.interpolate({
+                      inputRange: [0, 360],
+                      outputRange: ['0deg', '360deg'],
+                    }) },
+                  ],
+                  opacity: particle.opacity,
+                },
+              ]}
+            />
+          ))}
+        </Animated.View>
+      </Pressable>
       {item.isExpanded && item.subtasks && item.subtasks.map((subtask) => (
         <TaskItemRow
           key={subtask.id}
@@ -184,6 +196,7 @@ function TaskItemRow({ item, accentColor, onToggle, onToggleExpanded, depth = 0,
           accentColor={accentColor}
           onToggle={onToggle}
           onToggleExpanded={onToggleExpanded}
+          onLongPress={onLongPress}
           depth={depth + 1}
         />
       ))}
@@ -195,11 +208,12 @@ interface CategoryCardProps {
   category: Category;
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
+  onLongPress?: (task: TaskItem, categoryColor: string) => void;
   highlightedTaskIds?: string[];
   hideHighlightedTasks?: boolean;
 }
 
-function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
+function CategoryCard({ category, onToggleTask, onToggleExpanded, onLongPress, highlightedTaskIds = [], hideHighlightedTasks = false }: CategoryCardProps) {
   const bgColor = hexToRGBA(category.color, 0.12);
   const accentColor = category.color;
   const isReflectionCategory = category.name.toLowerCase().includes('reflection') || category.name.toLowerCase().includes('notes');
@@ -261,6 +275,7 @@ function CategoryCard({ category, onToggleTask, onToggleExpanded, highlightedTas
             accentColor={accentColor}
             onToggle={onToggleTask}
             onToggleExpanded={onToggleExpanded}
+            onLongPress={onLongPress}
             isHighlighted={false}
           />
         ))}
@@ -274,6 +289,7 @@ interface OrganizedResultsProps {
   summary?: string;
   onToggleTask: (taskId: string) => void;
   onToggleExpanded: (taskId: string) => void;
+  onLongPress?: (task: TaskItem, categoryColor: string) => void;
   highlightedTaskIds?: string[];
   hideHighlightedTasks?: boolean;
 }
@@ -283,6 +299,7 @@ export default function OrganizedResults({
   summary,
   onToggleTask,
   onToggleExpanded,
+  onLongPress,
   highlightedTaskIds = [],
   hideHighlightedTasks = true,
 }: OrganizedResultsProps) {
@@ -348,6 +365,7 @@ export default function OrganizedResults({
           category={category}
           onToggleTask={onToggleTask}
           onToggleExpanded={onToggleExpanded}
+          onLongPress={onLongPress}
           highlightedTaskIds={highlightedTaskIds}
           hideHighlightedTasks={hideHighlightedTasks}
         />
@@ -381,6 +399,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    flexShrink: 1,
   },
   categoryEmoji: {
     fontSize: 20,
@@ -389,6 +409,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800' as const,
     color: Colors.text,
+    flexShrink: 1,
   },
   categoryCount: {
     fontSize: 16,
@@ -409,7 +430,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
-
   checkbox: {
     width: 24,
     height: 24,
@@ -437,6 +457,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textMuted,
     fontWeight: '600' as const,
+  },
+  taskNotes: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontStyle: 'italic' as const,
+    lineHeight: 18,
   },
   subtaskHintButton: {
     flexDirection: 'row',

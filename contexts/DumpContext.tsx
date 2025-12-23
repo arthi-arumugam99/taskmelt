@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useMemo, useEffect } from 'react';
-import { DumpSession } from '@/types/dump';
+import { DumpSession, TaskItem } from '@/types/dump';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -351,6 +351,91 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     },
   });
 
+  const { mutate: updateTaskMutate } = useMutation({
+    mutationFn: async ({ dumpId, taskId, updatedTask }: { dumpId: string; taskId: string; updatedTask: TaskItem }) => {
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
+      let updatedDump: DumpSession | null = null;
+      
+      const updated = currentDumps.map((dump) => {
+        if (dump.id !== dumpId) return dump;
+        const newDump = {
+          ...dump,
+          categories: dump.categories.map((category) => ({
+            ...category,
+            items: category.items.map((item) => {
+              if (item.id === taskId) {
+                return updatedTask;
+              }
+              if (item.subtasks) {
+                return {
+                  ...item,
+                  subtasks: item.subtasks.map((st) => 
+                    st.id === taskId ? updatedTask : st
+                  ),
+                };
+              }
+              return item;
+            }),
+          })),
+        };
+        updatedDump = newDump;
+        return newDump;
+      });
+      
+      await saveLocalDumps(updated);
+      
+      if (isAuthenticated && user?.id && updatedDump) {
+        await saveRemoteDump(user.id, updatedDump);
+      }
+      
+      return updated;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(dumpQueryKey, data);
+    },
+  });
+
+  const { mutate: deleteTaskMutate } = useMutation({
+    mutationFn: async ({ dumpId, taskId }: { dumpId: string; taskId: string }) => {
+      const currentDumps = queryClient.getQueryData<DumpSession[]>(dumpQueryKey) ?? [];
+      let updatedDump: DumpSession | null = null;
+      
+      const updated = currentDumps.map((dump) => {
+        if (dump.id !== dumpId) return dump;
+        const newDump = {
+          ...dump,
+          categories: dump.categories.map((category) => ({
+            ...category,
+            items: category.items
+              .filter((item) => item.id !== taskId)
+              .map((item) => {
+                if (item.subtasks) {
+                  return {
+                    ...item,
+                    subtasks: item.subtasks.filter((st) => st.id !== taskId),
+                  };
+                }
+                return item;
+              }),
+          })),
+        };
+        updatedDump = newDump;
+        return newDump;
+      });
+      
+      await saveLocalDumps(updated);
+      
+      if (isAuthenticated && user?.id && updatedDump) {
+        await saveRemoteDump(user.id, updatedDump);
+      }
+      
+      return updated;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(dumpQueryKey, data);
+    },
+  });
+
   const { mutate: clearAllMutate } = useMutation({
     mutationFn: async () => {
       await saveLocalDumps([]);
@@ -387,6 +472,20 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     [deleteDumpMutate]
   );
 
+  const updateTask = useCallback(
+    (dumpId: string, taskId: string, updatedTask: TaskItem) => {
+      updateTaskMutate({ dumpId, taskId, updatedTask });
+    },
+    [updateTaskMutate]
+  );
+
+  const deleteTask = useCallback(
+    (dumpId: string, taskId: string) => {
+      deleteTaskMutate({ dumpId, taskId });
+    },
+    [deleteTaskMutate]
+  );
+
   const clearAll = useCallback(() => {
     clearAllMutate();
   }, [clearAllMutate]);
@@ -419,6 +518,8 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     isSyncing: dumpsQuery.isFetching,
     addDump,
     toggleTask,
+    updateTask,
+    deleteTask,
     deleteDump,
     clearAll,
     refetch,

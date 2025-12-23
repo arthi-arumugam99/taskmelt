@@ -10,6 +10,15 @@ export interface TaskItem {
   isExpanded?: boolean;
   isReflection?: boolean;
   closesLoop?: boolean;
+  notes?: string;
+  dueDate?: string;
+  priority?: 'high' | 'medium' | 'low';
+  recurring?: {
+    frequency: 'daily' | 'weekly' | 'monthly';
+    daysOfWeek?: number[];
+    dayOfMonth?: number;
+  };
+  order?: number;
 }
 
 export interface Category {
