@@ -127,15 +127,26 @@ export default function DumpScreen() {
                   content: `Organize this brain dump into actionable tasks with categories.
 
 Rules:
-- Create 2-4 categories based on context
-- Extract EVERY task mentioned, including those with specific times (e.g., "meeting at 9:30", "call at 2pm")
-- Preserve time references in the task (e.g., "Complete meeting at 9:30" should stay as "Complete meeting at 9:30")
-- Rewrite as clear actions while keeping original time/date info
-- Add time estimates for completion duration
-- For complex tasks, add 2-3 subtasks (mark hasSubtaskSuggestion: true)
+- Create 2-4 categories based on context (Work, Personal, Health, etc.)
+- Extract EVERY task mentioned
+- **CRITICAL**: Detect and preserve ALL time-specific tasks:
+  * Meetings: "meeting at 9:30", "call at 2pm", "appointment at 3:15"
+  * Events: "dinner at 7", "gym at 6am", "class at 10:30"
+  * Tasks with times: "submit report by 5pm", "pick up kids at 3:30"
+- For time-based tasks:
+  * Extract the time and put it in timeEstimate as "HH:MM" format (24-hour)
+  * Keep the full context in the task description
+  * Examples: "9:30" for 9:30am, "14:00" for 2pm, "15:15" for 3:15pm
+- For duration-based tasks (no specific time):
+  * Estimate how long they'll take: "30 mins", "1 hour", "2 hours"
+- Add 2-3 subtasks for complex tasks (mark hasSubtaskSuggestion: true)
 - Mark reflections/notes with isReflection: true
-- Prioritize: high (urgent/time-sensitive), medium (regular), low (nice-to-have)
+- Prioritize:
+  * high: urgent/time-sensitive (meetings, appointments, deadlines)
+  * medium: regular tasks
+  * low: nice-to-have
 - Do NOT skip any items - capture everything mentioned
+- Order matters: When creating tasks, list them in chronological order if times are mentioned
 
 Input:
 ${text}`,

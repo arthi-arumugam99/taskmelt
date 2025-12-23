@@ -6,7 +6,6 @@ import Colors from '@/constants/colors';
 interface DayScrollerProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
-  taskCountByDate?: Record<string, number>;
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,11 +21,7 @@ function isSameDay(date1: Date, date2: Date): boolean {
   );
 }
 
-function formatDateKey(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
-
-export default function DayScroller({ selectedDate, onDateSelect, taskCountByDate = {} }: DayScrollerProps) {
+export default function DayScroller({ selectedDate, onDateSelect }: DayScrollerProps) {
   const scrollRef = useRef<ScrollView>(null);
   const today = React.useMemo(() => new Date(), []);
   
@@ -76,8 +71,6 @@ export default function DayScroller({ selectedDate, onDateSelect, taskCountByDat
         {days.map((date, index) => {
           const isSelected = isSameDay(date, selectedDate);
           const isToday = isSameDay(date, today);
-          const dateKey = formatDateKey(date);
-          const taskCount = taskCountByDate[dateKey] || 0;
 
           return (
             <TouchableOpacity
@@ -104,19 +97,6 @@ export default function DayScroller({ selectedDate, onDateSelect, taskCountByDat
               ]}>
                 {date.getDate()}
               </Text>
-              {taskCount > 0 && (
-                <View style={[
-                  styles.taskDot,
-                  isSelected && styles.taskDotSelected,
-                ]}>
-                  <Text style={[
-                    styles.taskDotText,
-                    isSelected && styles.taskDotTextSelected,
-                  ]}>
-                    {taskCount > 9 ? '9+' : taskCount}
-                  </Text>
-                </View>
-              )}
             </TouchableOpacity>
           );
         })}

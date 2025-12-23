@@ -35,7 +35,7 @@ interface FlatTask {
 }
 
 export default function TasksScreen() {
-  const { dumps, toggleTask, updateTask, deleteTask } = useDumps();
+  const { dumps, toggleTask, updateTask, deleteTask, clearAll } = useDumps();
   const params = useLocalSearchParams<{ animated?: string; date?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -81,14 +81,7 @@ export default function TasksScreen() {
     return tasks;
   }, [dumps]);
 
-  const taskCountByDate = useMemo(() => {
-    const counts: Record<string, number> = {};
-    allTasks.forEach((t) => {
-      const dateKey = new Date(t.createdAt).toISOString().split('T')[0];
-      counts[dateKey] = (counts[dateKey] || 0) + 1;
-    });
-    return counts;
-  }, [allTasks]);
+
 
   const isSameDay = useCallback((date1: Date, date2: Date): boolean => {
     return (
@@ -382,7 +375,6 @@ export default function TasksScreen() {
         <DayScroller
           selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
-          taskCountByDate={taskCountByDate}
         />
 
         {!showAllDates && (
@@ -523,6 +515,18 @@ export default function TasksScreen() {
               </Animated.View>
             )})}
           </View>
+        )}
+
+        {stats.total > 0 && (
+          <TouchableOpacity
+            style={styles.clearAllButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              clearAll();
+            }}
+          >
+            <Text style={styles.clearAllText}>Clear All Tasks</Text>
+          </TouchableOpacity>
         )}
         </ScrollView>
       </Animated.View>
@@ -824,5 +828,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.primary,
+  },
+  clearAllButton: {
+    backgroundColor: Colors.error,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderWidth: 3,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+    marginTop: 20,
+  },
+  clearAllText: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: Colors.background,
+    textAlign: 'center' as const,
   },
 });

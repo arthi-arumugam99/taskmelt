@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useMemo } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -324,27 +324,7 @@ export default function OrganizedResults({
 }: OrganizedResultsProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  const tasksByDate = useMemo(() => {
-    const result: Record<string, TaskItem[]> = {};
-    categories.forEach(category => {
-      category.items.forEach(item => {
-        if (!item.isReflection) {
-          const dateKey = new Date().toISOString().split('T')[0];
-          if (!result[dateKey]) result[dateKey] = [];
-          result[dateKey].push(item);
-        }
-      });
-    });
-    return result;
-  }, [categories]);
 
-  const taskCountByDate = useMemo(() => {
-    const result: Record<string, number> = {};
-    Object.keys(tasksByDate).forEach(dateKey => {
-      result[dateKey] = tasksByDate[dateKey].length;
-    });
-    return result;
-  }, [tasksByDate]);
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);
 
   if (nonEmptyCategories.length === 0) {
@@ -404,7 +384,6 @@ export default function OrganizedResults({
       <DayScroller
         selectedDate={selectedDate}
         onDateSelect={setSelectedDate}
-        taskCountByDate={taskCountByDate}
       />
       {sortedCategories.map((category, index) => (
         <CategoryCard
