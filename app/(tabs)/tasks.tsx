@@ -1069,11 +1069,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: Colors.border,
+    backgroundColor: Colors.borderLight,
   },
   subtaskCountText: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: Colors.text,
+    color: Colors.textSecondary,
   },
 });

@@ -228,7 +228,7 @@ export default function TrackerScreen() {
 
   const handleDatePress = (date: Date) => {
     const today = new Date();
-    if (date > today) return;
+    if (!isSameDay(date, today)) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(date);
@@ -382,7 +382,6 @@ export default function TrackerScreen() {
               const isToday = isSameDay(date, today);
               const completionLevel = getCompletionLevel(date);
               const isFuture = date > today;
-              const isPast = !isSameDay(date, today) && date < today;
 
               return (
                 <TouchableOpacity
@@ -400,7 +399,7 @@ export default function TrackerScreen() {
                     isToday && !isSelected && styles.todayDay,
                   ]}
                   onPress={() => handleDatePress(date)}
-                  disabled={isFuture || isPast}
+                  disabled={!isToday}
                 >
                   <Text
                     style={[
