@@ -237,6 +237,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
+      console.log('🎤 Initializing Speech Recognition...');
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -244,6 +245,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       recognition.maxAlternatives = 1;
 
       recognition.onresult = (event: any) => {
+        console.log('🗣️ Speech result received, results:', event.results.length);
         let interimTranscript = '';
         let newFinalTranscript = '';
 
@@ -255,14 +257,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             if (i >= lastResultIndexRef.current) {
               newFinalTranscript += transcript + ' ';
               lastResultIndexRef.current = i + 1;
+              console.log('✓ Final transcript:', transcript);
             }
           } else {
             interimTranscript = transcript;
+            console.log('⋯ Interim transcript:', transcript.substring(0, 50));
           }
         }
 
         if (newFinalTranscript) {
           finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
+          console.log('📝 Updated final transcript:', finalTranscriptRef.current.substring(0, 100));
           if (onTranscriptUpdateRef.current) {
             onTranscriptUpdateRef.current(finalTranscriptRef.current);
           }
@@ -273,29 +278,42 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           : finalTranscriptRef.current;
         
         transcriptRef.current = displayText;
+        console.log('🔄 Calling update callback with text:', displayText.substring(0, 100));
         if (onTranscriptUpdateRef.current) {
           onTranscriptUpdateRef.current(displayText);
+        } else {
+          console.warn('⚠️ No update callback registered!');
         }
       };
 
       recognition.onerror = (event: any) => {
+        console.error('❌ Speech recognition error:', event?.error, event);
         if (event?.error !== 'no-speech' && event?.error !== 'aborted') {
-          console.error('Speech recognition error:', event?.error);
+          if (event?.error === 'not-allowed') {
+            console.error('Microphone permission denied for speech recognition');
+          }
         }
       };
 
       recognition.onstart = () => {
-        console.log('✅ Live transcription active');
+        console.log('✅ Speech Recognition started successfully');
+      };
+
+      recognition.onend = () => {
+        console.log('🛑 Speech Recognition ended');
       };
 
       try {
         recognition.start();
         recognitionRef.current = recognition;
+        console.log('📞 Speech Recognition start() called');
       } catch (e) {
-        console.error('Failed to start speech recognition:', e);
+        console.error('❌ Failed to start speech recognition:', e);
+        throw new Error('Failed to start live transcription: ' + (e instanceof Error ? e.message : String(e)));
       }
     } else {
-      console.log('⚠️ Speech Recognition not available');
+      console.warn('⚠️ Speech Recognition API not available in this browser');
+      console.warn('Live transcription will not work. Only recording will be available.');
     }
 
     console.log('✅ Recording started');
