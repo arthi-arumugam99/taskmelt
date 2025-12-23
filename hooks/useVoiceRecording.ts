@@ -3,6 +3,7 @@ import { Platform, Alert, Linking } from 'react-native';
 import { Audio } from 'expo-av';
 
 const STT_API_URL = 'https://toolkit.rork.com/stt/transcribe/';
+const MAX_RECORDING_DURATION = 60;
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -34,6 +35,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const lastResultIndexRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
   const onTranscriptUpdateRef = useRef<((text: string) => void) | null>(null);
+  const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -155,24 +157,21 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 32000,
         },
         ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.LOW,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
+          bitRate: 32000,
         },
         web: {
           mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
+          bitsPerSecond: 32000,
         },
       };
 
@@ -208,7 +207,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        sampleRate: 44100,
+        sampleRate: 16000,
       } 
     });
     streamRef.current = stream;
@@ -220,7 +219,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType,
-      audioBitsPerSecond: 128000,
+      audioBitsPerSecond: 32000,
     });
 
     mediaRecorder.ondataavailable = (event) => {
@@ -334,6 +333,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         if (!isMountedRef.current) return;
         const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
         setRecordingDuration(elapsed);
+        
+        if (elapsed >= MAX_RECORDING_DURATION) {
+          console.log('⏱️ Max recording duration reached, auto-stopping');
+          if (stopRecordingRef.current) {
+            stopRecordingRef.current();
+          }
+        }
       }, 500);
     } catch (err) {
       console.error('❌ Recording start error:', err);
@@ -376,8 +382,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       console.log('📼 Recording URI:', uri);
 
-      const fileType = Platform.OS === 'ios' ? 'wav' : 'm4a';
-      const mimeType = Platform.OS === 'ios' ? 'audio/wav' : 'audio/m4a';
+      const fileType = 'm4a';
+      const mimeType = 'audio/m4a';
       console.log('📁 File type:', fileType, 'MIME:', mimeType);
 
       const audioFile = {
@@ -562,6 +568,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       return null;
     }
   }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
+
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   const cancelRecording = useCallback(async () => {
     setIsRecording(false);
