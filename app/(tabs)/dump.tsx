@@ -112,12 +112,13 @@ export default function DumpScreen() {
         throw new Error('AI service not configured. Please restart the app.');
       }
       
-      const maxRetries = 1;
+      const maxRetries = 2;
       let lastError: Error | null = null;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(`Attempt ${attempt}/${maxRetries} - Calling generateObject...`);
+          console.log('Input length:', text.length, 'characters');
           
           const result = await Promise.race([
             generateObject({
@@ -144,11 +145,12 @@ ${text}`,
         schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000)
+              setTimeout(() => reject(new Error('Request timeout after 120 seconds')), 120000)
             )
           ]);
           
-          console.log('AI Response:', JSON.stringify(result, null, 2));
+          console.log('AI Response received successfully');
+          console.log('Categories count:', result.categories?.length ?? 0);
           return result;
         } catch (err) {
           lastError = err instanceof Error ? err : new Error(String(err));
@@ -165,21 +167,24 @@ ${text}`,
             break;
           }
           
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          console.log(`Waiting ${2 * attempt} seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
         }
       }
       
       if (lastError) {
         if (lastError.message.includes('timeout')) {
-          throw new Error('The AI service is taking too long to respond. Please try with a shorter brain dump or try again later.');
+          throw new Error('The AI is taking longer than usual. Please try again or consider shortening your brain dump.');
         } else if (lastError.message.includes('Network request failed')) {
-          throw new Error('Unable to reach the AI service. Please check your internet connection and try again.');
+          throw new Error('Connection issue. Please check your internet and try again.');
+        } else if (lastError.message.includes('fetch')) {
+          throw new Error('Network error. Please check your connection and try again.');
         } else {
-          throw lastError;
+          throw new Error('Unable to process your brain dump. Please try again.');
         }
       }
       
-      throw new Error('Organization failed after multiple attempts.');
+      throw new Error('Processing failed. Please try again.');
     },
     onSuccess: (data) => {
       console.log('Organization successful:', data);
