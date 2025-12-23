@@ -34,6 +34,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
   const transcriptRef = useRef<string>('');
+  const finalTranscriptRef = useRef<string>('');
+  const lastResultIndexRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
@@ -205,10 +207,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       recognition.onresult = (event: any) => {
         let interimTranscript = '';
-        let finalTranscript = '';
+        let newFinalTranscript = '';
         let maxConfidence = 0;
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           const result = event.results[i];
           const transcript = result?.[0]?.transcript ?? '';
           const confidenceScore = result?.[0]?.confidence ?? 0;
@@ -218,20 +220,27 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           }
 
           if (result.isFinal) {
-            finalTranscript += transcript + ' ';
+            if (i >= lastResultIndexRef.current) {
+              newFinalTranscript += transcript + ' ';
+              lastResultIndexRef.current = i + 1;
+            }
           } else {
-            interimTranscript += transcript;
+            interimTranscript = transcript;
           }
         }
 
         setConfidence(maxConfidence);
 
-        setLiveTranscript((prev) => {
-          const committed = (prev + finalTranscript).trim();
-          const combined = interimTranscript ? `${committed} ${interimTranscript}`.trim() : committed;
-          transcriptRef.current = combined;
-          return combined;
-        });
+        if (newFinalTranscript) {
+          finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
+        }
+
+        const displayText = interimTranscript 
+          ? `${finalTranscriptRef.current} ${interimTranscript}`.trim() 
+          : finalTranscriptRef.current;
+        
+        transcriptRef.current = displayText;
+        setLiveTranscript(displayText);
       };
 
       recognition.onerror = (event: any) => {
@@ -263,6 +272,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setError(null);
     setLiveTranscript('');
     transcriptRef.current = '';
+    finalTranscriptRef.current = '';
+    lastResultIndexRef.current = 0;
     setRecordingDuration(0);
     setConfidence(0);
     setIsTranscribing(false);
@@ -510,6 +521,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setError(null);
     setLiveTranscript('');
     transcriptRef.current = '';
+    finalTranscriptRef.current = '';
+    lastResultIndexRef.current = 0;
     setRecordingDuration(0);
     setConfidence(0);
 
