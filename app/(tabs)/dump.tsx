@@ -42,30 +42,20 @@ const resultSchema = z.object({
       items: z.array(
         z.object({
           task: z.string(),
-          original: z.string().optional(),
-          scheduledTime: z.string().optional(),
+          priority: z.enum(['high', 'medium', 'low']).default('medium'),
           duration: z.string().optional(),
-          timeEstimate: z.string().optional(),
-          priority: z.enum(['high', 'medium', 'low']).optional(),
+          scheduledTime: z.string().optional(),
           subtasks: z.array(
             z.object({
               task: z.string(),
-              scheduledTime: z.string().optional(),
-              duration: z.string().optional(),
-              timeEstimate: z.string().optional(),
-              priority: z.enum(['high', 'medium', 'low']).optional(),
+              priority: z.enum(['high', 'medium', 'low']).default('medium'),
             })
           ).optional(),
-          hasSubtaskSuggestion: z.boolean().optional(),
-          isReflection: z.boolean().optional(),
-          closesLoop: z.boolean().optional(),
         })
       ),
-      priority: z.enum(['high', 'medium', 'low']).optional(),
     })
   ),
   summary: z.string(),
-  reflectionInsight: z.string().optional(),
 });
 
 function generateId(): string {
@@ -125,32 +115,20 @@ export default function DumpScreen() {
         try {
           console.log(`Attempt ${attempt}/${maxRetries}...`);
           
+          const truncatedText = text.length > 2000 ? text.substring(0, 2000) + '...' : text;
+          
           const rawResult = await Promise.race([
             generateObject({
               messages: [
                 {
                   role: 'user',
-                  content: `Organize this brain dump into actionable tasks.
-
-RULES:
-1. Group related tasks under parent tasks with subtasks (e.g., multiple emails → "Handle emails" with subtasks)
-2. Complex tasks (>30min) need subtasks. Tasks with "prepare/plan/organize" need subtasks.
-3. scheduledTime: 24h format "HH:MM" ONLY for specific times ("meeting at 2pm" → "14:00")
-4. duration: "15m", "30m", "1h", "2h" for all tasks
-5. priority: MUST be exactly "high", "medium", or "low" (no other values allowed). high=urgent/deadlines, medium=important, low=optional
-6. Categories: Work, Personal, Health, Finance, Home, etc. (2-5 max)
-7. Order: scheduled items first, then high→medium→low priority
-8. Feelings/thoughts → isReflection: true
-9. Set hasSubtaskSuggestion: true on parent tasks with subtasks
-
-INPUT:
-${text}`,
+                  content: `Convert to tasks. Rules: priority must be "high"/"medium"/"low". Group related items. duration: "15m"/"30m"/"1h". scheduledTime: "HH:MM" only if time mentioned. Max 4 categories.\n\n${truncatedText}`,
                 },
               ],
               schema: resultSchema,
             }),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 60000)
+              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 90000)
             )
           ]);
           
@@ -178,13 +156,19 @@ ${text}`,
             ...rawResult,
             categories: rawResult.categories.map((cat: any) => ({
               ...cat,
-              priority: sanitizePriority(cat.priority),
               items: cat.items.map((item: any) => ({
                 ...item,
                 priority: sanitizePriority(item.priority),
+                original: item.task,
+                timeEstimate: item.duration,
+                hasSubtaskSuggestion: !!item.subtasks?.length,
+                isReflection: false,
+                closesLoop: false,
                 subtasks: item.subtasks?.map((st: any) => ({
                   ...st,
                   priority: sanitizePriority(st.priority),
+                  duration: item.duration,
+                  timeEstimate: item.duration,
                 })),
               })),
             })),
@@ -242,7 +226,6 @@ ${text}`,
         categories,
         createdAt: new Date().toISOString(),
         summary: data.summary,
-        reflectionInsight: data.reflectionInsight,
       };
 
       addDump(session);
