@@ -90,8 +90,36 @@ export default function TrackerScreen() {
     try {
       const storedHabits = await AsyncStorage.getItem('habits');
       const storedLogs = await AsyncStorage.getItem('habitLogs');
-      if (storedHabits) setHabits(JSON.parse(storedHabits));
-      if (storedLogs) setHabitLogs(JSON.parse(storedLogs));
+      
+      if (storedHabits) {
+        try {
+          const parsed = JSON.parse(storedHabits);
+          if (Array.isArray(parsed)) {
+            setHabits(parsed);
+          } else {
+            console.log('Invalid habits format, using defaults');
+            await AsyncStorage.removeItem('habits');
+          }
+        } catch (parseError) {
+          console.log('Error parsing habits, clearing corrupted data:', parseError);
+          await AsyncStorage.removeItem('habits');
+        }
+      }
+      
+      if (storedLogs) {
+        try {
+          const parsed = JSON.parse(storedLogs);
+          if (typeof parsed === 'object' && parsed !== null) {
+            setHabitLogs(parsed);
+          } else {
+            console.log('Invalid habit logs format, resetting');
+            await AsyncStorage.removeItem('habitLogs');
+          }
+        } catch (parseError) {
+          console.log('Error parsing habit logs, clearing corrupted data:', parseError);
+          await AsyncStorage.removeItem('habitLogs');
+        }
+      }
     } catch (error) {
       console.log('Error loading habit data:', error);
     }

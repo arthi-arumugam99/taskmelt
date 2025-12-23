@@ -16,10 +16,17 @@ async function loadLocalDumps(): Promise<DumpSession[]> {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+          console.log('Invalid dumps format (not array), clearing:', typeof parsed);
+          await AsyncStorage.removeItem(STORAGE_KEY);
+          return [];
+        }
+        return parsed;
       } catch (parseError) {
         console.log('Error parsing stored dumps, clearing corrupted data:', parseError);
-        console.log('Corrupted value:', stored?.substring(0, 100));
+        console.log('Corrupted value type:', typeof stored);
+        console.log('Corrupted value sample:', stored?.substring(0, 100));
         await AsyncStorage.removeItem(STORAGE_KEY);
         return [];
       }
