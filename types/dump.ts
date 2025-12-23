@@ -21,6 +21,14 @@ export interface TaskItem {
     dayOfMonth?: number;
   };
   order?: number;
+  context?: 'home' | 'work' | 'errands' | 'computer' | 'phone' | 'anywhere';
+  energyLevel?: 'high' | 'medium' | 'low';
+  dependencies?: string[];
+  postponedCount?: number;
+  postponedAt?: string;
+  estimatedDuration?: number;
+  actualDuration?: number;
+  velocityScore?: number;
 }
 
 export interface Category {
