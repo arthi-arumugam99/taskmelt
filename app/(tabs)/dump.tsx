@@ -152,21 +152,56 @@ Create a smart, time-aware task system that orders by IMPORTANCE & LOGIC—not b
 3. **timeEstimate**: Human-readable combined info (LEGACY, populate for compatibility)
    - Examples: "30 mins", "1 hour", "2 hours"
 
-**🧠 AUTO TASK BREAKDOWN (MANDATORY - THIS IS CRITICAL):**
+**🧠 CRITICAL: SMART TASK GROUPING & BREAKDOWN**
 
-⚠️ YOU MUST BREAK DOWN COMPLEX TASKS INTO SUBTASKS ⚠️
+⚠️ YOU MUST GROUP RELATED TASKS AND CREATE SUBTASKS ⚠️
 
-For EVERY task that involves multiple steps, you MUST create subtasks array with detailed breakdown.
+This is THE MOST IMPORTANT RULE. Users complain when you don't do this right.
 
-NON-NEGOTIABLE RULES:
-1. If a task takes more than 30 minutes → MUST have subtasks
-2. If a task has words like "prepare", "plan", "organize", "setup", "create", "research" → MUST have subtasks
+**GROUPING RULES (DO THIS FIRST):**
+1. If you see multiple tasks about the SAME THING → Create ONE parent task with ALL as subtasks
+   - "Reply to email X", "Reply to email Y", "Reply to email Z" → Parent: "Handle email responses" + 3 subtasks
+   - "Respond to Slack message 1", "Respond to Slack message 2" → Parent: "Respond to Slack messages" + 2 subtasks
+   - "Open document", "Write conclusion", "Send file" → Parent: "Complete and send document" + 3 subtasks
+
+2. If tasks are STEPS in a larger workflow → Create parent with workflow name
+   - "Check invoice status", "Open bank app", "Send payment" → Parent: "Process invoice payment" + 3 subtasks
+   - "Find charger", "Plug in device" → Parent: "Charge device" + 2 subtasks
+
+3. If tasks mention "then", "after", "and then" → They're a sequence, make them subtasks
+
+**BREAKDOWN RULES (AFTER GROUPING):**
+1. Complex tasks (>30 min) → MUST have subtasks
+2. Tasks with "prepare", "plan", "organize", "setup", "create", "research" → MUST have subtasks
 3. Each subtask MUST have: task, duration, priority, scheduledTime (if applicable)
 4. Set hasSubtaskSuggestion: true on parent task
 5. Make 2-6 subtasks per complex task
-6. Each subtask must be actionable and atomic (single action)
+6. Each subtask must be actionable and atomic
 
-**EXAMPLES - STUDY THESE:**
+**CRITICAL EXAMPLES - STUDY THESE:**
+
+❌ WRONG (What you're doing now):
+Input: "reply to update request email, respond to slack messages, respond to slack message needing decision"
+Bad output: 3 separate tasks
+
+✅ CORRECT (What you MUST do):
+Parent: { task: "Handle communications", hasSubtaskSuggestion: true, duration: "45m", subtasks: [...] }
+Subtasks:
+- Reply to update request email (10m, high)
+- Respond to slack messages (15m, medium)  
+- Respond to slack message needing decision (20m, high)
+
+❌ WRONG:
+Input: "open document and review, write conclusion, send file, check file"
+Bad output: 4 separate tasks
+
+✅ CORRECT:
+Parent: { task: "Complete and finalize document", hasSubtaskSuggestion: true, duration: "1h", subtasks: [...] }
+Subtasks:
+- Open document and review current state (10m, high)
+- Write and add conclusion (20m, high)
+- Double check and rename file (5m, medium)
+- Send finished file (5m, high)
 
 "prepare presentation" →
   Parent: { task: "Prepare presentation", hasSubtaskSuggestion: true, subtasks: [...] }

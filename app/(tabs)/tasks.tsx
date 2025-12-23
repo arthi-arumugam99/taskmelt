@@ -12,7 +12,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, List, Clock, GripVertical } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, List, Clock, GripVertical, ChevronDown, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -79,19 +79,6 @@ export default function TasksScreen() {
               categoryColor: category.color,
               createdAt: dump.createdAt,
             });
-            
-            if (item.subtasks && item.subtasks.length > 0) {
-              item.subtasks.forEach((subtask) => {
-                tasks.push({
-                  task: subtask,
-                  dumpId: dump.id,
-                  categoryName: category.name,
-                  categoryEmoji: category.emoji,
-                  categoryColor: category.color,
-                  createdAt: dump.createdAt,
-                });
-              });
-            }
           }
         });
       });
@@ -214,6 +201,12 @@ export default function TasksScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     toggleTask(dumpId, taskId);
   }, [toggleTask]);
+
+  const handleToggleExpand = useCallback((task: TaskItem, dumpId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const updatedTask = { ...task, isExpanded: !task.isExpanded };
+    updateTask(dumpId, task.id, updatedTask);
+  }, [updateTask]);
 
   const handleEditTask = useCallback((task: TaskItem, dumpId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -573,63 +566,119 @@ export default function TasksScreen() {
                 <View {...panResponder.panHandlers} style={styles.dragHandle}>
                   <GripVertical size={20} color={Colors.textMuted} />
                 </View>
-                <TouchableOpacity
-                  style={styles.taskRow}
-                  onPress={() => handleToggleTask(item.dumpId, item.task.id)}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      { borderColor: item.categoryColor },
-                      item.task.completed && { backgroundColor: item.categoryColor },
-                    ]}
+                <View style={styles.taskMainContent}>
+                  <TouchableOpacity
+                    style={styles.taskRow}
+                    onPress={() => handleToggleTask(item.dumpId, item.task.id)}
+                    activeOpacity={0.7}
                   >
-                    {item.task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-                  </View>
-                  <View style={styles.taskContent}>
-                    <Text
+                    <View
                       style={[
-                        styles.taskText,
-                        item.task.completed && styles.taskTextCompleted,
+                        styles.checkbox,
+                        { borderColor: item.categoryColor },
+                        item.task.completed && { backgroundColor: item.categoryColor },
                       ]}
                     >
-                      {item.task.task}
-                    </Text>
-                    <View style={styles.taskMeta}>
-                      {viewMode === 'category' && (
-                        <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
-                          <Text style={styles.categoryBadgeText}>
-                            {item.categoryEmoji} {item.categoryName}
-                          </Text>
-                        </View>
-                      )}
-                      {viewMode === 'chronological' && item.task.scheduledTime && (
-                        <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
-                          <Clock size={12} color={item.categoryColor} />
-                          <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' }]}>
-                            {item.task.scheduledTime}
-                          </Text>
-                        </View>
-                      )}
-                      {item.task.duration && (
-                        <View style={styles.timeBadge}>
-                          <Clock size={12} color={Colors.textMuted} />
-                          <Text style={styles.timeEstimate}>
-                            {item.task.duration}
-                          </Text>
-                        </View>
-                      )}
-                      {viewMode === 'chronological' && (
-                        <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
-                          <Text style={styles.categoryBadgeText}>
-                            {item.categoryEmoji} {item.categoryName}
-                          </Text>
-                        </View>
-                      )}
+                      {item.task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
                     </View>
-                  </View>
-                </TouchableOpacity>
+                    <View style={styles.taskContent}>
+                      <View style={styles.taskTitleRow}>
+                        <Text
+                          style={[
+                            styles.taskText,
+                            item.task.completed && styles.taskTextCompleted,
+                          ]}
+                        >
+                          {item.task.task}
+                        </Text>
+                        {item.task.subtasks && item.task.subtasks.length > 0 && (
+                          <TouchableOpacity
+                            onPress={() => handleToggleExpand(item.task, item.dumpId)}
+                            style={styles.expandButton}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          >
+                            {item.task.isExpanded ? (
+                              <ChevronDown size={18} color={item.categoryColor} />
+                            ) : (
+                              <ChevronRight size={18} color={item.categoryColor} />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <View style={styles.taskMeta}>
+                        {item.task.scheduledTime && (
+                          <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                            <Clock size={12} color={item.categoryColor} />
+                            <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' }]}>
+                              {item.task.scheduledTime}
+                            </Text>
+                          </View>
+                        )}
+                        {item.task.duration && (
+                          <View style={styles.timeBadge}>
+                            <Clock size={12} color={Colors.textMuted} />
+                            <Text style={styles.timeEstimate}>
+                              {item.task.duration}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={[styles.categoryBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                          <Text style={styles.categoryBadgeText}>
+                            {item.categoryEmoji} {item.categoryName}
+                          </Text>
+                        </View>
+                        {item.task.subtasks && item.task.subtasks.length > 0 && (
+                          <View style={styles.subtaskCountBadge}>
+                            <Text style={styles.subtaskCountText}>
+                              {item.task.subtasks.filter(st => st.completed).length}/{item.task.subtasks.length}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  {item.task.subtasks && item.task.subtasks.length > 0 && item.task.isExpanded && (
+                    <View style={styles.subtasksList}>
+                      {item.task.subtasks.map((subtask, subIndex) => (
+                        <TouchableOpacity
+                          key={subtask.id}
+                          style={styles.subtaskItem}
+                          onPress={() => handleToggleTask(item.dumpId, subtask.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.subtaskLine} />
+                          <View
+                            style={[
+                              styles.subtaskCheckbox,
+                              { borderColor: item.categoryColor },
+                              subtask.completed && { backgroundColor: item.categoryColor },
+                            ]}
+                          >
+                            {subtask.completed && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
+                          </View>
+                          <View style={styles.subtaskContent}>
+                            <Text
+                              style={[
+                                styles.subtaskText,
+                                subtask.completed && styles.taskTextCompleted,
+                              ]}
+                            >
+                              {subtask.task}
+                            </Text>
+                            {subtask.duration && (
+                              <View style={styles.subtaskMeta}>
+                                <Clock size={10} color={Colors.textMuted} />
+                                <Text style={styles.subtaskDuration}>
+                                  {subtask.duration}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
                 <TouchableOpacity
                   style={styles.editButton}
                   onPress={() => handleEditTask(item.task, item.dumpId)}
@@ -841,7 +890,7 @@ const styles = StyleSheet.create({
   },
   taskCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: Colors.card,
     borderRadius: 16,
     borderWidth: 3,
@@ -851,6 +900,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
+  },
+  taskMainContent: {
+    flex: 1,
   },
   dragHandle: {
     padding: 14,
@@ -877,6 +929,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
     minWidth: 0,
+  },
+  taskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  expandButton: {
+    padding: 2,
   },
   taskText: {
     fontSize: 15,
@@ -979,5 +1039,64 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: Colors.background,
     textAlign: 'center' as const,
+  },
+  subtasksList: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  subtaskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 8,
+  },
+  subtaskLine: {
+    width: 2,
+    height: '100%',
+    backgroundColor: Colors.borderLight,
+    position: 'absolute',
+    left: 19,
+    top: 0,
+  },
+  subtaskCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  subtaskContent: {
+    flex: 1,
+    gap: 4,
+  },
+  subtaskText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  subtaskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  subtaskDuration: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '500' as const,
+  },
+  subtaskCountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: Colors.border,
+  },
+  subtaskCountText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
   },
 });
