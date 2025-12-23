@@ -263,7 +263,10 @@ ${text}`,
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await stopRecording();
+      const finalTranscript = await stopRecording();
+      if (finalTranscript) {
+        setInputText(finalTranscript);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -417,7 +420,9 @@ ${text}`,
                     </Text>
                   </View>
                   <View style={styles.listeningContainer}>
-                    <Text style={styles.listeningText}>Speaking into text box...</Text>
+                    <Text style={styles.listeningText}>
+                      {Platform.OS === 'web' ? '🎤 Live transcription active' : '🎙️ Recording... (transcribes when you stop)'}
+                    </Text>
                     <View style={styles.waveBars}>
                       <Animated.View style={[styles.waveBar, { height: 12 }]} />
                       <Animated.View style={[styles.waveBar, { height: 20 }]} />
