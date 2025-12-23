@@ -457,6 +457,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       durationIntervalRef.current = null;
     }
 
+    // Capture transcripts BEFORE stopping recognition
+    const capturedFinalTranscript = finalTranscriptRef.current.trim();
+    const capturedDisplayTranscript = transcriptRef.current.trim() || liveTranscript.trim();
+    
+    console.log('📝 Captured final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
+    console.log('📝 Captured display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -467,8 +474,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
 
     try {
-      const currentTranscript = transcriptRef.current.trim() || liveTranscript.trim();
-      console.log('📝 Current live transcript:', currentTranscript.slice(0, 50) || '(empty)');
+      // Use the longer of final transcript or display transcript
+      const currentTranscript = capturedFinalTranscript.length >= capturedDisplayTranscript.length 
+        ? capturedFinalTranscript 
+        : capturedDisplayTranscript;
+      
+      console.log('📝 Using transcript:', currentTranscript.slice(0, 100) || '(empty)');
 
       if (Platform.OS === 'web' && currentTranscript) {
         console.log('✨ Using live transcript for web');
@@ -488,6 +499,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         
         setLiveTranscript('');
         transcriptRef.current = '';
+        finalTranscriptRef.current = '';
         setConfidence(0);
         return currentTranscript;
       }

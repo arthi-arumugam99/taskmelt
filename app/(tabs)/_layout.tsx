@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Brain, Clock, Settings } from "lucide-react-native";
+import { Brain, ListTodo, Calendar, Settings } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
 
@@ -32,15 +32,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dump"
         options={{
-          title: "Dump",
+          title: "Brain",
           tabBarIcon: ({ color, size }) => <Brain color={color} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="history"
+        name="tasks"
         options={{
-          title: "History",
-          tabBarIcon: ({ color, size }) => <Clock color={color} size={size} />,
+          title: "Tasks",
+          tabBarIcon: ({ color, size }) => <ListTodo color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="tracker"
+        options={{
+          title: "Tracker",
+          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -48,6 +55,12 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
