@@ -10,10 +10,9 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
-  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap } from 'lucide-react-native';
+import { Mic, Square, Zap } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -23,7 +22,7 @@ import { useDumps } from '@/contexts/DumpContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useRouter } from 'expo-router';
 import { DumpSession, Category } from '@/types/dump';
-import OrganizedResults from '@/components/OrganizedResults';
+
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 
 const PLACEHOLDERS = [
@@ -69,12 +68,12 @@ function generateId(): string {
 
 export default function DumpScreen() {
   const [inputText, setInputText] = useState('');
-  const [currentSession, setCurrentSession] = useState<DumpSession | null>(null);
+  const [currentSession] = useState<DumpSession | null>(null);
   const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]);
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { dumps, addDump, toggleTask, deleteTask, canCreateDump, remainingFreeDumps } = useDumps();
+  const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
   const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, confidence, startRecording, stopRecording } = useVoiceRecording();
@@ -216,8 +215,14 @@ ${text}`,
         reflectionInsight: data.reflectionInsight,
       };
 
-      setCurrentSession(session);
       addDump(session);
+      setInputText('');
+      
+      // Navigate to tasks page with animation
+      router.push({
+        pathname: '/(tabs)/tasks',
+        params: { animated: 'true', date: new Date().toISOString().split('T')[0] }
+      });
     },
     onError: (error) => {
       console.error('Organization failed:', error);
@@ -256,60 +261,7 @@ ${text}`,
     organizeMutate(inputText);
   }, [inputText, isPending, organizeMutate, buttonScale, canCreateDump, isProUser, router]);
 
-  const handleReset = useCallback(() => {
-    setInputText('');
-    setCurrentSession(null);
-    reset();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [reset]);
 
-  const handleToggleTask = useCallback((taskId: string) => {
-    if (!currentSession) return;
-
-    let isCompleting = false;
-    
-    for (const category of currentSession.categories) {
-      const taskIndex = category.items.findIndex(item => item.id === taskId);
-      if (taskIndex !== -1) {
-        isCompleting = !category.items[taskIndex].completed;
-        break;
-      }
-      
-      for (const item of category.items) {
-        if (item.subtasks) {
-          const subtaskIndex = item.subtasks.findIndex(st => st.id === taskId);
-          if (subtaskIndex !== -1) {
-            isCompleting = !item.subtasks[subtaskIndex].completed;
-            break;
-          }
-        }
-      }
-    }
-    
-    Haptics.impactAsync(
-      isCompleting
-        ? Haptics.ImpactFeedbackStyle.Medium 
-        : Haptics.ImpactFeedbackStyle.Light
-    );
-    
-    toggleTask(currentSession.id, taskId);
-  }, [currentSession, toggleTask]);
-
-  const handleToggleExpanded = useCallback((taskId: string) => {
-    if (!currentSession) return;
-
-    const updatedSession = { ...currentSession };
-    
-    for (const category of updatedSession.categories) {
-      const taskIndex = category.items.findIndex(item => item.id === taskId);
-      if (taskIndex !== -1) {
-        category.items[taskIndex].isExpanded = !category.items[taskIndex].isExpanded;
-        setCurrentSession(updatedSession);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        return;
-      }
-    }
-  }, [currentSession]);
 
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
@@ -327,59 +279,7 @@ ${text}`,
     }
   }, [isRecording, startRecording, stopRecording]);
 
-  const handleShareResults = useCallback(async () => {
-    if (!currentSession) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    let shareText = `📋 TaskMelt Brain Dump\n\n`;
-    
-    currentSession.categories.forEach((cat) => {
-      if (cat.items.length > 0) {
-        shareText += `\n${cat.emoji} ${cat.name}:\n`;
-        cat.items.forEach((item) => {
-          const status = item.completed ? '✅' : '⬜';
-          shareText += `${status} ${item.task}`;
-          if (item.timeEstimate) shareText += ` (${item.timeEstimate})`;
-          shareText += '\n';
-        });
-      }
-    });
-    
-    try {
-      await Share.share({ message: shareText });
-    } catch (error) {
-      console.log('Error sharing:', error);
-    }
-  }, [currentSession]);
 
-  const { totalTasks, completedTasks } = React.useMemo(() => {
-    if (!currentSession) return { totalTasks: 0, completedTasks: 0 };
-    
-    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
-    const dumpToUse = actualDump || currentSession;
-    
-    let total = 0;
-    let completed = 0;
-    
-    for (const cat of dumpToUse.categories) {
-      for (const item of cat.items) {
-        if (item.isReflection) continue;
-        
-        if (item.subtasks && item.subtasks.length > 0) {
-          total += item.subtasks.length;
-          completed += item.subtasks.filter((st) => st.completed).length;
-        } else {
-          total += 1;
-          if (item.completed) completed += 1;
-        }
-      }
-    }
-    
-    return { totalTasks: total, completedTasks: completed };
-  }, [currentSession, dumps]);
-  
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   useEffect(() => {
     if (voiceError) {
@@ -550,74 +450,7 @@ ${text}`,
                 </View>
               )}
             </>
-          ) : (
-            <>
-              <View style={styles.resultsHeader}>
-                <View style={styles.resultsHeaderLeft}>
-                  <Text style={styles.resultsTitle}>Your Clarity</Text>
-                  {currentSession.summary && (
-                    <Text style={styles.resultsSummary}>{currentSession.summary}</Text>
-                  )}
-                </View>
-                <View style={styles.resultsHeaderActions}>
-                  <TouchableOpacity onPress={handleShareResults} style={styles.iconButton}>
-                    <Share2 size={20} color={Colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleReset} style={styles.iconButton}>
-                    <RotateCcw size={20} color={Colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {totalTasks > 0 && (
-                <View style={styles.progressCard}>
-                  <View style={styles.progressHeader}>
-                    <TrendingUp size={18} color={Colors.primary} />
-                    <Text style={styles.progressTitle}>Progress</Text>
-                  </View>
-                  <View style={styles.progressStats}>
-                    <Text style={styles.progressPercentage}>
-                      {completedTasks === totalTasks ? '🎉 100%' : `${completionRate}%`}
-                    </Text>
-                    <Text style={styles.progressLabel}>
-                      {completedTasks} of {totalTasks} tasks completed
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarContainer}>
-                    <Animated.View style={[styles.progressBarFill, { width: `${completionRate}%` }]} />
-                  </View>
-                </View>
-              )}
-
-
-
-
-
-              {(() => {
-                const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
-                const dumpToUse = actualDump || currentSession;
-                
-                return (
-                  <OrganizedResults
-                    categories={dumpToUse.categories}
-                    summary={dumpToUse.summary}
-                    onToggleTask={handleToggleTask}
-                    onToggleExpanded={handleToggleExpanded}
-                    onDeleteTask={(taskId) => deleteTask(currentSession.id, taskId)}
-                    highlightedTaskIds={[]}
-                    hideHighlightedTasks={false}
-                  />
-                );
-              })()}
-
-              <TouchableOpacity
-                style={styles.newDumpButton}
-                onPress={handleReset}
-              >
-                <Text style={styles.newDumpButtonText}>Unload Your Thoughts</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
