@@ -111,22 +111,34 @@ export default function TasksScreen() {
 
     if (viewMode === 'chronological') {
       result.sort((a, b) => {
-        const aTime = a.task.timeEstimate || '';
-        const bTime = b.task.timeEstimate || '';
-        const aHasTime = /\d/.test(aTime);
-        const bHasTime = /\d/.test(bTime);
+        const aScheduledTime = a.task.scheduledTime || '';
+        const bScheduledTime = b.task.scheduledTime || '';
+        const aPriority = a.task.priority || 'medium';
+        const bPriority = b.task.priority || 'medium';
         
-        if (aHasTime && !bHasTime) return -1;
-        if (!aHasTime && bHasTime) return 1;
-        if (aHasTime && bHasTime) {
-          const aMatch = aTime.match(/(\d+):(\d+)/);
-          const bMatch = bTime.match(/(\d+):(\d+)/);
+        const aHasScheduledTime = aScheduledTime.length > 0;
+        const bHasScheduledTime = bScheduledTime.length > 0;
+        
+        if (aHasScheduledTime && !bHasScheduledTime) return -1;
+        if (!aHasScheduledTime && bHasScheduledTime) return 1;
+        
+        if (aHasScheduledTime && bHasScheduledTime) {
+          const aMatch = aScheduledTime.match(/(\d+):(\d+)/);
+          const bMatch = bScheduledTime.match(/(\d+):(\d+)/);
           if (aMatch && bMatch) {
             const aMinutes = parseInt(aMatch[1]) * 60 + parseInt(aMatch[2]);
             const bMinutes = parseInt(bMatch[1]) * 60 + parseInt(bMatch[2]);
-            return aMinutes - bMinutes;
+            if (aMinutes !== bMinutes) return aMinutes - bMinutes;
           }
         }
+        
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        const aPriorityValue = priorityOrder[aPriority as keyof typeof priorityOrder];
+        const bPriorityValue = priorityOrder[bPriority as keyof typeof priorityOrder];
+        if (aPriorityValue !== bPriorityValue) {
+          return aPriorityValue - bPriorityValue;
+        }
+        
         return 0;
       });
     } else {
@@ -494,11 +506,19 @@ export default function TasksScreen() {
                           </Text>
                         </View>
                       )}
-                      {item.task.timeEstimate && (
-                        <View style={[styles.timeBadge, viewMode === 'chronological' && { backgroundColor: item.categoryColor + '20' }]}>
-                          <Clock size={12} color={viewMode === 'chronological' ? item.categoryColor : Colors.textMuted} />
-                          <Text style={[styles.timeEstimate, viewMode === 'chronological' && { color: item.categoryColor, fontWeight: '700' }]}>
-                            {item.task.timeEstimate}
+                      {viewMode === 'chronological' && item.task.scheduledTime && (
+                        <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                          <Clock size={12} color={item.categoryColor} />
+                          <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' }]}>
+                            {item.task.scheduledTime}
+                          </Text>
+                        </View>
+                      )}
+                      {item.task.duration && (
+                        <View style={styles.timeBadge}>
+                          <Clock size={12} color={Colors.textMuted} />
+                          <Text style={styles.timeEstimate}>
+                            {item.task.duration}
                           </Text>
                         </View>
                       )}

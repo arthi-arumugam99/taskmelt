@@ -43,11 +43,17 @@ const resultSchema = z.object({
         z.object({
           task: z.string(),
           original: z.string().optional(),
+          scheduledTime: z.string().optional(),
+          duration: z.string().optional(),
           timeEstimate: z.string().optional(),
+          priority: z.enum(['high', 'medium', 'low']).optional(),
           subtasks: z.array(
             z.object({
               task: z.string(),
+              scheduledTime: z.string().optional(),
+              duration: z.string().optional(),
               timeEstimate: z.string().optional(),
+              priority: z.enum(['high', 'medium', 'low']).optional(),
             })
           ).optional(),
           hasSubtaskSuggestion: z.boolean().optional(),
@@ -124,44 +130,106 @@ export default function DumpScreen() {
               messages: [
                 {
                   role: 'user',
-                  content: `You are an AI productivity assistant. Analyze this brain dump and intelligently organize it into actionable tasks.
+                  content: `You are an elite AI productivity assistant. Transform this brain dump into a perfectly organized, actionable productivity system.
 
-**CORE PRINCIPLES:**
-1. **Smart Organization**: Order tasks by PRIORITY and LOGIC, not the order spoken
-2. **Automatic Task Breakdown**: Break down complex tasks into subtasks automatically
-3. **Time Intelligence**: Detect and organize time-sensitive items chronologically
+**🎯 CORE MISSION:**
+Create a smart, time-aware task system that orders by IMPORTANCE & LOGIC—not by the order things were mentioned.
 
-**TASK EXTRACTION:**
-- Extract EVERY task, idea, and action item mentioned
-- **CRITICAL TIME DETECTION**: Identify ALL time-specific items:
-  * Meetings: "meeting at 9:30", "call at 2pm", "appointment at 3:15"
-  * Events: "dinner at 7", "gym at 6am", "class at 10:30"  
-  * Deadlines: "submit report by 5pm", "pick up kids at 3:30"
-  * Format times as "HH:MM" (24-hour): "9:30" for 9:30am, "14:00" for 2pm, "15:15" for 3:15pm
-- For tasks without specific times, estimate duration: "30 mins", "1 hour", "2 hours"
+**⚡ INTELLIGENT TIME HANDLING:**
+1. **scheduledTime**: ONLY for specific appointment times
+   - Examples: "9:30" (9:30am), "14:00" (2pm), "15:45" (3:45pm)
+   - Format: 24-hour "HH:MM" format
+   - Use for: meetings, appointments, deadlines with specific times
+   - "meeting at 2pm" → scheduledTime: "14:00"
+   - "pick up kids at 3:30" → scheduledTime: "15:30"
+   - "gym at 6am" → scheduledTime: "06:00"
 
-**SMART SUBTASK GENERATION:**
-Automatically break down complex tasks into 2-4 subtasks when:
-- Task involves multiple steps (e.g., "prepare presentation" → research, create slides, practice)
-- Task is vague or large (e.g., "plan vacation" → choose destination, book flights, book hotel)
-- Task requires coordination (e.g., "organize meeting" → find time, send invites, prepare agenda)
-- Task spans multiple actions (e.g., "grocery shopping" → make list, go to store, put away)
-- Set hasSubtaskSuggestion: true and populate subtasks array for these tasks
+2. **duration**: Estimated time to complete the task
+   - Examples: "15m", "30m", "1h", "2h", "3h"
+   - Use for ALL actionable tasks
+   - Be realistic: emails (10-15m), calls (30m), reports (2-3h)
 
-**INTELLIGENT ORDERING:**
-Within each category, order tasks by:
-1. Time-sensitive items first (chronologically by time)
-2. High-priority urgent items next
-3. Medium-priority regular tasks
-4. Low-priority nice-to-haves last
+3. **timeEstimate**: Human-readable combined info (LEGACY, populate for compatibility)
+   - Examples: "30 mins", "1 hour", "2 hours"
 
-**CATEGORIZATION:**
-- Create 2-4 logical categories based on context (Work, Personal, Health, Finance, etc.)
-- Assign priority levels:
-  * high: urgent, time-sensitive, deadlines, meetings
-  * medium: regular important tasks  
-  * low: nice-to-have, optional items
-- Mark reflections/notes/thoughts with isReflection: true
+**🧠 AUTO TASK BREAKDOWN (CRITICAL):**
+Automatically create subtasks for ANY complex task:
+
+- "prepare presentation" → 
+  ✓ Research topic and gather data (1h)
+  ✓ Create slide outline (30m)
+  ✓ Design slides (2h)
+  ✓ Practice delivery (30m)
+
+- "weekly meal prep" →
+  ✓ Plan meals for the week (20m)
+  ✓ Create grocery list (10m)
+  ✓ Go grocery shopping (1h)
+  ✓ Cook and portion meals (3h)
+
+- "organize team meeting" →
+  ✓ Choose meeting time (15m)
+  ✓ Send calendar invites (10m)
+  ✓ Prepare agenda (30m)
+  ✓ Book conference room (5m)
+
+- "plan vacation" →
+  ✓ Research destinations (1h)
+  ✓ Compare flights (30m)
+  ✓ Book flights and hotel (45m)
+  ✓ Create itinerary (1h)
+
+RULES:
+- Break down tasks with 3+ steps into subtasks
+- Each subtask should be actionable and atomic
+- Assign duration to each subtask
+- Set hasSubtaskSuggestion: true
+- Make 2-5 subtasks (not too many, not too few)
+
+**📊 PRIORITY ASSIGNMENT:**
+Assign priority to EVERY task:
+- **high**: Urgent, time-sensitive, deadlines today, meetings, critical
+- **medium**: Important but flexible, regular work tasks
+- **low**: Nice-to-have, optional, can be postponed
+
+**🎨 SMART CATEGORIZATION:**
+Create 2-5 logical categories:
+- Common: Work, Personal, Health, Finance, Home, Learning, Social
+- Use context clues: gym→Health, emails→Work, groceries→Personal/Home
+- Assign category priority based on urgency of items within
+- Put time-sensitive items in high-priority categories
+
+**📋 INTELLIGENT ORDERING WITHIN CATEGORIES:**
+1. ⏰ Scheduled items FIRST (sorted by scheduledTime chronologically)
+2. 🔥 High-priority unscheduled tasks
+3. 📌 Medium-priority tasks  
+4. 💭 Low-priority tasks
+5. 📝 Reflections/notes LAST
+
+Example category order:
+- "Meeting with Sarah" (scheduledTime: "10:00", priority: high)
+- "Submit report" (priority: high, duration: "2h")
+- "Review emails" (priority: medium, duration: "30m")
+- "Update website" (priority: low, duration: "1h")
+- Reflection: "Feeling overwhelmed with deadlines"
+
+**🎯 CATEGORY ORDER:**
+Order categories by:
+1. Categories with scheduled items first
+2. High-priority categories
+3. Medium-priority categories
+4. Low-priority categories
+
+**💡 SPECIAL ITEMS:**
+- Mark thoughts/feelings/reflections with isReflection: true
+- These get their own category or go to "Notes & Reflections"
+- No priority, no duration for reflections
+
+**📝 EXTRACT EVERYTHING:**
+- Every task, action, idea, thought mentioned
+- Every meeting, appointment, deadline
+- Every wish, goal, concern
+- Be thorough but smart—combine duplicates
 
 **INPUT TO ORGANIZE:**
 ${text}`,
@@ -219,10 +287,12 @@ ${text}`,
           ...item,
           id: generateId(),
           completed: false,
+          priority: item.priority || 'medium',
           subtasks: item.subtasks?.map(subtask => ({
             ...subtask,
             id: generateId(),
             completed: false,
+            priority: subtask.priority || 'medium',
           })),
           isExpanded: false,
           isReflection: item.isReflection || false,

@@ -2,6 +2,8 @@ export interface TaskItem {
   id: string;
   task: string;
   original?: string;
+  scheduledTime?: string;
+  duration?: string;
   timeEstimate?: string;
   completed: boolean;
   completedAt?: string;
