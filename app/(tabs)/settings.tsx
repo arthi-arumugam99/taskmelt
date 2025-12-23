@@ -101,7 +101,7 @@ export default function SettingsScreen() {
 
   const handleUpgrade = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/paywall');
+    router.push('/paywall' as any);
   }, [router]);
 
   const handleRestorePurchases = useCallback(async () => {
@@ -127,7 +127,7 @@ export default function SettingsScreen() {
 
   const handleSignIn = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/auth');
+    router.push('/auth' as any);
   }, [router]);
 
   const handleSignOut = useCallback(() => {

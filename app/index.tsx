@@ -72,7 +72,7 @@ export default function SplashScreen() {
         duration: 400,
         useNativeDriver: true,
       }).start(() => {
-        router.replace('/(tabs)/dump');
+        router.replace('/(tabs)/dump' as any);
       });
     }, 2500);
 

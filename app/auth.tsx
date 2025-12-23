@@ -99,7 +99,7 @@ export default function AuthScreen() {
     } else {
       try {
         await signIn(email, password);
-        router.replace('/(tabs)/dump');
+        router.replace('/(tabs)/dump' as any);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to sign in');
       }

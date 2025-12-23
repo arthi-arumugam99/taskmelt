@@ -313,7 +313,7 @@ ${text}`,
       
       // Navigate to tasks page with animation
       router.push({
-        pathname: '/(tabs)/tasks',
+        pathname: '/(tabs)/tasks' as any,
         params: { animated: 'true', date: new Date().toISOString().split('T')[0] }
       });
     },
@@ -333,7 +333,7 @@ ${text}`,
 
     if (!canCreateDump(isProUser)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      router.push('/paywall');
+      router.push('/paywall' as any);
       return;
     }
 
