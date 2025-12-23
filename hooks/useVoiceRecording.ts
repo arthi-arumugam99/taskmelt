@@ -457,13 +457,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       durationIntervalRef.current = null;
     }
 
-    // Capture transcripts BEFORE stopping recognition
-    const capturedFinalTranscript = finalTranscriptRef.current.trim();
-    const capturedDisplayTranscript = transcriptRef.current.trim() || liveTranscript.trim();
-    
-    console.log('📝 Captured final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
-    console.log('📝 Captured display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
-
+    // Stop recognition FIRST and wait for final results to process
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -471,7 +465,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('Speech recognition stop:', e);
       }
       recognitionRef.current = null;
+      
+      // Wait for any final results to be processed
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
+
+    // Capture transcripts AFTER stopping recognition to get all results
+    const capturedFinalTranscript = finalTranscriptRef.current.trim();
+    const capturedDisplayTranscript = transcriptRef.current.trim();
+    
+    console.log('📝 Captured final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
+    console.log('📝 Captured display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
 
     try {
       // Use the longer of final transcript or display transcript
@@ -557,7 +561,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       return null;
     }
-  }, [isRecording, liveTranscript, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
+  }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
 
   const cancelRecording = useCallback(async () => {
     setIsRecording(false);
