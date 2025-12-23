@@ -71,8 +71,18 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error(`Transcription failed: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('📥 STT response:', JSON.stringify(data));
+      const responseText = await response.text();
+      console.log('📥 Raw STT response:', responseText.substring(0, 200));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('📥 Parsed STT response:', JSON.stringify(data));
+      } catch (parseError) {
+        console.error('❌ Failed to parse STT response as JSON:', parseError);
+        console.error('Response was:', responseText.substring(0, 500));
+        throw new Error('Invalid response from transcription service');
+      }
       
       const text = data?.text?.trim() || '';
       console.log('✅ Transcribed text:', text || '(empty)');
