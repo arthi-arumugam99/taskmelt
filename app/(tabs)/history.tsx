@@ -67,7 +67,7 @@ interface DumpCardProps {
 
 function DumpCard({ dump, onPress, onDelete }: DumpCardProps) {
   const stats = getCompletionStats(dump);
-  const progress = stats.total > 0 ? stats.completed / stats.total : 0;
+  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
   const handleDelete = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -98,7 +98,7 @@ function DumpCard({ dump, onPress, onDelete }: DumpCardProps) {
       <View style={styles.cardFooter}>
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
           </View>
           <Text style={styles.statsText}>
             {stats.completed}/{stats.total} tasks done

@@ -128,11 +128,14 @@ export default function DumpScreen() {
 
 Rules:
 - Create 2-4 categories based on context
-- Rewrite as clear actions
-- Add time estimates
+- Extract EVERY task mentioned, including those with specific times (e.g., "meeting at 9:30", "call at 2pm")
+- Preserve time references in the task (e.g., "Complete meeting at 9:30" should stay as "Complete meeting at 9:30")
+- Rewrite as clear actions while keeping original time/date info
+- Add time estimates for completion duration
 - For complex tasks, add 2-3 subtasks (mark hasSubtaskSuggestion: true)
 - Mark reflections/notes with isReflection: true
-- Prioritize: high (urgent), medium (regular), low (nice-to-have)
+- Prioritize: high (urgent/time-sensitive), medium (regular), low (nice-to-have)
+- Do NOT skip any items - capture everything mentioned
 
 Input:
 ${text}`,
