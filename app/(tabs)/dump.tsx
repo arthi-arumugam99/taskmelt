@@ -13,7 +13,7 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap, Check } from 'lucide-react-native';
+import { RotateCcw, Mic, Square, Share2, TrendingUp, Zap } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -384,126 +384,6 @@ ${text}`,
   
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const nextMomentumTask = React.useMemo(() => {
-    if (!currentSession || completedTasks === 0 || completedTasks === totalTasks) return null;
-    
-    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
-    const dumpToUse = actualDump || currentSession;
-    
-    const incompleteTasks: { task: string; timeEstimate?: string; id: string; categoryColor: string; categoryName: string }[] = [];
-    
-    for (const cat of dumpToUse.categories) {
-      for (const item of cat.items) {
-        if (item.isReflection || item.completed) continue;
-        
-        if (item.subtasks && item.subtasks.length > 0) {
-          for (const st of item.subtasks) {
-            if (!st.completed) {
-              incompleteTasks.push({ 
-                task: st.task, 
-                timeEstimate: st.timeEstimate, 
-                id: st.id, 
-                categoryColor: cat.color,
-                categoryName: cat.name 
-              });
-            }
-          }
-        } else {
-          incompleteTasks.push({ 
-            task: item.task, 
-            timeEstimate: item.timeEstimate, 
-            id: item.id, 
-            categoryColor: cat.color,
-            categoryName: cat.name 
-          });
-        }
-      }
-    }
-    
-    const parseTimeToMinutes = (estimate?: string): number => {
-      if (!estimate) return 999;
-      const lower = estimate.toLowerCase();
-      const hourMatch = lower.match(/(\d+)\s*h/);
-      const minMatch = lower.match(/(\d+)\s*min/);
-      let totalMinutes = 0;
-      if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
-      if (minMatch) totalMinutes += parseInt(minMatch[1]);
-      if (totalMinutes === 0) {
-        const numMatch = lower.match(/(\d+)/);
-        if (numMatch) {
-          totalMinutes = lower.includes('h') ? parseInt(numMatch[1]) * 60 : parseInt(numMatch[1]);
-        } else {
-          totalMinutes = 999;
-        }
-      }
-      return totalMinutes;
-    };
-    
-    incompleteTasks.sort((a, b) => {
-      const aMin = parseTimeToMinutes(a.timeEstimate);
-      const bMin = parseTimeToMinutes(b.timeEstimate);
-      return aMin - bMin;
-    });
-    
-    return incompleteTasks[0] || null;
-  }, [currentSession, completedTasks, totalTasks, dumps]);
-
-  const quickWins = React.useMemo(() => {
-    if (!currentSession) return [];
-    
-    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
-    const dumpToUse = actualDump || currentSession;
-    
-    return dumpToUse.categories.flatMap((cat) => 
-      cat.items
-        .filter((item) => {
-          const estimate = item.timeEstimate?.toLowerCase() || '';
-          const match = estimate.match(/(\d+)\s*min/);
-          if (!match) return false;
-          const minutes = parseInt(match[1], 10);
-          return minutes <= 5 && !item.completed && !item.isReflection;
-        })
-        .map((item) => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
-    );
-  }, [currentSession, dumps]);
-
-  const firstTask = React.useMemo(() => {
-    if (!currentSession) return undefined;
-    
-    const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
-    const dumpToUse = actualDump || currentSession;
-    
-    const parseTimeToMinutes = (estimate?: string): number => {
-      if (!estimate) return 999;
-      const lower = estimate.toLowerCase();
-      const hourMatch = lower.match(/(\d+)\s*h/);
-      const minMatch = lower.match(/(\d+)\s*min/);
-      let totalMinutes = 0;
-      if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
-      if (minMatch) totalMinutes += parseInt(minMatch[1]);
-      if (totalMinutes === 0) {
-        const numMatch = lower.match(/(\d+)/);
-        if (numMatch) {
-          totalMinutes = lower.includes('h') ? parseInt(numMatch[1]) * 60 : parseInt(numMatch[1]);
-        } else {
-          totalMinutes = 999;
-        }
-      }
-      return totalMinutes;
-    };
-    
-    return dumpToUse.categories
-      .flatMap((cat) => cat.items
-        .filter((item) => !item.completed && !item.isReflection)
-        .map((item) => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
-      )
-      .sort((a, b) => {
-        const aMin = parseTimeToMinutes(a.timeEstimate);
-        const bMin = parseTimeToMinutes(b.timeEstimate);
-        return aMin - bMin;
-      })[0];
-  }, [currentSession, dumps]);
-
   useEffect(() => {
     if (voiceError) {
       console.error('Voice recording error:', voiceError);
@@ -696,137 +576,18 @@ ${text}`,
                 <View style={styles.progressCard}>
                   <View style={styles.progressHeader}>
                     <TrendingUp size={18} color={Colors.primary} />
-                    <Text style={styles.progressTitle}>
-                      {completedTasks === 0 ? 'Clarity Progress' : 'Execution Progress'}
-                    </Text>
+                    <Text style={styles.progressTitle}>Progress</Text>
                   </View>
                   <View style={styles.progressStats}>
-                    {completedTasks === 0 ? (
-                      <>
-                        <Text style={styles.progressPercentage}>✨</Text>
-                        <Text style={styles.progressLabel}>
-                          {totalTasks} {totalTasks === 1 ? 'task' : 'tasks'} organized • Start with one
-                        </Text>
-                      </>
-                    ) : completedTasks === totalTasks ? (
-                      <>
-                        <Text style={styles.progressPercentage}>🎉 100%</Text>
-                        <Text style={styles.progressLabel}>
-                          All done! You turned chaos into clarity.
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.progressPercentage}>{completionRate}%</Text>
-                        <Text style={styles.progressLabel}>
-                          {completedTasks} done, {totalTasks - completedTasks} to go • You&rsquo;re making progress
-                        </Text>
-                      </>
-                    )}
+                    <Text style={styles.progressPercentage}>
+                      {completedTasks === totalTasks ? '🎉 100%' : `${completionRate}%`}
+                    </Text>
+                    <Text style={styles.progressLabel}>
+                      {completedTasks} of {totalTasks} tasks completed
+                    </Text>
                   </View>
                   <View style={styles.progressBarContainer}>
                     <Animated.View style={[styles.progressBarFill, { width: `${completionRate}%` }]} />
-                  </View>
-                </View>
-              )}
-
-
-
-              {completedTasks === 0 && firstTask && (
-                <View style={styles.startHereCard}>
-                  <View style={styles.startHereHeader}>
-                    <Text style={styles.startHereLabelText}>If you do nothing else</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleToggleTask(firstTask.id)}
-                    style={styles.startHereTask}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.startHereCheckbox,
-                        { borderColor: firstTask.categoryColor },
-                        firstTask.completed && { backgroundColor: firstTask.categoryColor },
-                      ]}
-                    >
-                      {firstTask.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-                    </View>
-                    <View style={styles.startHereContent}>
-                      <Text style={styles.startHereTaskText}>{firstTask.task}</Text>
-                      {firstTask.timeEstimate && (
-                        <Text style={styles.startHereTime}>{firstTask.timeEstimate}</Text>
-                      )}
-                      <Text style={styles.startHereHint}>Shortest task • Builds momentum</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {completedTasks > 0 && completedTasks < totalTasks && nextMomentumTask && (
-                <View style={styles.momentumCard}>
-                  <View style={styles.momentumHeader}>
-                    <Text style={styles.momentumEmoji}>🔥</Text>
-                    <View style={styles.momentumHeaderText}>
-                      <Text style={styles.momentumTitle}>You&apos;re on a roll</Text>
-                      <Text style={styles.momentumSubtitle}>Keep going?</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleToggleTask(nextMomentumTask.id)}
-                    style={styles.momentumTask}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.momentumCheckbox,
-                        { borderColor: nextMomentumTask.categoryColor },
-                      ]}
-                    />
-                    <View style={styles.momentumContent}>
-                      <Text style={styles.momentumTaskText}>{nextMomentumTask.task}</Text>
-                      {nextMomentumTask.timeEstimate && (
-                        <Text style={styles.momentumTime}>{nextMomentumTask.timeEstimate}</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                  <Text style={styles.momentumHint}>Just one more small win</Text>
-                </View>
-              )}
-
-              {quickWins.length > 0 && (
-                <View style={styles.quickWinsCard}>
-                  <View style={styles.quickWinsHeader}>
-                    <Zap size={16} color="#F59E0B" fill="#F59E0B" />
-                    <Text style={styles.quickWinsTitle}>{quickWins.length} Quick Win{quickWins.length > 1 ? 's' : ''} (≤5 min)</Text>
-                  </View>
-                  <View style={styles.quickWinsList}>
-                    {quickWins.map((task: any) => (
-                      <TouchableOpacity
-                        key={task.id}
-                        onPress={() => handleToggleTask(task.id)}
-                        style={[styles.quickWinItem, task.completed && styles.quickWinItemCompleted]}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.quickWinCheckbox,
-                            { borderColor: task.categoryColor },
-                            task.completed && { backgroundColor: task.categoryColor },
-                          ]}
-                        >
-                          {task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
-                        </View>
-                        <Text
-                          style={[
-                            styles.quickWinText,
-                            task.completed && styles.quickWinTextCompleted,
-                          ]}
-                        >
-                          {task.task}
-                        </Text>
-                        <Text style={styles.quickWinTime}>{task.timeEstimate}</Text>
-                      </TouchableOpacity>
-                    ))}
                   </View>
                 </View>
               )}
@@ -840,36 +601,14 @@ ${text}`,
                 const dumpToUse = actualDump || currentSession;
                 
                 return (
-                  <>
-                    <OrganizedResults
-                      categories={dumpToUse.categories.filter((cat) => 
-                        !cat.name.toLowerCase().includes('reflection') && 
-                        !cat.name.toLowerCase().includes('notes')
-                      )}
-                      summary={dumpToUse.summary}
-                      onToggleTask={handleToggleTask}
-                      onToggleExpanded={handleToggleExpanded}
-                      highlightedTaskIds={[...(firstTask ? [firstTask.id] : []), ...quickWins.map(qw => qw.id)]}
-                      hideHighlightedTasks={true}
-                    />
-
-                    {(() => {
-                      const notesCategory = dumpToUse.categories.find(cat => 
-                        cat.name.toLowerCase().includes('reflection') || 
-                        cat.name.toLowerCase().includes('notes')
-                      );
-
-                      return notesCategory ? (
-                        <OrganizedResults
-                          categories={[notesCategory]}
-                          onToggleTask={handleToggleTask}
-                          onToggleExpanded={handleToggleExpanded}
-                          highlightedTaskIds={[]}
-                          hideHighlightedTasks={false}
-                        />
-                      ) : null;
-                    })()}
-                  </>
+                  <OrganizedResults
+                    categories={dumpToUse.categories}
+                    summary={dumpToUse.summary}
+                    onToggleTask={handleToggleTask}
+                    onToggleExpanded={handleToggleExpanded}
+                    highlightedTaskIds={[]}
+                    hideHighlightedTasks={false}
+                  />
                 );
               })()}
 

@@ -677,12 +677,14 @@ const styles = StyleSheet.create({
   taskContent: {
     flex: 1,
     gap: 6,
+    minWidth: 0,
   },
   taskText: {
     fontSize: 15,
     fontWeight: '600' as const,
     color: Colors.text,
-    lineHeight: 20,
+    lineHeight: 22,
+    flexShrink: 1,
   },
   taskTextCompleted: {
     textDecorationLine: 'line-through',
@@ -692,6 +694,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexWrap: 'wrap',
   },
   categoryBadge: {
     paddingHorizontal: 8,
@@ -702,6 +705,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600' as const,
     color: Colors.textSecondary,
+    flexShrink: 1,
   },
   timeEstimate: {
     fontSize: 12,
