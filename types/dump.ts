@@ -2,6 +2,7 @@ export interface TaskItem {
   id: string;
   task: string;
   original?: string;
+  scheduledDate?: string;
   scheduledTime?: string;
   duration?: string;
   timeEstimate?: string;

@@ -13,7 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Zap, Minimize2, Maximize2, Eye, EyeOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -59,6 +59,9 @@ export default function TasksScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
+  const [focusMode, setFocusMode] = useState(false);
+  const [compactView, setCompactView] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(false);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -92,18 +95,29 @@ export default function TasksScreen() {
 
 
   const isSameDay = useCallback((date1: Date, date2: Date): boolean => {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
-    );
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    d1.setHours(0, 0, 0, 0);
+    d2.setHours(0, 0, 0, 0);
+    return d1.getTime() === d2.getTime();
+  }, []);
+
+  const getTaskDate = useCallback((task: FlatTask): Date => {
+    if (task.task.scheduledDate) {
+      return new Date(task.task.scheduledDate);
+    }
+    return new Date(task.createdAt);
   }, []);
 
   const filteredTasks = useMemo(() => {
     let result = [...allTasks];
 
     if (!showAllDates) {
-      result = result.filter((t) => isSameDay(new Date(t.createdAt), selectedDate));
+      result = result.filter((t) => isSameDay(getTaskDate(t), selectedDate));
+    }
+
+    if (hideCompleted) {
+      result = result.filter((t) => !t.task.completed);
     }
 
     if (searchQuery.trim()) {
@@ -170,6 +184,16 @@ export default function TasksScreen() {
       result.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     }
 
+    if (focusMode) {
+      const pendingTasks = result.filter(t => !t.task.completed);
+      const highPriority = pendingTasks.filter(t => t.task.priority === 'high');
+      const mediumPriority = pendingTasks.filter(t => t.task.priority === 'medium');
+      const withTime = pendingTasks.filter(t => t.task.scheduledTime);
+      
+      const focused = [...new Set([...highPriority, ...withTime.slice(0, 3), ...mediumPriority.slice(0, 2)])];
+      result = focused.slice(0, 5);
+    }
+
     if (cardAnimations.current.length !== result.length) {
       cardAnimations.current = result.map((_, i) => 
         cardAnimations.current[i] || new Animated.Value(0)
@@ -177,7 +201,7 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay, manualOrder]);
+  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay, getTaskDate, manualOrder, focusMode, hideCompleted]);
 
   const stats = useMemo(() => {
     const tasksForStats = showAllDates 
@@ -370,6 +394,15 @@ export default function TasksScreen() {
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
+                style={[styles.iconButton, focusMode && styles.iconButtonActive]}
+                onPress={() => {
+                  setFocusMode(!focusMode);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }}
+              >
+                <Zap size={20} color={focusMode ? Colors.background : Colors.accent3Dark} />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
                   setShowFilters(!showFilters);
@@ -457,6 +490,16 @@ export default function TasksScreen() {
               </View>
             </View>
           )}
+
+          {focusMode && (
+            <View style={styles.focusModeCard}>
+              <Zap size={18} color={Colors.accent3Dark} />
+              <Text style={styles.focusModeText}>Focus Mode: Top 5 priorities</Text>
+              <TouchableOpacity onPress={() => setFocusMode(false)}>
+                <X size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
           </Animated.View>
 
         <DayScroller
@@ -470,6 +513,33 @@ export default function TasksScreen() {
             <X size={16} color={Colors.primary} />
           </TouchableOpacity>
         )}
+
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={[styles.quickActionButton, hideCompleted && styles.quickActionButtonActive]}
+            onPress={() => {
+              setHideCompleted(!hideCompleted);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            {hideCompleted ? <EyeOff size={16} color={Colors.background} /> : <Eye size={16} color={Colors.textSecondary} />}
+            <Text style={[styles.quickActionText, hideCompleted && styles.quickActionTextActive]}>
+              {hideCompleted ? 'Show done' : 'Hide done'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickActionButton, compactView && styles.quickActionButtonActive]}
+            onPress={() => {
+              setCompactView(!compactView);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            {compactView ? <Maximize2 size={16} color={Colors.background} /> : <Minimize2 size={16} color={Colors.textSecondary} />}
+            <Text style={[styles.quickActionText, compactView && styles.quickActionTextActive]}>
+              {compactView ? 'Expand' : 'Compact'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.dateActionsRow}>
           <View style={styles.statsCard}>
@@ -534,6 +604,52 @@ export default function TasksScreen() {
                 outputRange: ['-10deg', '0deg'],
               });
 
+              if (compactView) {
+                return (
+                  <Animated.View
+                    key={item.task.id}
+                    style={[
+                      styles.compactCard,
+                      {
+                        transform: [{ scale }, { translateY }],
+                        opacity: draggingIndex === index ? 0.7 : opacity,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.compactRow}
+                      onPress={() => handleToggleTask(item.dumpId, item.task.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.compactCheckbox,
+                          { borderColor: item.categoryColor },
+                          item.task.completed && { backgroundColor: item.categoryColor },
+                        ]}
+                      >
+                        {item.task.completed && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
+                      </View>
+                      <Text
+                        style={[
+                          styles.compactText,
+                          item.task.completed && styles.taskTextCompleted,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.task.task}
+                      </Text>
+                      {item.task.scheduledTime && (
+                        <Text style={[styles.compactTime, { color: item.categoryColor }]}>
+                          {item.task.scheduledTime}
+                        </Text>
+                      )}
+                      <Text style={styles.compactEmoji}>{item.categoryEmoji}</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              }
+
               return (
               <Animated.View 
                 key={item.task.id}
@@ -597,7 +713,7 @@ export default function TasksScreen() {
                         {item.task.scheduledTime && (
                           <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
                             <Clock size={12} color={item.categoryColor} />
-                            <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' }]}>
+                            <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' as const }]}>
                               {item.task.scheduledTime}
                             </Text>
                           </View>
@@ -616,8 +732,8 @@ export default function TasksScreen() {
                           </Text>
                         </View>
                         {item.task.subtasks && item.task.subtasks.length > 0 && (
-                          <View style={styles.subtaskCountBadge}>
-                            <Text style={styles.subtaskCountText}>
+                          <View style={[styles.subtaskCountBadge, { backgroundColor: item.categoryColor + '30' }]}>
+                            <Text style={[styles.subtaskCountText, { color: item.categoryColor }]}>
                               {item.task.subtasks.filter(st => st.completed).length}/{item.task.subtasks.length}
                             </Text>
                           </View>
@@ -733,10 +849,13 @@ export default function TasksScreen() {
               onPress={() => {
                 if (!newTaskText.trim()) return;
                 
+                const taskDate = new Date(selectedDate);
+                taskDate.setHours(12, 0, 0, 0);
+                
                 const newDump: DumpSession = {
                   id: Date.now().toString(),
                   rawText: newTaskText.trim(),
-                  createdAt: selectedDate.toISOString(),
+                  createdAt: taskDate.toISOString(),
                   categories: [
                     {
                       name: 'Quick Add',
@@ -748,6 +867,7 @@ export default function TasksScreen() {
                           task: newTaskText.trim(),
                           completed: false,
                           isReflection: false,
+                          scheduledDate: taskDate.toISOString(),
                         }
                       ]
                     }
@@ -1154,12 +1274,91 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: Colors.borderLight,
   },
   subtaskCountText: {
     fontSize: 11,
     fontWeight: '700' as const,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.card,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  quickActionButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  quickActionText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
     color: Colors.textSecondary,
+  },
+  quickActionTextActive: {
+    color: Colors.background,
+  },
+  focusModeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.accent3 + '30',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.accent3Dark,
+    marginBottom: 16,
+  },
+  focusModeText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.accent3Dark,
+  },
+  compactCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    marginBottom: 6,
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  compactCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compactText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: Colors.text,
+  },
+  compactTime: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  compactEmoji: {
+    fontSize: 14,
   },
   dateActionsRow: {
     flexDirection: 'row',
