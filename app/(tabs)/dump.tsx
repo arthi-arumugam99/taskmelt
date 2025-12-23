@@ -412,11 +412,28 @@ ${text}`,
       }
     }
     
+    const parseTimeToMinutes = (estimate?: string): number => {
+      if (!estimate) return 999;
+      const lower = estimate.toLowerCase();
+      const hourMatch = lower.match(/(\d+)\s*h/);
+      const minMatch = lower.match(/(\d+)\s*min/);
+      let totalMinutes = 0;
+      if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
+      if (minMatch) totalMinutes += parseInt(minMatch[1]);
+      if (totalMinutes === 0) {
+        const numMatch = lower.match(/(\d+)/);
+        if (numMatch) {
+          totalMinutes = lower.includes('h') ? parseInt(numMatch[1]) * 60 : parseInt(numMatch[1]);
+        } else {
+          totalMinutes = 999;
+        }
+      }
+      return totalMinutes;
+    };
+    
     incompleteTasks.sort((a, b) => {
-      const aEst = a.timeEstimate?.match(/(\d+)/);
-      const bEst = b.timeEstimate?.match(/(\d+)/);
-      const aMin = aEst ? parseInt(aEst[1]) : 999;
-      const bMin = bEst ? parseInt(bEst[1]) : 999;
+      const aMin = parseTimeToMinutes(a.timeEstimate);
+      const bMin = parseTimeToMinutes(b.timeEstimate);
       return aMin - bMin;
     });
     
@@ -448,16 +465,33 @@ ${text}`,
     const actualDump = dumps.find((d: DumpSession) => d.id === currentSession.id);
     const dumpToUse = actualDump || currentSession;
     
+    const parseTimeToMinutes = (estimate?: string): number => {
+      if (!estimate) return 999;
+      const lower = estimate.toLowerCase();
+      const hourMatch = lower.match(/(\d+)\s*h/);
+      const minMatch = lower.match(/(\d+)\s*min/);
+      let totalMinutes = 0;
+      if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
+      if (minMatch) totalMinutes += parseInt(minMatch[1]);
+      if (totalMinutes === 0) {
+        const numMatch = lower.match(/(\d+)/);
+        if (numMatch) {
+          totalMinutes = lower.includes('h') ? parseInt(numMatch[1]) * 60 : parseInt(numMatch[1]);
+        } else {
+          totalMinutes = 999;
+        }
+      }
+      return totalMinutes;
+    };
+    
     return dumpToUse.categories
       .flatMap((cat) => cat.items
         .filter((item) => !item.completed && !item.isReflection)
         .map((item) => ({ ...item, categoryColor: cat.color, categoryName: cat.name }))
       )
       .sort((a, b) => {
-        const aEst = a.timeEstimate?.match(/(\d+)/);
-        const bEst = b.timeEstimate?.match(/(\d+)/);
-        const aMin = aEst ? parseInt(aEst[1]) : 999;
-        const bMin = bEst ? parseInt(bEst[1]) : 999;
+        const aMin = parseTimeToMinutes(a.timeEstimate);
+        const bMin = parseTimeToMinutes(b.timeEstimate);
         return aMin - bMin;
       })[0];
   }, [currentSession, dumps]);
