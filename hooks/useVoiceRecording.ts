@@ -90,6 +90,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     console.log('🎤 Starting mobile recording...');
 
     try {
+      if (recordingRef.current) {
+        console.log('⚠️ Cleaning up existing recording...');
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          console.log('Cleanup error (ignored):', e);
+        }
+        recordingRef.current = null;
+      }
+
       const { status: existingStatus } = await Audio.getPermissionsAsync();
       console.log('📋 Current permission status:', existingStatus);
       let finalStatus = existingStatus;
@@ -129,66 +139,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         staysActiveInBackground: false,
       });
 
-      console.log('🎙️ Creating recording instance...');
-      const recording = new Audio.Recording();
+      console.log('🎙️ Creating recording with preset...');
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        undefined,
+        100
+      );
 
-      const recordingOptions = Platform.OS === 'ios' ? {
-        isMeteringEnabled: true,
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
-        },
-      } : {
-        isMeteringEnabled: true,
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
-        },
-      };
-
-      console.log('⚙️ Preparing to record with options:', Platform.OS);
-      await recording.prepareToRecordAsync(recordingOptions);
-
-      console.log('▶️ Starting recording...');
-      await recording.startAsync();
       recordingRef.current = recording;
       
       const status = await recording.getStatusAsync();
