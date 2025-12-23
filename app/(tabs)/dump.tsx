@@ -124,31 +124,46 @@ export default function DumpScreen() {
               messages: [
                 {
                   role: 'user',
-                  content: `Organize this brain dump into actionable tasks with categories.
+                  content: `You are an AI productivity assistant. Analyze this brain dump and intelligently organize it into actionable tasks.
 
-Rules:
-- Create 2-4 categories based on context (Work, Personal, Health, etc.)
-- Extract EVERY task mentioned
-- **CRITICAL**: Detect and preserve ALL time-specific tasks:
+**CORE PRINCIPLES:**
+1. **Smart Organization**: Order tasks by PRIORITY and LOGIC, not the order spoken
+2. **Automatic Task Breakdown**: Break down complex tasks into subtasks automatically
+3. **Time Intelligence**: Detect and organize time-sensitive items chronologically
+
+**TASK EXTRACTION:**
+- Extract EVERY task, idea, and action item mentioned
+- **CRITICAL TIME DETECTION**: Identify ALL time-specific items:
   * Meetings: "meeting at 9:30", "call at 2pm", "appointment at 3:15"
-  * Events: "dinner at 7", "gym at 6am", "class at 10:30"
-  * Tasks with times: "submit report by 5pm", "pick up kids at 3:30"
-- For time-based tasks:
-  * Extract the time and put it in timeEstimate as "HH:MM" format (24-hour)
-  * Keep the full context in the task description
-  * Examples: "9:30" for 9:30am, "14:00" for 2pm, "15:15" for 3:15pm
-- For duration-based tasks (no specific time):
-  * Estimate how long they'll take: "30 mins", "1 hour", "2 hours"
-- Add 2-3 subtasks for complex tasks (mark hasSubtaskSuggestion: true)
-- Mark reflections/notes with isReflection: true
-- Prioritize:
-  * high: urgent/time-sensitive (meetings, appointments, deadlines)
-  * medium: regular tasks
-  * low: nice-to-have
-- Do NOT skip any items - capture everything mentioned
-- Order matters: When creating tasks, list them in chronological order if times are mentioned
+  * Events: "dinner at 7", "gym at 6am", "class at 10:30"  
+  * Deadlines: "submit report by 5pm", "pick up kids at 3:30"
+  * Format times as "HH:MM" (24-hour): "9:30" for 9:30am, "14:00" for 2pm, "15:15" for 3:15pm
+- For tasks without specific times, estimate duration: "30 mins", "1 hour", "2 hours"
 
-Input:
+**SMART SUBTASK GENERATION:**
+Automatically break down complex tasks into 2-4 subtasks when:
+- Task involves multiple steps (e.g., "prepare presentation" → research, create slides, practice)
+- Task is vague or large (e.g., "plan vacation" → choose destination, book flights, book hotel)
+- Task requires coordination (e.g., "organize meeting" → find time, send invites, prepare agenda)
+- Task spans multiple actions (e.g., "grocery shopping" → make list, go to store, put away)
+- Set hasSubtaskSuggestion: true and populate subtasks array for these tasks
+
+**INTELLIGENT ORDERING:**
+Within each category, order tasks by:
+1. Time-sensitive items first (chronologically by time)
+2. High-priority urgent items next
+3. Medium-priority regular tasks
+4. Low-priority nice-to-haves last
+
+**CATEGORIZATION:**
+- Create 2-4 logical categories based on context (Work, Personal, Health, Finance, etc.)
+- Assign priority levels:
+  * high: urgent, time-sensitive, deadlines, meetings
+  * medium: regular important tasks  
+  * low: nice-to-have, optional items
+- Mark reflections/notes/thoughts with isReflection: true
+
+**INPUT TO ORGANIZE:**
 ${text}`,
                 },
               ],

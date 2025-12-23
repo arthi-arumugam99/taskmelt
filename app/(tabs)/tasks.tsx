@@ -50,7 +50,7 @@ export default function TasksScreen() {
     }
     return new Date();
   });
-  const [showAllDates, setShowAllDates] = useState(!params.date);
+  const [showAllDates, setShowAllDates] = useState(true);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -265,6 +265,11 @@ export default function TasksScreen() {
               <Text style={styles.subtitle}>
                 {viewMode === 'chronological' ? 'Timeline View' : `${stats.completed}/${stats.total} completed`}
               </Text>
+              {!showAllDates && (
+                <TouchableOpacity onPress={handleShowAll} style={{ marginTop: 4 }}>
+                  <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Filtered by date • Tap to show all</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -372,16 +377,17 @@ export default function TasksScreen() {
           )}
           </Animated.View>
 
-        <DayScroller
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-        />
-
         {!showAllDates && (
-          <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
-            <Text style={styles.showAllText}>Show all dates</Text>
-            <X size={16} color={Colors.primary} />
-          </TouchableOpacity>
+          <>
+            <DayScroller
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+            />
+            <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
+              <Text style={styles.showAllText}>Show all dates</Text>
+              <X size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </>
         )}
 
         <View style={styles.statsCard}>
