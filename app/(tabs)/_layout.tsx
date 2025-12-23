@@ -13,13 +13,18 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.card,
           borderTopColor: Colors.border,
-          borderTopWidth: 1,
+          borderTopWidth: 3,
           paddingTop: 8,
           height: 88,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 0,
+          elevation: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500' as const,
+          fontWeight: '700' as const,
           marginTop: 4,
         },
       }}

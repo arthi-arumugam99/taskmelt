@@ -364,6 +364,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     gap: 12,
+    borderWidth: 3,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -380,20 +387,22 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 18,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
     color: Colors.text,
   },
   categoryCount: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
   },
   taskList: {
     gap: 8,
   },
   taskRow: {
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 12,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
   },
   taskRowContent: {
     flexDirection: 'row',
@@ -418,6 +427,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.text,
     lineHeight: 22,
+    fontWeight: '600' as const,
   },
   taskTextCompleted: {
     textDecorationLine: 'line-through',
@@ -426,6 +436,7 @@ const styles = StyleSheet.create({
   timeEstimate: {
     fontSize: 14,
     color: Colors.textMuted,
+    fontWeight: '600' as const,
   },
   subtaskHintButton: {
     flexDirection: 'row',
@@ -436,7 +447,7 @@ const styles = StyleSheet.create({
   subtaskHint: {
     fontSize: 13,
     color: Colors.primary,
-    fontWeight: '500' as const,
+    fontWeight: '700' as const,
   },
   confettiParticle: {
     position: 'absolute',
@@ -447,10 +458,12 @@ const styles = StyleSheet.create({
     top: 12,
   },
   reflectionRow: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: Colors.card,
     borderRadius: 12,
     padding: 12,
-    borderLeftWidth: 3,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
+    borderLeftWidth: 4,
     borderLeftColor: Colors.textMuted,
   },
   reflectionText: {
@@ -458,12 +471,14 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 22,
     fontStyle: 'italic' as const,
+    fontWeight: '500' as const,
   },
   reflectionHint: {
     fontSize: 13,
     color: Colors.textMuted,
     fontStyle: 'italic' as const,
     marginBottom: 8,
+    fontWeight: '600' as const,
   },
   hiddenTasksHint: {
     fontSize: 13,
@@ -471,14 +486,15 @@ const styles = StyleSheet.create({
     fontStyle: 'italic' as const,
     marginBottom: 8,
     textAlign: 'center',
+    fontWeight: '600' as const,
   },
   taskRowHighlighted: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
     elevation: 2,
   },
 });
