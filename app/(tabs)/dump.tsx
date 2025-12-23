@@ -76,7 +76,7 @@ export default function DumpScreen() {
   const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isTranscribing, error: voiceError, liveTranscript, recordingDuration, confidence, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isTranscribing, error: voiceError, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -263,16 +263,13 @@ ${text}`,
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const transcription = await stopRecording();
-      if (transcription && transcription.trim()) {
-        setInputText(prev => prev ? `${prev}\n${transcription}` : transcription);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      }
+      await stopRecording();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await startRecording();
+      await startRecording((transcript) => {
+        setInputText(transcript);
+      });
     }
   }, [isRecording, startRecording, stopRecording]);
 
@@ -414,36 +411,21 @@ ${text}`,
                 <View style={styles.recordingIndicator}>
                   <View style={styles.recordingHeader}>
                     <View style={styles.recordingDot} />
-                    <Text style={styles.recordingText}>Listening</Text>
+                    <Text style={styles.recordingText}>Recording</Text>
                     <Text style={styles.recordingDuration}>
                       {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                     </Text>
                   </View>
-                  {liveTranscript ? (
-                    <View style={styles.transcriptContainer}>
-                      <View style={styles.transcriptHeader}>
-                        <Text style={styles.transcriptLabel}>Live:</Text>
-                        {confidence > 0 && (
-                          <View style={styles.confidenceBadge}>
-                            <View style={[styles.confidenceDot, { opacity: confidence }]} />
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.transcriptText}>{liveTranscript}</Text>
-                      <Text style={styles.transcriptHint}>Tap stop when done speaking</Text>
+                  <View style={styles.listeningContainer}>
+                    <Text style={styles.listeningText}>Speaking into text box...</Text>
+                    <View style={styles.waveBars}>
+                      <Animated.View style={[styles.waveBar, { height: 12 }]} />
+                      <Animated.View style={[styles.waveBar, { height: 20 }]} />
+                      <Animated.View style={[styles.waveBar, { height: 16 }]} />
+                      <Animated.View style={[styles.waveBar, { height: 24 }]} />
+                      <Animated.View style={[styles.waveBar, { height: 14 }]} />
                     </View>
-                  ) : (
-                    <View style={styles.listeningContainer}>
-                      <Text style={styles.listeningText}>Start speaking...</Text>
-                      <View style={styles.waveBars}>
-                        <Animated.View style={[styles.waveBar, { height: 12 }]} />
-                        <Animated.View style={[styles.waveBar, { height: 20 }]} />
-                        <Animated.View style={[styles.waveBar, { height: 16 }]} />
-                        <Animated.View style={[styles.waveBar, { height: 24 }]} />
-                        <Animated.View style={[styles.waveBar, { height: 14 }]} />
-                      </View>
-                    </View>
-                  )}
+                  </View>
                 </View>
               )}
             </>

@@ -8,10 +8,8 @@ interface UseVoiceRecordingReturn {
   isRecording: boolean;
   isTranscribing: boolean;
   error: string | null;
-  liveTranscript: string;
   recordingDuration: number;
-  confidence: number;
-  startRecording: () => Promise<void>;
+  startRecording: (onTranscriptUpdate: (text: string) => void) => Promise<void>;
   stopRecording: () => Promise<string | null>;
   cancelRecording: () => void;
 }
@@ -22,9 +20,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
-  const [confidence, setConfidence] = useState<number>(0);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -37,6 +33,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const finalTranscriptRef = useRef<string>('');
   const lastResultIndexRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
+  const onTranscriptUpdateRef = useRef<((text: string) => void) | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -250,16 +247,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       recognition.onresult = (event: any) => {
         let interimTranscript = '';
         let newFinalTranscript = '';
-        let maxConfidence = 0;
 
         for (let i = 0; i < event.results.length; i++) {
           const result = event.results[i];
           const transcript = result?.[0]?.transcript ?? '';
-          const confidenceScore = result?.[0]?.confidence ?? 0;
-
-          if (confidenceScore > maxConfidence) {
-            maxConfidence = confidenceScore;
-          }
 
           if (result.isFinal) {
             if (i >= lastResultIndexRef.current) {
@@ -271,10 +262,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           }
         }
 
-        setConfidence(maxConfidence);
-
         if (newFinalTranscript) {
           finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
+          if (onTranscriptUpdateRef.current) {
+            onTranscriptUpdateRef.current(finalTranscriptRef.current);
+          }
         }
 
         const displayText = interimTranscript 
@@ -282,7 +274,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           : finalTranscriptRef.current;
         
         transcriptRef.current = displayText;
-        setLiveTranscript(displayText);
+        if (onTranscriptUpdateRef.current) {
+          onTranscriptUpdateRef.current(displayText);
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -308,18 +302,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     console.log('✅ Recording started');
   }, []);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (onTranscriptUpdate: (text: string) => void) => {
     console.log('🎬 startRecording called, Platform:', Platform.OS);
     
     setError(null);
-    setLiveTranscript('');
     transcriptRef.current = '';
     finalTranscriptRef.current = '';
     lastResultIndexRef.current = 0;
     setRecordingDuration(0);
-    setConfidence(0);
     setIsTranscribing(false);
     recordingStartTimeRef.current = Date.now();
+    onTranscriptUpdateRef.current = onTranscriptUpdate;
 
     try {
       if (Platform.OS === 'web') {
@@ -511,10 +504,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           streamRef.current = null;
         }
         
-        setLiveTranscript('');
         transcriptRef.current = '';
         finalTranscriptRef.current = '';
-        setConfidence(0);
+        onTranscriptUpdateRef.current = null;
         return currentTranscript;
       }
 
@@ -529,9 +521,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('⚠️ No audio data captured');
         if (isMountedRef.current) {
           setIsTranscribing(false);
-          setLiveTranscript('');
           transcriptRef.current = '';
-          setConfidence(0);
+          onTranscriptUpdateRef.current = null;
         }
         return currentTranscript || null;
       }
@@ -546,10 +537,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         ? `${currentTranscript} ${transcribedText}`.trim() 
         : transcribedText.trim();
 
-      setLiveTranscript('');
       transcriptRef.current = '';
-      setConfidence(0);
       setIsTranscribing(false);
+      onTranscriptUpdateRef.current = null;
 
       if (!finalText) {
         console.log('⚠️ Empty transcription result');
@@ -565,8 +555,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (isMountedRef.current) {
         setError(message);
         setIsTranscribing(false);
-        setLiveTranscript('');
         transcriptRef.current = '';
+        onTranscriptUpdateRef.current = null;
       }
       
       return null;
@@ -577,12 +567,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setIsRecording(false);
     setIsTranscribing(false);
     setError(null);
-    setLiveTranscript('');
     transcriptRef.current = '';
     finalTranscriptRef.current = '';
     lastResultIndexRef.current = 0;
     setRecordingDuration(0);
-    setConfidence(0);
+    onTranscriptUpdateRef.current = null;
 
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -633,9 +622,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     isRecording,
     isTranscribing,
     error,
-    liveTranscript,
     recordingDuration,
-    confidence,
     startRecording,
     stopRecording,
     cancelRecording,
