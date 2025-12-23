@@ -14,6 +14,7 @@ import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
 import { DumpSession, TaskItem } from '@/types/dump';
 import TaskEditModal from '@/components/TaskEditModal';
+import DayScroller from '@/components/DayScroller';
 
 type FilterType = 'all' | 'pending' | 'completed';
 type SortType = 'newest' | 'oldest' | 'category';
@@ -35,6 +36,8 @@ export default function TasksScreen() {
   const [sortBy, setSortBy] = useState<SortType>('newest');
   const [showFilters, setShowFilters] = useState(false);
   const [editingTask, setEditingTask] = useState<{ task: TaskItem; dumpId: string } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showAllDates, setShowAllDates] = useState(true);
 
   const allTasks = useMemo(() => {
     const tasks: FlatTask[] = [];
@@ -59,8 +62,29 @@ export default function TasksScreen() {
     return tasks;
   }, [dumps]);
 
+  const taskCountByDate = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allTasks.forEach((t) => {
+      const dateKey = new Date(t.createdAt).toISOString().split('T')[0];
+      counts[dateKey] = (counts[dateKey] || 0) + 1;
+    });
+    return counts;
+  }, [allTasks]);
+
+  const isSameDay = useCallback((date1: Date, date2: Date): boolean => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  }, []);
+
   const filteredTasks = useMemo(() => {
     let result = [...allTasks];
+
+    if (!showAllDates) {
+      result = result.filter((t) => isSameDay(new Date(t.createdAt), selectedDate));
+    }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -82,14 +106,27 @@ export default function TasksScreen() {
     }
 
     return result;
-  }, [allTasks, searchQuery, filter, sortBy]);
+  }, [allTasks, searchQuery, filter, sortBy, showAllDates, selectedDate, isSameDay]);
 
   const stats = useMemo(() => {
-    const total = allTasks.length;
-    const completed = allTasks.filter((t) => t.task.completed).length;
+    const tasksForStats = showAllDates 
+      ? allTasks 
+      : allTasks.filter((t) => isSameDay(new Date(t.createdAt), selectedDate));
+    const total = tasksForStats.length;
+    const completed = tasksForStats.filter((t) => t.task.completed).length;
     const pending = total - completed;
     return { total, completed, pending };
-  }, [allTasks]);
+  }, [allTasks, showAllDates, selectedDate, isSameDay]);
+
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
+    setShowAllDates(false);
+  }, []);
+
+  const handleShowAll = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowAllDates(true);
+  }, []);
 
   const handleToggleTask = useCallback((dumpId: string, taskId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -220,6 +257,19 @@ export default function TasksScreen() {
             </View>
           )}
         </View>
+
+        <DayScroller
+          selectedDate={selectedDate}
+          onDateSelect={handleDateSelect}
+          taskCountByDate={taskCountByDate}
+        />
+
+        {!showAllDates && (
+          <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
+            <Text style={styles.showAllText}>Show all dates</Text>
+            <X size={16} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
@@ -544,5 +594,23 @@ const styles = StyleSheet.create({
     padding: 14,
     borderLeftWidth: 2,
     borderLeftColor: Colors.borderLight,
+  },
+  showAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    marginBottom: 16,
+  },
+  showAllText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.primary,
   },
 });
