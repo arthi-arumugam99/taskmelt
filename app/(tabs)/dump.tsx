@@ -103,23 +103,28 @@ export default function DumpScreen() {
 
   const { mutate: organizeMutate, isPending, isError, error: mutationError, reset } = useMutation({
     mutationFn: async (text: string) => {
-      console.log('Organizing text:', text.substring(0, 100) + '...');
-      console.log('Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
+      console.log('=== Starting organization ===');
+      console.log('Text length:', text.length, 'characters');
       console.log('Platform:', Platform.OS);
+      console.log('Toolkit URL configured:', !!process.env.EXPO_PUBLIC_TOOLKIT_URL);
       
       if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
         throw new Error('AI service not configured. Please restart the app.');
       }
       
-      console.log('Calling generateObject...');
-      console.log('Input length:', text.length, 'characters');
+      let lastError: Error | null = null;
+      const maxRetries = 2;
       
-      const result = await Promise.race([
-        generateObject({
-          messages: [
-            {
-              role: 'user',
-              content: `Organize this brain dump into actionable tasks with categories.
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Attempt ${attempt}/${maxRetries}...`);
+          
+          const result = await Promise.race([
+            generateObject({
+              messages: [
+                {
+                  role: 'user',
+                  content: `Organize this brain dump into actionable tasks with categories.
 
 Rules:
 - Create 2-4 categories based on context
@@ -134,28 +139,48 @@ Rules:
 
 Input:
 ${text}`,
-            },
-          ],
-          schema: resultSchema,
-        }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('AI timeout - please try a shorter brain dump')), 30000)
-        )
-      ]);
-      
-      console.log('AI Response received successfully');
-      console.log('Response type:', typeof result);
-      console.log('Categories count:', result?.categories?.length ?? 0);
-      
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid AI response. Please try again.');
+                },
+              ],
+              schema: resultSchema,
+            }),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 45000)
+            )
+          ]);
+          
+          console.log('✓ AI Response received');
+          console.log('Categories:', result?.categories?.length ?? 0);
+          
+          if (!result || typeof result !== 'object') {
+            throw new Error('Invalid AI response format');
+          }
+          
+          if (!result.categories || !Array.isArray(result.categories)) {
+            throw new Error('Missing categories in response');
+          }
+          
+          return result;
+        } catch (error) {
+          console.error(`Attempt ${attempt} failed:`, error);
+          lastError = error as Error;
+          
+          if (attempt < maxRetries) {
+            console.log('Retrying in 1 second...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
       }
       
-      if (!result.categories || !Array.isArray(result.categories)) {
-        throw new Error('AI response missing categories. Please try again.');
-      }
+      console.error('All retry attempts failed');
+      const errorMessage = lastError?.message || 'Unknown error';
       
-      return result;
+      if (errorMessage.includes('Network request failed')) {
+        throw new Error('Unable to connect to AI service. Please check your internet connection and try again.');
+      } else if (errorMessage.includes('timeout')) {
+        throw new Error('AI is taking too long. Try a shorter brain dump or try again later.');
+      } else {
+        throw new Error(errorMessage);
+      }
     },
     onSuccess: (data) => {
       console.log('Organization successful:', data);
