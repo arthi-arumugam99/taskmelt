@@ -79,6 +79,19 @@ export default function TasksScreen() {
               categoryColor: category.color,
               createdAt: dump.createdAt,
             });
+            
+            if (item.subtasks && item.subtasks.length > 0) {
+              item.subtasks.forEach((subtask) => {
+                tasks.push({
+                  task: subtask,
+                  dumpId: dump.id,
+                  categoryName: category.name,
+                  categoryEmoji: category.emoji,
+                  categoryColor: category.color,
+                  createdAt: dump.createdAt,
+                });
+              });
+            }
           }
         });
       });
@@ -131,8 +144,8 @@ export default function TasksScreen() {
         const aPriority = a.task.priority || 'medium';
         const bPriority = b.task.priority || 'medium';
         
-        const aHasScheduledTime = aScheduledTime.length > 0;
-        const bHasScheduledTime = bScheduledTime.length > 0;
+        const aHasScheduledTime = aScheduledTime.trim().length > 0;
+        const bHasScheduledTime = bScheduledTime.trim().length > 0;
         
         if (aHasScheduledTime && !bHasScheduledTime) return -1;
         if (!aHasScheduledTime && bHasScheduledTime) return 1;
@@ -154,7 +167,9 @@ export default function TasksScreen() {
           return aPriorityValue - bPriorityValue;
         }
         
-        return 0;
+        const aCreated = new Date(a.createdAt).getTime();
+        const bCreated = new Date(b.createdAt).getTime();
+        return bCreated - aCreated;
       });
     } else {
       if (sortBy === 'newest') {
@@ -352,7 +367,7 @@ export default function TasksScreen() {
             <View>
               <Text style={styles.title}>Tasks</Text>
               <Text style={styles.subtitle}>
-                {viewMode === 'chronological' ? 'Timeline View' : `${stats.completed}/${stats.total} completed`}
+                {viewMode === 'chronological' ? 'By Time' : 'By Category'}
               </Text>
               {!showAllDates && (
                 <TouchableOpacity onPress={handleShowAll} style={{ marginTop: 4 }}>

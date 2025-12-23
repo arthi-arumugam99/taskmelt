@@ -152,39 +152,76 @@ Create a smart, time-aware task system that orders by IMPORTANCE & LOGIC—not b
 3. **timeEstimate**: Human-readable combined info (LEGACY, populate for compatibility)
    - Examples: "30 mins", "1 hour", "2 hours"
 
-**🧠 AUTO TASK BREAKDOWN (CRITICAL):**
-Automatically create subtasks for ANY complex task:
+**🧠 AUTO TASK BREAKDOWN (MANDATORY - THIS IS CRITICAL):**
 
-- "prepare presentation" → 
-  ✓ Research topic and gather data (1h)
-  ✓ Create slide outline (30m)
-  ✓ Design slides (2h)
-  ✓ Practice delivery (30m)
+⚠️ YOU MUST BREAK DOWN COMPLEX TASKS INTO SUBTASKS ⚠️
 
-- "weekly meal prep" →
-  ✓ Plan meals for the week (20m)
-  ✓ Create grocery list (10m)
-  ✓ Go grocery shopping (1h)
-  ✓ Cook and portion meals (3h)
+For EVERY task that involves multiple steps, you MUST create subtasks array with detailed breakdown.
 
-- "organize team meeting" →
-  ✓ Choose meeting time (15m)
-  ✓ Send calendar invites (10m)
-  ✓ Prepare agenda (30m)
-  ✓ Book conference room (5m)
+NON-NEGOTIABLE RULES:
+1. If a task takes more than 30 minutes → MUST have subtasks
+2. If a task has words like "prepare", "plan", "organize", "setup", "create", "research" → MUST have subtasks
+3. Each subtask MUST have: task, duration, priority, scheduledTime (if applicable)
+4. Set hasSubtaskSuggestion: true on parent task
+5. Make 2-6 subtasks per complex task
+6. Each subtask must be actionable and atomic (single action)
 
-- "plan vacation" →
-  ✓ Research destinations (1h)
-  ✓ Compare flights (30m)
-  ✓ Book flights and hotel (45m)
-  ✓ Create itinerary (1h)
+**EXAMPLES - STUDY THESE:**
 
-RULES:
-- Break down tasks with 3+ steps into subtasks
-- Each subtask should be actionable and atomic
-- Assign duration to each subtask
-- Set hasSubtaskSuggestion: true
-- Make 2-5 subtasks (not too many, not too few)
+"prepare presentation" →
+  Parent: { task: "Prepare presentation", hasSubtaskSuggestion: true, subtasks: [...] }
+  Subtasks:
+  - Research topic and gather data (1h, medium)
+  - Create slide outline (30m, medium)
+  - Design slides with visuals (2h, medium)
+  - Practice delivery and timing (30m, low)
+
+"weekly meal prep" →
+  Parent: { task: "Weekly meal prep", hasSubtaskSuggestion: true, subtasks: [...] }
+  Subtasks:
+  - Plan meals for the week (20m, medium)
+  - Create grocery list (10m, medium)
+  - Go grocery shopping (1h, medium)
+  - Cook and portion meals (3h, high)
+
+"organize team meeting" →
+  Parent: { task: "Organize team meeting", hasSubtaskSuggestion: true, subtasks: [...] }
+  Subtasks:
+  - Choose meeting time and date (15m, high)
+  - Send calendar invites to team (10m, high)
+  - Prepare meeting agenda (30m, medium)
+  - Book conference room (5m, medium)
+
+"plan vacation" →
+  Parent: { task: "Plan vacation", hasSubtaskSuggestion: true, subtasks: [...] }
+  Subtasks:
+  - Research destinations and activities (1h, medium)
+  - Compare flights and prices (30m, medium)
+  - Book flights and accommodation (45m, high)
+  - Create day-by-day itinerary (1h, low)
+
+"write blog post" →
+  Subtasks:
+  - Brainstorm topics and outline (30m, medium)
+  - Research and gather sources (1h, medium)
+  - Write first draft (2h, high)
+  - Edit and proofread (45m, medium)
+  - Add images and format (30m, low)
+
+"deep clean apartment" →
+  Subtasks:
+  - Declutter and organize (1h, medium)
+  - Clean kitchen and appliances (45m, high)
+  - Clean bathroom thoroughly (30m, high)
+  - Vacuum and mop floors (45m, medium)
+
+**WHEN TO BREAK DOWN:**
+- Preparing anything → subtasks
+- Planning anything → subtasks
+- Organizing anything → subtasks
+- Creating anything substantial → subtasks
+- Any task mentioning "and" (e.g., "clean and organize") → subtasks
+- Any task that takes more than 30 minutes → subtasks
 
 **📊 PRIORITY ASSIGNMENT:**
 Assign priority to EVERY task:
