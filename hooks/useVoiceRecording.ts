@@ -340,9 +340,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           if (newFinalTranscript) {
             finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
             console.log('📝 Updated final transcript:', finalTranscriptRef.current.substring(0, 100));
-            if (onTranscriptUpdateRef.current) {
-              onTranscriptUpdateRef.current(finalTranscriptRef.current);
-            }
           }
 
           const displayText = interimTranscript
@@ -350,9 +347,19 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             : finalTranscriptRef.current;
 
           transcriptRef.current = displayText;
-          console.log('🔄 Calling update callback with text:', displayText.substring(0, 100));
+          console.log('🔄 Update callback status:', {
+            hasCallback: !!onTranscriptUpdateRef.current,
+            displayTextLength: displayText.length,
+            preview: displayText.substring(0, 100)
+          });
+          
           if (onTranscriptUpdateRef.current) {
-            onTranscriptUpdateRef.current(displayText);
+            try {
+              onTranscriptUpdateRef.current(displayText);
+              console.log('✅ Callback executed successfully');
+            } catch (err) {
+              console.error('❌ Callback error:', err);
+            }
           } else {
             console.warn('⚠️ No update callback registered!');
           }
@@ -557,56 +564,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
   }, []);
 
-  const stopRecordingWeb = useCallback(async (): Promise<FormData | null> => {
-    const mediaRecorder = mediaRecorderRef.current;
-    if (!mediaRecorder) {
-      console.log('⚠️ No active MediaRecorder');
-      return null;
-    }
 
-    return new Promise((resolve, reject) => {
-      mediaRecorder.onstop = async () => {
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          console.log('📼 Recording size:', audioBlob.size, 'bytes');
-          console.log('📼 Recording chunks:', audioChunksRef.current.length);
-
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach((track) => track.stop());
-            streamRef.current = null;
-          }
-
-          if (audioBlob.size === 0) {
-            console.error('❌ Empty audio recording');
-            resolve(null);
-            return;
-          }
-          
-          if (audioBlob.size < 1000) {
-            console.warn('⚠️ Very small audio file:', audioBlob.size, 'bytes - may not contain speech');
-          }
-
-          const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
-
-          mediaRecorderRef.current = null;
-          audioChunksRef.current = [];
-
-          resolve(formData);
-        } catch (err) {
-          console.error('❌ Error processing recording:', err);
-          reject(err);
-        }
-      };
-
-      try {
-        mediaRecorder.stop();
-      } catch (e) {
-        console.error('❌ Error stopping MediaRecorder:', e);
-        reject(e);
-      }
-    });
-  }, []);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
     console.log('🛑 stopRecording called, isRecording:', isRecording);
@@ -652,8 +610,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       console.log('📝 Using transcript:', currentTranscript.slice(0, 100) || '(empty)');
 
-      if (Platform.OS === 'web' && currentTranscript) {
-        console.log('✨ Using live transcript for web');
+      if (Platform.OS === 'web') {
+        console.log('✨ Web platform - using live transcript');
+        console.log('Current transcript length:', currentTranscript.length);
         
         if (mediaRecorderRef.current) {
           try {
@@ -668,18 +627,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           streamRef.current = null;
         }
         
+        const finalResult = currentTranscript.trim();
         transcriptRef.current = '';
         finalTranscriptRef.current = '';
+        lastResultIndexRef.current = 0;
         onTranscriptUpdateRef.current = null;
-        return currentTranscript;
+        
+        console.log('✅ Returning web transcript:', finalResult.substring(0, 100) || '(empty)');
+        return finalResult || null;
       }
 
       setIsTranscribing(true);
       console.log('🔄 Starting transcription...');
 
-      const formData = Platform.OS === 'web' 
-        ? await stopRecordingWeb() 
-        : await stopRecordingMobile();
+      const formData = await stopRecordingMobile();
 
       if (!formData) {
         console.log('⚠️ No audio data captured');
@@ -706,7 +667,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       onTranscriptUpdateRef.current = null;
 
       if (!finalText) {
-        console.log('⚠️ Empty transcription result - returning null without error');
+        console.warn('⚠️ Empty transcription result - no speech detected');
         return null;
       }
 
@@ -725,7 +686,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       return null;
     }
-  }, [isRecording, stopRecordingMobile, stopRecordingWeb, transcribeAudio]);
+  }, [isRecording, stopRecordingMobile, transcribeAudio]);
 
   useEffect(() => {
     stopRecordingRef.current = stopRecording;
