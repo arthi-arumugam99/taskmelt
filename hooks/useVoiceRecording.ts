@@ -70,6 +70,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error(`Transcription service error (${response.status}). Please try again.`);
       }
 
+      const contentType = response.headers.get('content-type') || '';
+      console.log('📥 Response content-type:', contentType);
+      
       const responseText = await response.text();
       console.log('📥 Raw STT response:', responseText.substring(0, 200));
       
@@ -78,22 +81,35 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         return '';
       }
       
+      // Check if response is not JSON
+      if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+        console.error('❌ Non-JSON response received:', contentType);
+        console.error('Response text:', responseText.substring(0, 500));
+        
+        if (responseText.toLowerCase().includes('html') || responseText.startsWith('<')) {
+          throw new Error('Service temporarily unavailable. Please try again.');
+        }
+        if (responseText.toLowerCase().includes('offline')) {
+          throw new Error('Service is offline. Please try again later.');
+        }
+        if (responseText.toLowerCase().includes('network')) {
+          throw new Error('Network error. Please check your connection.');
+        }
+        // Return the text directly if it looks like an error message
+        if (responseText.length < 200) {
+          throw new Error(`Service error: ${responseText}`);
+        }
+        throw new Error('Service returned invalid response. Please try again.');
+      }
+      
       let data;
       try {
         data = JSON.parse(responseText);
         console.log('📥 Parsed STT response:', JSON.stringify(data));
       } catch (parseError) {
         console.error('❌ Failed to parse STT response as JSON:', parseError);
-        console.error('Response content type:', response.headers.get('content-type'));
         console.error('Response was:', responseText.substring(0, 500));
-        
-        if (responseText.toLowerCase().includes('html') || responseText.startsWith('<')) {
-          throw new Error('Service unavailable. Please try again later.');
-        }
-        if (responseText.toLowerCase().includes('offline') || responseText.toLowerCase().includes('network')) {
-          throw new Error('Network error - please check your connection');
-        }
-        throw new Error('Invalid response from transcription service');
+        throw new Error('Invalid JSON response from service. Please try again.');
       }
       
       const text = data?.text?.trim() || '';
