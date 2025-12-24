@@ -175,10 +175,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('⚠️ Cleaning up existing recording...');
         try {
           await recordingRef.current.stopAndUnloadAsync();
+          await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
         } catch (e) {
           console.log('Cleanup error (ignored):', e);
         }
         recordingRef.current = null;
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const { status: existingStatus } = await Audio.getPermissionsAsync();
@@ -218,41 +220,46 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         staysActiveInBackground: false,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('📱 Creating recording instance...');
+      console.log('📱 Creating and preparing recording...');
       const recording = new Audio.Recording();
       
-      console.log('⚙️ Preparing recorder...');
-      await recording.prepareToRecordAsync({
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 64000,
-        },
-        ios: {
-          extension: '.m4a',
-          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.MEDIUM,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 64000,
-        },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
-        },
-      });
+      try {
+        await recording.prepareToRecordAsync({
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+            audioEncoder: Audio.AndroidAudioEncoder.AAC,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          ios: {
+            extension: '.m4a',
+            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+            audioQuality: Audio.IOSAudioQuality.MEDIUM,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          web: {
+            mimeType: 'audio/webm',
+            bitsPerSecond: 128000,
+          },
+        });
+        console.log('✓ Recorder prepared');
+      } catch (prepError) {
+        console.error('❌ Prepare failed:', prepError);
+        throw new Error('Failed to prepare recorder');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       recordingRef.current = recording;
-      console.log('✓ Recorder prepared');
 
       console.log('▶️ Starting recording...');
       await recording.startAsync();
-      
       console.log('✅ Mobile recording started successfully');
     } catch (err) {
       console.error('❌ Mobile recording error:', err);
@@ -260,7 +267,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         try {
           await recordingRef.current.stopAndUnloadAsync();
         } catch (cleanupErr) {
-          console.log('Error during cleanup:', cleanupErr);
+          console.log('Cleanup error:', cleanupErr);
         }
         recordingRef.current = null;
       }

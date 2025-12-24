@@ -444,33 +444,41 @@ Be smart, thoughtful, and help the user succeed!`,
                     maxLength={5000}
                     editable={!isRecording}
                   />
-                  <View style={styles.inputActions}>
-                    <Animated.View style={{ transform: [{ scale: micPulse }] }}>
-                      <TouchableOpacity
-                        style={[
-                          styles.voiceButtonInline,
-                          isRecording && styles.voiceButtonActive,
-                          isTranscribing && styles.voiceButtonDisabled,
-                        ]}
-                        onPress={handleVoicePress}
-                        disabled={isTranscribing}
-                      >
-                        {isTranscribing ? (
-                          <ActivityIndicator size="small" color={Colors.background} />
-                        ) : isRecording ? (
-                          <Square size={20} color={Colors.background} fill={Colors.background} />
-                        ) : (
-                          <Mic size={20} color={Colors.background} />
-                        )}
-                      </TouchableOpacity>
-                    </Animated.View>
-                    {inputText.length > 0 && (
+                  {inputText.length > 0 && (
+                    <View style={styles.characterCountContainer}>
                       <Text style={styles.characterCount}>
                         {inputText.length} / 5000
                       </Text>
-                    )}
-                  </View>
+                    </View>
+                  )}
                 </View>
+                
+                <Animated.View style={{ transform: [{ scale: micPulse }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.voiceButton,
+                      isRecording && styles.voiceButtonRecording,
+                      isTranscribing && styles.voiceButtonDisabled,
+                    ]}
+                    onPress={handleVoicePress}
+                    disabled={isTranscribing}
+                  >
+                    {isTranscribing ? (
+                      <ActivityIndicator size="small" color={Colors.background} />
+                    ) : isRecording ? (
+                      <>
+                        <Square size={24} color={Colors.background} fill={Colors.background} />
+                        <Text style={styles.voiceButtonText}>Stop</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Mic size={24} color={Colors.background} />
+                        <Text style={styles.voiceButtonText}>Voice Input</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+
                 {isRecording && (
                   <View style={styles.liveTranscriptBox}>
                     <View style={styles.recordingHeaderInline}>
@@ -645,29 +653,10 @@ const styles = StyleSheet.create({
     maxHeight: 400,
     lineHeight: 24,
   },
-  inputActions: {
+  characterCountContainer: {
     position: 'absolute',
     bottom: 12,
     right: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  voiceButtonInline: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.accent3Dark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
   },
   characterCount: {
     fontSize: 12,
@@ -679,8 +668,32 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.borderLight,
   },
-  voiceButtonActive: {
+  voiceButton: {
+    marginTop: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.accent3Dark,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  voiceButtonRecording: {
     backgroundColor: Colors.error,
+  },
+  voiceButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.background,
   },
   voiceButtonDisabled: {
     opacity: 0.6,
