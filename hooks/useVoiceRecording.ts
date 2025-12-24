@@ -105,8 +105,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const recordingDuration = Date.now() - recordingStartTimeRef.current;
       console.log('⏱️ Recording duration:', recordingDuration, 'ms');
 
-      if (recordingDuration < 500) {
-        throw new Error('Recording too short. Please speak for at least 1 second.');
+      if (recordingDuration < 1000) {
+        throw new Error('Recording too short. Please hold for at least 2 seconds and speak clearly.');
       }
 
       console.log('⏹️ Stopping recording...');
@@ -156,10 +156,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       const trimmed = transcribedText.trim();
 
-      if (!trimmed) {
-        throw new Error('No speech detected. Please speak clearly and try again.');
+      if (!trimmed || trimmed.length < 2) {
+        throw new Error('Could not understand speech. Please speak clearly and hold the button while talking.');
       }
 
+      console.log('✅ Transcription successful:', trimmed.length, 'characters');
       return trimmed;
     } catch (err) {
       console.error('❌ Stop recording error:', err);
@@ -232,8 +233,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     const recordingDuration = Date.now() - recordingStartTimeRef.current;
     console.log('⏱️ Recording duration:', recordingDuration, 'ms');
 
-    if (recordingDuration < 500) {
-      throw new Error('Recording too short. Please speak for at least 1 second.');
+    if (recordingDuration < 1000) {
+      throw new Error('Recording too short. Please hold for at least 2 seconds and speak clearly.');
     }
 
     if (recognitionRef.current) {
@@ -255,6 +256,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
 
     const transcript = transcriptRef.current.trim();
+    console.log('🎤 Web transcript length:', transcript.length);
     
     transcriptRef.current = '';
     recognitionRef.current = null;
@@ -263,8 +265,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     audioChunksRef.current = [];
     recordingStartTimeRef.current = 0;
 
-    if (!transcript) {
-      throw new Error('No speech detected. Please speak clearly and try again.');
+    if (!transcript || transcript.length < 2) {
+      throw new Error('Could not understand speech. Please speak clearly and hold the button while talking.');
     }
 
     return transcript;
