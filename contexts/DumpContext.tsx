@@ -481,6 +481,9 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     mutationFn: async () => {
       await saveLocalDumps([]);
       
+      await AsyncStorage.removeItem('habits');
+      await AsyncStorage.removeItem('habitLogs');
+      
       if (isAuthenticated && user?.id) {
         await clearRemoteDumps(user.id);
       }
