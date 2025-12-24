@@ -86,28 +86,37 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       }
       
       const trimmedResponse = responseText.trim();
+      
+      if (!trimmedResponse) {
+        throw new Error('Empty response from service. Please try again.');
+      }
+      
       const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
       
       console.log('🔍 Response analysis:', {
+        length: trimmedResponse.length,
         startsWithBrace: trimmedResponse.startsWith('{'),
         startsWithBracket: trimmedResponse.startsWith('['),
-        firstChars: trimmedResponse.substring(0, 20),
+        firstChars: trimmedResponse.substring(0, 30),
         looksLikeJSON,
       });
       
       if (!looksLikeJSON) {
-        console.error('❌ Response does not look like JSON:', responseText.substring(0, 100));
+        console.error('❌ Response does not look like JSON:', responseText.substring(0, 200));
         const lowerResponse = responseText.toLowerCase();
         
         if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
-          throw new Error('Transcription service error. Please try again.');
+          throw new Error('Service error occurred. Please try again.');
         }
-        if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech')) {
-          throw new Error('No speech detected. Speak louder for at least 2-3 seconds.');
+        if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech') || lowerResponse.includes('could not')) {
+          throw new Error('No speech detected. Please speak clearly for 2-3 seconds.');
+        }
+        if (lowerResponse.includes('error') || lowerResponse.includes('fail')) {
+          throw new Error('Transcription failed. Please try again.');
         }
         
-        const preview = responseText.length > 50 ? responseText.substring(0, 50) + '...' : responseText;
-        throw new Error(`Transcription failed: ${preview}`);
+        console.error('❌ Unexpected response format. First 100 chars:', responseText.substring(0, 100));
+        throw new Error('Unexpected service response. Please try again.');
       }
       
       let data;
@@ -115,8 +124,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         data = JSON.parse(responseText);
         console.log('📥 Parsed STT response:', JSON.stringify(data).substring(0, 200));
       } catch (parseError) {
-        console.error('❌ Failed to parse STT response as JSON:', parseError);
-        throw new Error('Service returned invalid data. Please try again.');
+        const error = parseError as Error;
+        console.error('❌ JSON Parse Error:', {
+          message: error.message,
+          responseStart: responseText.substring(0, 100),
+          responseLength: responseText.length,
+        });
+        throw new Error('Invalid service response format. Please try again.');
       }
       
       const text = data?.text?.trim() || '';
