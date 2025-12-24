@@ -95,11 +95,8 @@ export default function TasksScreen() {
 
 
   const isSameDay = useCallback((date1: Date | string, date2: Date | string): boolean => {
-    const d1 = typeof date1 === 'string' ? new Date(date1) : new Date(date1);
-    const d2 = typeof date2 === 'string' ? new Date(date2) : new Date(date2);
-    
-    d1.setHours(0, 0, 0, 0);
-    d2.setHours(0, 0, 0, 0);
+    const d1 = typeof date1 === 'string' ? new Date(date1) : date1;
+    const d2 = typeof date2 === 'string' ? new Date(date2) : date2;
     
     return (
       d1.getFullYear() === d2.getFullYear() &&
@@ -111,14 +108,14 @@ export default function TasksScreen() {
   const getTaskDate = useCallback((task: FlatTask): Date => {
     if (task.task.scheduledDate) {
       const scheduled = new Date(task.task.scheduledDate);
-      scheduled.setHours(0, 0, 0, 0);
       if (!isNaN(scheduled.getTime())) {
-        return scheduled;
+        const normalized = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate(), 0, 0, 0, 0);
+        return normalized;
       }
     }
     const created = new Date(task.createdAt);
-    created.setHours(0, 0, 0, 0);
-    return created;
+    const normalized = new Date(created.getFullYear(), created.getMonth(), created.getDate(), 0, 0, 0, 0);
+    return normalized;
   }, []);
 
   const filteredTasks = useMemo(() => {
@@ -767,13 +764,12 @@ export default function TasksScreen() {
               onPress={() => {
                 if (!newTaskText.trim()) return;
                 
-                const taskDate = new Date(selectedDate);
-                taskDate.setHours(0, 0, 0, 0);
+                const year = selectedDate.getFullYear();
+                const month = selectedDate.getMonth();
+                const day = selectedDate.getDate();
                 
-                const year = taskDate.getFullYear();
-                const month = String(taskDate.getMonth() + 1).padStart(2, '0');
-                const day = String(taskDate.getDate()).padStart(2, '0');
-                const taskDateStr = `${year}-${month}-${day}T12:00:00.000`;
+                const taskDate = new Date(year, month, day, 12, 0, 0, 0);
+                const taskDateStr = taskDate.toISOString();
                 
                 const newDump: DumpSession = {
                   id: Date.now().toString(),

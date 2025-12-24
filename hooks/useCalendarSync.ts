@@ -182,15 +182,15 @@ export function useCalendarSync() {
               });
 
           const eventDate = new Date(event.startDate);
-          eventDate.setHours(0, 0, 0, 0);
           
           const year = eventDate.getFullYear();
-          const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-          const day = String(eventDate.getDate()).padStart(2, '0');
+          const month = eventDate.getMonth() + 1;
+          const day = eventDate.getDate();
           
-          const scheduledDateStr = `${year}-${month}-${day}T12:00:00.000`;
+          const taskDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+          const scheduledDateStr = taskDate.toISOString();
           
-          console.log(`📅 Calendar event: ${event.title} on ${month}/${day}/${year} -> ${scheduledDateStr}`);
+          console.log(`📅 Calendar event: ${event.title} scheduled for ${month}/${day}/${year} -> ${scheduledDateStr}`);
           
           return {
             id: `calendar_${event.id}_${Date.now()}`,
