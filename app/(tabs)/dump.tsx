@@ -285,9 +285,6 @@ Be smart, thoughtful, and help the user succeed!`,
                 if (isNaN(taskDateTime.getTime())) {
                   console.warn('Invalid date created for task:', item.task);
                 } else {
-                  if (taskDateTime < now) {
-                    taskDateTime.setDate(taskDateTime.getDate() + 1);
-                  }
                   scheduledDate = taskDateTime.toISOString();
                 }
               }
