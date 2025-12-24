@@ -87,7 +87,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No audio detected. Please try speaking louder.');
       }
       
-      const trimmedResponse = responseText.trim();
+      let trimmedResponse = responseText.trim();
+      
+      if (trimmedResponse.charCodeAt(0) === 0xFEFF) {
+        trimmedResponse = trimmedResponse.substring(1).trim();
+      }
       
       if (!trimmedResponse) {
         throw new Error('Empty response. Please try again.');
@@ -108,11 +112,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         firstChar,
         firstCharCode: firstChar.charCodeAt(0),
         length: trimmedResponse.length,
+        first20: trimmedResponse.substring(0, 20),
       });
       
       if (!looksLikeJSON) {
         console.error('❌ Non-JSON response detected');
         console.error('Full response:', trimmedResponse);
+        console.error('Response bytes:', trimmedResponse.split('').slice(0, 20).map(c => c.charCodeAt(0)));
         
         if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech') || lowerResponse.includes('could not detect')) {
           throw new Error('No speech detected. Speak louder and hold for 2+ seconds.');
@@ -122,7 +128,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           throw new Error('Transcription failed. Try speaking louder.');
         }
         
-        throw new Error('Invalid response format. Please try again.');
+        throw new Error('Service returned invalid format. Please try again.');
       }
       
       let data;
@@ -220,43 +226,38 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         staysActiveInBackground: false,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      console.log('📱 Creating and preparing recording...');
+      console.log('📱 Creating recording instance...');
       const recording = new Audio.Recording();
-      
-      try {
-        await recording.prepareToRecordAsync({
-          android: {
-            extension: '.m4a',
-            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-            audioEncoder: Audio.AndroidAudioEncoder.AAC,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 64000,
-          },
-          ios: {
-            extension: '.m4a',
-            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-            audioQuality: Audio.IOSAudioQuality.MEDIUM,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 64000,
-          },
-          web: {
-            mimeType: 'audio/webm',
-            bitsPerSecond: 128000,
-          },
-        });
-        console.log('✓ Recorder prepared');
-      } catch (prepError) {
-        console.error('❌ Prepare failed:', prepError);
-        throw new Error('Failed to prepare recorder');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
       recordingRef.current = recording;
+
+      console.log('📱 Preparing recording...');
+      await recording.prepareToRecordAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 64000,
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 64000,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      });
+      console.log('✓ Recorder prepared successfully');
+
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       console.log('▶️ Starting recording...');
       await recording.startAsync();
