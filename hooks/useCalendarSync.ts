@@ -181,19 +181,19 @@ export function useCalendarSync() {
                 hour12: false,
               });
 
-          const eventDate = new Date(
-            event.startDate.getFullYear(),
-            event.startDate.getMonth(),
-            event.startDate.getDate(),
-            12, 0, 0, 0
-          );
+          const year = event.startDate.getFullYear();
+          const month = event.startDate.getMonth();
+          const day = event.startDate.getDate();
+          const scheduledDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T12:00:00.000Z`;
+          
+          console.log(`📅 Calendar event: ${event.title} -> ${scheduledDateStr}`);
           
           return {
             id: `calendar_${event.id}_${Date.now()}`,
             task: event.title,
             completed: false,
             isReflection: false,
-            scheduledDate: eventDate.toISOString(),
+            scheduledDate: scheduledDateStr,
             scheduledTime: scheduledTime,
             duration: duration,
             notes: event.notes,

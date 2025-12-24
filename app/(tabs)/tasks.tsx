@@ -94,17 +94,22 @@ export default function TasksScreen() {
 
 
 
-  const isSameDay = useCallback((date1: Date, date2: Date): boolean => {
+  const isSameDay = useCallback((date1: Date | string, date2: Date | string): boolean => {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
-    d1.setHours(0, 0, 0, 0);
-    d2.setHours(0, 0, 0, 0);
-    return d1.getTime() === d2.getTime();
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
   }, []);
 
   const getTaskDate = useCallback((task: FlatTask): Date => {
     if (task.task.scheduledDate) {
-      return new Date(task.task.scheduledDate);
+      const scheduled = new Date(task.task.scheduledDate);
+      if (!isNaN(scheduled.getTime())) {
+        return scheduled;
+      }
     }
     return new Date(task.createdAt);
   }, []);
