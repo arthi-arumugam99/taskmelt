@@ -74,8 +74,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('📥 Raw STT response:', responseText.substring(0, 200));
       
       if (!responseText || responseText.trim() === '') {
-        console.error('❌ Empty response from STT API');
-        throw new Error('No audio detected. Please speak clearly and try again.');
+        console.warn('⚠️ Empty response from STT API');
+        return '';
       }
       
       let data;
@@ -102,7 +102,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!text || text.length === 0) {
         console.warn('⚠️ Transcription returned empty text');
-        throw new Error('No speech detected. Please speak clearly into the microphone.');
+        return '';
       }
       
       return text;
@@ -579,9 +579,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           setIsTranscribing(false);
           transcriptRef.current = '';
           onTranscriptUpdateRef.current = null;
-          if (!currentTranscript) {
-            setError('No audio recorded. Please try again.');
-          }
         }
         return currentTranscript || null;
       }
@@ -601,10 +598,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       onTranscriptUpdateRef.current = null;
 
       if (!finalText) {
-        console.log('⚠️ Empty transcription result');
-        if (isMountedRef.current) {
-          setError('No speech detected. Please speak clearly and try again.');
-        }
+        console.log('⚠️ Empty transcription result - returning null without error');
         return null;
       }
 
