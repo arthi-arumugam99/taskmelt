@@ -79,6 +79,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const responseText = await response.text();
       console.log('📥 Raw STT response (first 200 chars):', responseText.substring(0, 200));
       console.log('📥 Response length:', responseText.length, 'bytes');
+      console.log('📥 First 10 chars:', JSON.stringify(responseText.substring(0, 10)));
+      console.log('📥 Char codes:', responseText.substring(0, 10).split('').map(c => c.charCodeAt(0)));
       
       if (!responseText || responseText.trim() === '') {
         console.warn('⚠️ Empty response from STT API');
@@ -93,29 +95,31 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       const lowerResponse = trimmedResponse.toLowerCase();
       
-      if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
+      if (lowerResponse.includes('html') || lowerResponse.includes('<!doctype') || trimmedResponse.startsWith('<')) {
         console.error('❌ HTML response received');
         throw new Error('Service unavailable. Please try again later.');
       }
       
-      if (lowerResponse.includes('error') && !trimmedResponse.startsWith('{')) {
-        console.error('❌ Plain text error:', trimmedResponse.substring(0, 100));
-        throw new Error('Transcription failed. Try speaking louder.');
-      }
-      
-      const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
+      const firstChar = trimmedResponse[0];
+      const looksLikeJSON = firstChar === '{' || firstChar === '[';
       
       console.log('🔍 Response type check:', {
         looksLikeJSON,
-        firstChar: trimmedResponse[0],
+        firstChar,
+        firstCharCode: firstChar.charCodeAt(0),
         length: trimmedResponse.length,
       });
       
       if (!looksLikeJSON) {
-        console.error('❌ Non-JSON response:', trimmedResponse.substring(0, 200));
+        console.error('❌ Non-JSON response detected');
+        console.error('Full response:', trimmedResponse);
         
         if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech') || lowerResponse.includes('could not detect')) {
           throw new Error('No speech detected. Speak louder and hold for 2+ seconds.');
+        }
+        
+        if (lowerResponse.includes('error')) {
+          throw new Error('Transcription failed. Try speaking louder.');
         }
         
         throw new Error('Invalid response format. Please try again.');
@@ -129,10 +133,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         const error = parseError as Error;
         console.error('❌ JSON Parse Error:', {
           message: error.message,
-          responseStart: responseText.substring(0, 100),
-          responseLength: responseText.length,
+          fullResponse: trimmedResponse,
+          responseStart: trimmedResponse.substring(0, 100),
+          responseLength: trimmedResponse.length,
         });
-        throw new Error('Invalid service response format. Please try again.');
+        throw new Error('Invalid response from transcription service. Please try again.');
       }
       
       const text = data?.text?.trim() || '';
