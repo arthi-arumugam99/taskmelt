@@ -47,31 +47,39 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         try {
           await recordingRef.current.stopAndUnloadAsync();
         } catch (e) {
-          console.log('Cleanup old recording:', e);
+          console.log('🧹 Cleanup old recording:', e);
         }
         recordingRef.current = null;
       }
 
+      console.log('🎤 Requesting microphone permission...');
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         throw new Error('Microphone permission required');
       }
 
+      console.log('🔊 Setting audio mode...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
       });
 
+      console.log('📝 Creating recording instance...');
       const recording = new Audio.Recording();
       
       try {
+        console.log('⚙️ Preparing recorder...');
         await recording.prepareToRecordAsync(
           Audio.RecordingOptionsPresets.HIGH_QUALITY
         );
+        
+        console.log('▶️ Starting recording...');
         await recording.startAsync();
         recordingRef.current = recording;
+        console.log('✅ Recording started successfully');
       } catch (prepError) {
-        console.error('Prepare/start error:', prepError);
+        console.error('❌ Prepare/start error:', prepError);
         try {
           await recording.stopAndUnloadAsync();
         } catch (e) {
@@ -80,7 +88,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Failed to start recording. Please try again.');
       }
     } catch (err) {
-      console.error('Mobile recording error:', err);
+      console.error('❌ Mobile recording error:', err);
       throw err;
     }
   }, []);
@@ -92,6 +100,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No recording in progress');
       }
 
+      console.log('⏹️ Stopping recording...');
       await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
 
@@ -102,6 +111,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No recording URI');
       }
 
+      console.log('📤 Sending audio for transcription...');
       const audioFile = {
         uri,
         name: 'recording.m4a',
@@ -117,24 +127,22 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to transcribe');
+        const errorText = await response.text();
+        console.error('❌ Transcription failed:', response.status, errorText);
+        throw new Error('Failed to transcribe audio');
       }
 
       const text = await response.text();
+      console.log('📝 Raw response:', text.substring(0, 100));
       const trimmed = text.trim();
 
       if (!trimmed) {
         throw new Error('No speech detected');
       }
 
-      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        const data = JSON.parse(trimmed);
-        return data.text?.trim() || '';
-      }
-
       return trimmed;
     } catch (err) {
-      console.error('Stop recording error:', err);
+      console.error('❌ Stop recording error:', err);
       throw err;
     }
   }, []);
