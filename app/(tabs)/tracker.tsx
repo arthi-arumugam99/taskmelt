@@ -232,13 +232,22 @@ export default function TrackerScreen() {
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
     
-    if (checkDate < today) return;
+    if (checkDate.getTime() !== today.getTime()) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(date);
   };
 
   const toggleHabit = useCallback((habitId: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(selectedDate);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    if (checkDate.getTime() !== today.getTime()) {
+      return;
+    }
+    
     const dateStr = formatDateString(selectedDate);
     const currentLogs = habitLogs[dateStr] || [];
     
@@ -391,13 +400,14 @@ export default function TrackerScreen() {
               const checkDate = new Date(date);
               checkDate.setHours(0, 0, 0, 0);
               const isPast = checkDate < todayDate;
+              const isFuture = checkDate > todayDate;
 
               return (
                 <TouchableOpacity
                   key={index}
                   style={[
                     styles.dayCell,
-                    !isPast && completionLevel > 0 && {
+                    !isPast && !isFuture && completionLevel > 0 && {
                       backgroundColor: completionLevel === 3 
                         ? Colors.accent2Dark 
                         : completionLevel === 2 
@@ -408,7 +418,7 @@ export default function TrackerScreen() {
                     isToday && !isSelected && styles.todayDay,
                   ]}
                   onPress={() => handleDatePress(date)}
-                  disabled={isPast}
+                  disabled={isPast || isFuture}
                 >
                   <Text
                     style={[
@@ -416,7 +426,7 @@ export default function TrackerScreen() {
                       completionLevel > 0 && styles.dayTextWithActivity,
                       isSelected && styles.selectedDayText,
                       isToday && !isSelected && styles.todayDayText,
-                      isPast && styles.pastDayText,
+                      (isPast || isFuture) && styles.pastDayText,
                     ]}
                   >
                     {date.getDate()}
@@ -449,7 +459,9 @@ export default function TrackerScreen() {
 
         <View style={styles.habitsSection}>
           <View style={styles.habitsSectionHeader}>
-            <Text style={styles.habitsSectionTitle}>Today&apos;s Habits</Text>
+            <Text style={styles.habitsSectionTitle}>
+              {isSameDay(selectedDate, today) ? "Today's Habits" : "View Only"}
+            </Text>
             <Text style={styles.habitProgress}>
               {todayProgress.completed}/{todayProgress.total}
             </Text>
@@ -465,8 +477,10 @@ export default function TrackerScreen() {
                   style={[
                     styles.habitItem,
                     isCompleted && styles.habitItemCompleted,
+                    !isSameDay(selectedDate, today) && styles.habitItemDisabled,
                   ]}
                   onPress={() => toggleHabit(habit.id)}
+                  disabled={!isSameDay(selectedDate, today)}
                   onLongPress={() => deleteHabit(habit.id)}
                   activeOpacity={0.7}
                 >
@@ -830,6 +844,9 @@ const styles = StyleSheet.create({
   habitItemCompleted: {
     backgroundColor: Colors.accent2 + '30',
     borderColor: Colors.accent2Dark,
+  },
+  habitItemDisabled: {
+    opacity: 0.4,
   },
   habitCheck: {
     width: 28,
