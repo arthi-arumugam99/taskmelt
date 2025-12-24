@@ -138,8 +138,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       let transcribedText = '';
       try {
         const parsed = JSON.parse(responseText);
-        transcribedText = parsed.text || '';
+        transcribedText = parsed.text || parsed.transcription || '';
       } catch {
+        console.log('⚠️ Response is not JSON, using as plain text');
         transcribedText = responseText;
       }
       
