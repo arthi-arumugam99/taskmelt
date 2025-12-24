@@ -366,27 +366,36 @@ Be smart, thoughtful, and help the user succeed!`,
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      console.log('🛑 Stopping recording, current input length:', inputText.length);
-      const currentText = inputText;
+      console.log('🛑 Stopping recording...');
+      console.log('Current input text length:', inputText.length);
+      console.log('Current input preview:', inputText.substring(0, 100));
+      
       const finalTranscript = await stopRecording();
       
-      console.log('📝 Final transcript received:', finalTranscript?.substring(0, 100) || '(empty)');
-      console.log('📝 Current text in input:', currentText.substring(0, 100) || '(empty)');
+      console.log('=== STOP RECORDING RESULT ===');
+      console.log('Final transcript:', finalTranscript ? finalTranscript.substring(0, 100) : 'NULL OR EMPTY');
+      console.log('Final transcript length:', finalTranscript?.length || 0);
+      console.log('Current inputText:', inputText.substring(0, 100));
+      console.log('Current inputText length:', inputText.length);
+      console.log('============================');
       
       if (finalTranscript && finalTranscript.trim()) {
-        console.log('✅ Setting final transcript to input');
-        setInputText(finalTranscript);
-      } else if (currentText.trim()) {
-        console.log('✅ Keeping current text (from live transcription)');
+        console.log('✅ Using final transcript from stopRecording');
+        setInputText(finalTranscript.trim());
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (inputText.trim()) {
+        console.log('✅ Keeping current input text (from live updates)');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        console.log('⚠️ No transcription captured');
+        console.log('❌ No transcript captured at all');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       console.log('🎤 Starting recording...');
+      setInputText('');
       await startRecording((transcript) => {
-        console.log('📝 Live transcript update (length:', transcript.length, '):', transcript.substring(0, 50));
+        console.log('📝 Live update (length:', transcript.length, '):', transcript.substring(0, 50));
         setInputText(transcript);
       });
     }
@@ -537,8 +546,15 @@ Be smart, thoughtful, and help the user succeed!`,
                   </View>
                   <View style={styles.listeningContainer}>
                     <Text style={styles.listeningText}>
-                      {Platform.OS === 'web' ? '🎤 Live transcription active' : '🎙️ Recording... (transcribes when you stop)'}
+                      {Platform.OS === 'web' ? '🎤 Speak now... (live transcription)' : '🎙️ Recording... (tap to stop)'}
                     </Text>
+                    {inputText.trim() && (
+                      <View style={styles.transcriptPreview}>
+                        <Text style={styles.transcriptPreviewText} numberOfLines={3}>
+                          {inputText}
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.waveBars}>
                       <Animated.View style={[styles.waveBar, { height: 12 }]} />
                       <Animated.View style={[styles.waveBar, { height: 20 }]} />
@@ -547,6 +563,13 @@ Be smart, thoughtful, and help the user succeed!`,
                       <Animated.View style={[styles.waveBar, { height: 14 }]} />
                     </View>
                   </View>
+                </View>
+              )}
+              
+              {isTranscribing && (
+                <View style={styles.transcribingIndicator}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                  <Text style={styles.transcribingText}>Processing audio...</Text>
                 </View>
               )}
             </>
@@ -919,6 +942,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#DC2626',
     fontWeight: '500' as const,
+    textAlign: 'center',
+  },
+  transcriptPreview: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    width: '100%',
+  },
+  transcriptPreviewText: {
+    fontSize: 13,
+    color: '#1F2937',
+    lineHeight: 18,
+  },
+  transcribingIndicator: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: Colors.accent1,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  transcribingText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600' as const,
   },
   waveBars: {
     flexDirection: 'row',

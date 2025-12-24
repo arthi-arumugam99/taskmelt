@@ -582,7 +582,73 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       durationIntervalRef.current = null;
     }
 
-    // Stop recognition FIRST and wait for final results to process
+    if (Platform.OS === 'web') {
+      console.log('✨ Web platform - processing live transcript');
+      
+      // Stop recognition FIRST and wait for final results
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+          console.log('🛑 Speech recognition stopped');
+        } catch (e) {
+          console.log('Speech recognition stop error:', e);
+        }
+        recognitionRef.current = null;
+        
+        // Wait for final results to be processed
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Capture transcripts AFTER stopping and waiting
+      const capturedFinalTranscript = finalTranscriptRef.current.trim();
+      const capturedDisplayTranscript = transcriptRef.current.trim();
+      
+      console.log('📝 Final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
+      console.log('📝 Display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
+      
+      // Use the longer transcript
+      const webTranscript = capturedFinalTranscript.length >= capturedDisplayTranscript.length 
+        ? capturedFinalTranscript 
+        : capturedDisplayTranscript;
+      
+      console.log('📝 Selected web transcript (length:', webTranscript.length, '):', webTranscript.slice(0, 100) || '(empty)');
+      
+      // Stop media recorder
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          console.log('MediaRecorder stop:', e);
+        }
+        mediaRecorderRef.current = null;
+      }
+      
+      // Stop stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Clear refs
+      transcriptRef.current = '';
+      finalTranscriptRef.current = '';
+      lastResultIndexRef.current = 0;
+      onTranscriptUpdateRef.current = null;
+      
+      const finalWebResult = webTranscript.trim();
+      console.log('✅ Returning web transcript (final):', finalWebResult ? finalWebResult.slice(0, 100) : '(EMPTY - NO SPEECH DETECTED)');
+      
+      if (!finalWebResult) {
+        if (isMountedRef.current) {
+          setError('No speech detected. Please speak clearly and try again.');
+        }
+        return null;
+      }
+      
+      return finalWebResult;
+    }
+
+    // Mobile recording - stop recognition if running
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -590,55 +656,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('Speech recognition stop:', e);
       }
       recognitionRef.current = null;
-      
-      // Wait for any final results to be processed
-      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    // Capture transcripts AFTER stopping recognition to get all results
-    const capturedFinalTranscript = finalTranscriptRef.current.trim();
-    const capturedDisplayTranscript = transcriptRef.current.trim();
-    
-    console.log('📝 Captured final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
-    console.log('📝 Captured display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
+    const capturedTranscript = transcriptRef.current.trim();
+    console.log('📝 Mobile: captured live transcript:', capturedTranscript.slice(0, 100) || '(empty)');
 
     try {
-      // Use the longer of final transcript or display transcript
-      const currentTranscript = capturedFinalTranscript.length >= capturedDisplayTranscript.length 
-        ? capturedFinalTranscript 
-        : capturedDisplayTranscript;
-      
-      console.log('📝 Using transcript:', currentTranscript.slice(0, 100) || '(empty)');
-
-      if (Platform.OS === 'web') {
-        console.log('✨ Web platform - using live transcript');
-        console.log('Current transcript length:', currentTranscript.length);
-        
-        if (mediaRecorderRef.current) {
-          try {
-            mediaRecorderRef.current.stop();
-          } catch (e) {
-            console.log('MediaRecorder stop:', e);
-          }
-          mediaRecorderRef.current = null;
-        }
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-        
-        const finalResult = currentTranscript.trim();
-        transcriptRef.current = '';
-        finalTranscriptRef.current = '';
-        lastResultIndexRef.current = 0;
-        onTranscriptUpdateRef.current = null;
-        
-        console.log('✅ Returning web transcript:', finalResult.substring(0, 100) || '(empty)');
-        return finalResult || null;
-      }
 
       setIsTranscribing(true);
-      console.log('🔄 Starting transcription...');
+      console.log('🔄 Starting mobile transcription...');
 
       const formData = await stopRecordingMobile();
 
@@ -649,17 +675,23 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           transcriptRef.current = '';
           onTranscriptUpdateRef.current = null;
         }
-        return currentTranscript || null;
+        if (!capturedTranscript) {
+          if (isMountedRef.current) {
+            setError('No audio recorded. Please try again.');
+          }
+          return null;
+        }
+        return capturedTranscript;
       }
 
       console.log('📤 Sending to transcription API...');
       const transcribedText = await transcribeAudio(formData);
-      console.log('📥 Transcription result:', transcribedText.slice(0, 100) || '(empty)');
+      console.log('📥 API Transcription result:', transcribedText.slice(0, 100) || '(empty)');
 
       if (!isMountedRef.current) return null;
 
-      const finalText = currentTranscript 
-        ? `${currentTranscript} ${transcribedText}`.trim() 
+      const finalText = capturedTranscript 
+        ? `${capturedTranscript} ${transcribedText}`.trim() 
         : transcribedText.trim();
 
       transcriptRef.current = '';
@@ -668,10 +700,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       if (!finalText) {
         console.warn('⚠️ Empty transcription result - no speech detected');
+        if (isMountedRef.current) {
+          setError('No speech detected in recording. Please speak clearly and try again.');
+        }
         return null;
       }
 
-      console.log('✅ Final transcribed text:', finalText.slice(0, 100));
+      console.log('✅ Final mobile transcribed text:', finalText.slice(0, 100));
       return finalText;
     } catch (err) {
       console.error('❌ Stop recording error:', err);
