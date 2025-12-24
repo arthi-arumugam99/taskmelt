@@ -10,7 +10,31 @@ import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        if (error?.message?.includes('Network request failed')) {
+          console.log('Network error detected, skipping retry:', error.message);
+          return false;
+        }
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      networkMode: 'offlineFirst',
+      staleTime: 1000 * 60 * 5,
+    },
+    mutations: {
+      retry: false,
+      networkMode: 'offlineFirst',
+      onError: (error: any) => {
+        if (error?.message?.includes('Network request failed')) {
+          console.log('Network error in mutation, operating in offline mode');
+        }
+      },
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (
