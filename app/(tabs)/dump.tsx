@@ -366,19 +366,27 @@ Be smart, thoughtful, and help the user succeed!`,
   const handleVoicePress = useCallback(async () => {
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('🛑 Stopping recording, current input length:', inputText.length);
       const currentText = inputText;
       const finalTranscript = await stopRecording();
       
+      console.log('📝 Final transcript received:', finalTranscript?.substring(0, 100) || '(empty)');
+      console.log('📝 Current text in input:', currentText.substring(0, 100) || '(empty)');
+      
       if (finalTranscript && finalTranscript.trim()) {
+        console.log('✅ Setting final transcript to input');
         setInputText(finalTranscript);
-      } else if (!currentText.trim()) {
+      } else if (currentText.trim()) {
+        console.log('✅ Keeping current text (from live transcription)');
+      } else {
         console.log('⚠️ No transcription captured');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      console.log('🎤 Starting recording...');
       await startRecording((transcript) => {
-        console.log('📝 Live transcript update:', transcript.substring(0, 50));
+        console.log('📝 Live transcript update (length:', transcript.length, '):', transcript.substring(0, 50));
         setInputText(transcript);
       });
     }
