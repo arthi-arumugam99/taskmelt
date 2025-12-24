@@ -230,7 +230,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       console.log('📱 Creating recording instance...');
       const recording = new Audio.Recording();
-      recordingRef.current = recording;
 
       console.log('📱 Preparing recording...');
       await recording.prepareToRecordAsync({
@@ -257,21 +256,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       });
       console.log('✓ Recorder prepared successfully');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       console.log('▶️ Starting recording...');
       await recording.startAsync();
       console.log('✅ Mobile recording started successfully');
+      
+      recordingRef.current = recording;
     } catch (err) {
       console.error('❌ Mobile recording error:', err);
-      if (recordingRef.current) {
-        try {
-          await recordingRef.current.stopAndUnloadAsync();
-        } catch (cleanupErr) {
-          console.log('Cleanup error:', cleanupErr);
-        }
-        recordingRef.current = null;
-      }
+      recordingRef.current = null;
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       }).catch(() => {});
