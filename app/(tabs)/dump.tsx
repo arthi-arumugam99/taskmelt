@@ -76,7 +76,7 @@ export default function DumpScreen() {
   const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isProcessing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isProcessing, liveTranscript, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -439,7 +439,7 @@ Be smart, thoughtful, and help the user succeed!`,
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    value={inputText}
+                    value={isRecording ? liveTranscript : inputText}
                     onChangeText={setInputText}
                     placeholder={placeholder}
                     placeholderTextColor={Colors.textMuted}
@@ -447,12 +447,12 @@ Be smart, thoughtful, and help the user succeed!`,
                     textAlignVertical="top"
                     autoFocus={false}
                     maxLength={5000}
-                    editable={!isRecording}
+                    editable={!isRecording && !isProcessing}
                   />
-                  {inputText.length > 0 && (
+                  {(isRecording ? liveTranscript : inputText).length > 0 && (
                     <View style={styles.characterCountContainer}>
                       <Text style={styles.characterCount}>
-                        {inputText.length} / 5000
+                        {(isRecording ? liveTranscript : inputText).length} / 5000
                       </Text>
                     </View>
                   )}
@@ -461,7 +461,16 @@ Be smart, thoughtful, and help the user succeed!`,
                 {isRecording && (
                   <View style={styles.recordingIndicatorSimple}>
                     <View style={styles.recordingDot} />
-                    <Text style={styles.recordingTextSimple}>Recording... Speak now</Text>
+                    <Text style={styles.recordingTextSimple}>
+                      {Platform.OS === 'web' && liveTranscript ? 'Listening...' : 'Recording... Speak now'}
+                    </Text>
+                  </View>
+                )}
+                
+                {isProcessing && (
+                  <View style={styles.recordingIndicatorSimple}>
+                    <ActivityIndicator size="small" color={Colors.accent1} />
+                    <Text style={styles.recordingTextSimple}>Transcribing audio...</Text>
                   </View>
                 )}
               </View>
