@@ -8,6 +8,7 @@ import {
   TextInput,
   Animated,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Check, Flame, Plus, X, Trash2, Target } from 'lucide-react-native';
@@ -309,6 +310,44 @@ export default function TrackerScreen() {
     setHabitLogs(newLogs);
   }, [habitLogs]);
 
+  const clearAllDay = useCallback(() => {
+    const dateStr = formatDateString(selectedDate);
+    const completedCount = habitLogs[dateStr]?.length || 0;
+    
+    if (completedCount === 0) {
+      Alert.alert(
+        'Nothing to Clear',
+        'There are no completed habits for this day.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Clear All Habits?',
+      `This will permanently delete all ${completedCount} completed habit${completedCount > 1 ? 's' : ''} for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          },
+        },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            const newLogs = { ...habitLogs };
+            delete newLogs[dateStr];
+            setHabitLogs(newLogs);
+          },
+        },
+      ]
+    );
+  }, [selectedDate, habitLogs]);
+
   const today = new Date();
   const selectedDateStr = formatDateString(selectedDate);
   const completedToday = habitLogs[selectedDateStr] || [];
@@ -459,9 +498,21 @@ export default function TrackerScreen() {
 
         <View style={styles.habitsSection}>
           <View style={styles.habitsSectionHeader}>
-            <Text style={styles.habitsSectionTitle}>
-              {isSameDay(selectedDate, today) ? "Today's Habits" : "View Only"}
-            </Text>
+            <View style={styles.habitsSectionHeaderLeft}>
+              <Text style={styles.habitsSectionTitle}>
+                {isSameDay(selectedDate, today) ? "Today's Habits" : "View Only"}
+              </Text>
+              {isSameDay(selectedDate, today) && todayProgress.completed > 0 && (
+                <TouchableOpacity
+                  style={styles.clearAllButton}
+                  onPress={clearAllDay}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Trash2 size={16} color="#EF4444" />
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={styles.habitProgress}>
               {todayProgress.completed}/{todayProgress.total}
             </Text>
@@ -817,6 +868,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  habitsSectionHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  clearAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#DC2626',
   },
   habitsSectionTitle: {
     fontSize: 18,
