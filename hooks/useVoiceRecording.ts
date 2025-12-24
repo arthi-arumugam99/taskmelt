@@ -51,9 +51,18 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         recordingRef.current = null;
       }
 
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        throw new Error('Microphone permission required');
+      console.log('📱 Requesting microphone permission...');
+      const permission = await Audio.getPermissionsAsync();
+      console.log('Current permission status:', permission.status);
+      
+      if (permission.status !== 'granted') {
+        console.log('Requesting permission...');
+        const { status } = await Audio.requestPermissionsAsync();
+        console.log('Permission request result:', status);
+        
+        if (status !== 'granted') {
+          throw new Error('Microphone permission is required to record audio. Please enable it in your device settings.');
+        }
       }
 
       await Audio.setAudioModeAsync({
