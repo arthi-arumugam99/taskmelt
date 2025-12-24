@@ -67,7 +67,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ STT API error:', response.status, errorText);
-        throw new Error(`Transcription failed: ${response.status}`);
+        throw new Error(`Transcription service error (${response.status}). Please try again.`);
       }
 
       const responseText = await response.text();
@@ -75,7 +75,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!responseText || responseText.trim() === '') {
         console.error('❌ Empty response from STT API');
-        throw new Error('Empty response from transcription service');
+        throw new Error('No audio detected. Please speak clearly and try again.');
       }
       
       let data;
@@ -88,16 +88,23 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.error('Response was:', responseText.substring(0, 500));
         
         if (responseText.toLowerCase().includes('html') || responseText.startsWith('<')) {
-          throw new Error('Server returned HTML instead of JSON - service may be unavailable');
+          throw new Error('Service unavailable. Please try again later.');
         }
         if (responseText.toLowerCase().includes('offline') || responseText.toLowerCase().includes('network')) {
           throw new Error('Network error - please check your connection');
         }
-        throw new Error('Invalid response format from transcription service');
+        throw new Error('Invalid response from transcription service');
       }
       
       const text = data?.text?.trim() || '';
       console.log('✅ Transcribed text:', text || '(empty)');
+      console.log('📊 Text length:', text.length, 'characters');
+      
+      if (!text || text.length === 0) {
+        console.warn('⚠️ Transcription returned empty text');
+        throw new Error('No speech detected. Please speak clearly into the microphone.');
+      }
+      
       return text;
     } catch (err) {
       clearTimeout(timeoutId);
@@ -395,6 +402,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const status = await recording.getStatusAsync();
       console.log('📊 Recording status before stop:', JSON.stringify(status));
       
+      const durationMs = status.durationMillis || 0;
+      console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
+      
+      if (durationMs < 500) {
+        console.warn('⚠️ Recording too short:', durationMs, 'ms');
+      }
+      
       await recording.stopAndUnloadAsync();
       console.log('✅ Recording stopped and unloaded');
 
@@ -447,6 +461,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           console.log('📼 Recording size:', audioBlob.size, 'bytes');
+          console.log('📼 Recording chunks:', audioChunksRef.current.length);
 
           if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => track.stop());
@@ -457,6 +472,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             console.error('❌ Empty audio recording');
             resolve(null);
             return;
+          }
+          
+          if (audioBlob.size < 1000) {
+            console.warn('⚠️ Very small audio file:', audioBlob.size, 'bytes - may not contain speech');
           }
 
           const formData = new FormData();
@@ -560,6 +579,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           setIsTranscribing(false);
           transcriptRef.current = '';
           onTranscriptUpdateRef.current = null;
+          if (!currentTranscript) {
+            setError('No audio recorded. Please try again.');
+          }
         }
         return currentTranscript || null;
       }
@@ -580,6 +602,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       if (!finalText) {
         console.log('⚠️ Empty transcription result');
+        if (isMountedRef.current) {
+          setError('No speech detected. Please speak clearly and try again.');
+        }
         return null;
       }
 
