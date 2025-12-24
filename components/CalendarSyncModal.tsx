@@ -130,7 +130,8 @@ export default function CalendarSyncModal({ visible, onClose }: CalendarSyncModa
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <CalendarIcon size={24} color={Colors.primary} strokeWidth={2.5} />
@@ -290,12 +291,17 @@ export default function CalendarSyncModal({ visible, onClose }: CalendarSyncModa
             </View>
           </>
         )}
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
