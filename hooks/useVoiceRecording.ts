@@ -23,6 +23,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
+  const recordingStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
@@ -77,6 +78,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('▶️ Starting recording...');
         await recording.startAsync();
         recordingRef.current = recording;
+        recordingStartTimeRef.current = Date.now();
         console.log('✅ Recording started successfully');
       } catch (prepError) {
         console.error('❌ Prepare/start error:', prepError);
@@ -100,12 +102,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('No recording in progress');
       }
 
+      const recordingDuration = Date.now() - recordingStartTimeRef.current;
+      console.log('⏱️ Recording duration:', recordingDuration, 'ms');
+
+      if (recordingDuration < 500) {
+        throw new Error('Recording too short. Please speak for at least 1 second.');
+      }
+
       console.log('⏹️ Stopping recording...');
       await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
 
       const uri = recording.getURI();
       recordingRef.current = null;
+      recordingStartTimeRef.current = 0;
 
       if (!uri) {
         throw new Error('No recording URI');
@@ -147,7 +157,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const trimmed = transcribedText.trim();
 
       if (!trimmed) {
-        throw new Error('No speech detected');
+        throw new Error('No speech detected. Please speak clearly and try again.');
       }
 
       return trimmed;
@@ -186,6 +196,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
     mediaRecorder.start(100);
     mediaRecorderRef.current = mediaRecorder;
+    recordingStartTimeRef.current = Date.now();
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -218,6 +229,13 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   }, []);
 
   const stopRecordingWeb = useCallback(async (): Promise<string> => {
+    const recordingDuration = Date.now() - recordingStartTimeRef.current;
+    console.log('⏱️ Recording duration:', recordingDuration, 'ms');
+
+    if (recordingDuration < 500) {
+      throw new Error('Recording too short. Please speak for at least 1 second.');
+    }
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -243,9 +261,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     mediaRecorderRef.current = null;
     streamRef.current = null;
     audioChunksRef.current = [];
+    recordingStartTimeRef.current = 0;
 
     if (!transcript) {
-      throw new Error('No speech detected');
+      throw new Error('No speech detected. Please speak clearly and try again.');
     }
 
     return transcript;
