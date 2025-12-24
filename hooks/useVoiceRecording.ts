@@ -219,8 +219,28 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const startRecordingWeb = useCallback(async () => {
     console.log('🌐 Starting web recording...');
 
+    const isEmbedded = typeof window !== 'undefined' && window.self !== window.top;
+    const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
+    const protocol = typeof window !== 'undefined' ? window.location?.protocol : undefined;
+
+    console.log('🌐 Web env:', {
+      isEmbedded,
+      isSecureContext,
+      protocol,
+      hasMediaDevices: !!navigator?.mediaDevices,
+      hasGetUserMedia: !!navigator?.mediaDevices?.getUserMedia,
+    });
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('Voice recording is not supported in this browser');
+    }
+
+    if (!isSecureContext && protocol !== 'http:' && protocol !== 'https:') {
+      throw new Error('Microphone access requires a secure context (https or localhost).');
+    }
+
+    if (!isSecureContext && protocol === 'http:') {
+      throw new Error('Microphone access requires https (or localhost). Please use the secure URL, then try again.');
     }
 
     try {
@@ -363,7 +383,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     } catch (e) {
       const rawMessage = e instanceof Error ? e.message : String(e);
       const lowered = rawMessage.toLowerCase();
-      console.error('❌ Web recording start error:', e);
+      const errAny = e as any;
+      const errorName = typeof errAny?.name === 'string' ? errAny.name : undefined;
+
+      console.error('❌ Web recording start error:', {
+        name: errorName,
+        message: rawMessage,
+        error: e,
+      });
 
       if (streamRef.current) {
         try {
@@ -374,10 +401,30 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         streamRef.current = null;
       }
 
-      if (lowered.includes('notallowed') || lowered.includes('permission denied') || lowered.includes('not-allowed')) {
+      const isEmbedded = typeof window !== 'undefined' && window.self !== window.top;
+      const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
+
+      if (!isSecureContext) {
+        throw new Error('Microphone access requires https (or localhost). Please use the secure URL, then try again.');
+      }
+
+      if (
+        isEmbedded &&
+        (lowered.includes('notallowed') || lowered.includes('permission denied') || lowered.includes('not-allowed') || errorName === 'NotAllowedError')
+      ) {
+        throw new Error(
+          'Microphone access is blocked in this embedded preview. Open the app in a new tab (or scan the QR code) and allow microphone access, then try again.'
+        );
+      }
+
+      if (lowered.includes('notallowed') || lowered.includes('permission denied') || lowered.includes('not-allowed') || errorName === 'NotAllowedError') {
         throw new Error(
           'Microphone permission denied. Please allow microphone access in your browser/site settings, then try again.'
         );
+      }
+
+      if (lowered.includes('notfounderror') || lowered.includes('requested device not found') || errorName === 'NotFoundError') {
+        throw new Error('No microphone found. Please connect a microphone and try again.');
       }
 
       throw new Error(rawMessage || 'Failed to start recording');
