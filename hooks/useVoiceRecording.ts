@@ -76,15 +76,23 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       const responseText = await response.text();
       console.log('📥 Raw STT response:', responseText.substring(0, 200));
+      console.log('📥 Response length:', responseText.length, 'bytes');
       
       if (!responseText || responseText.trim() === '') {
         console.warn('⚠️ Empty response from STT API');
-        return '';
+        throw new Error('No audio data was captured. Please try speaking again.');
       }
       
       // Check if response looks like JSON at all
       const trimmedResponse = responseText.trim();
       const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
+      
+      console.log('🔍 Response analysis:', {
+        startsWithBrace: trimmedResponse.startsWith('{'),
+        startsWithBracket: trimmedResponse.startsWith('['),
+        firstChars: trimmedResponse.substring(0, 20),
+        looksLikeJSON,
+      });
       
       if (!looksLikeJSON) {
         console.error('❌ Response does not look like JSON:', responseText.substring(0, 100));
@@ -102,7 +110,10 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         if (lowerResponse.includes('error') && responseText.length < 200) {
           throw new Error(`Service error: ${responseText}`);
         }
-        throw new Error('Service returned invalid response. Please try again.');
+        
+        // Show first part of response for debugging
+        const preview = responseText.length > 50 ? responseText.substring(0, 50) + '...' : responseText;
+        throw new Error(`Invalid response format: ${preview}`);
       }
       
       // Check if response is not JSON based on content-type
@@ -113,16 +124,23 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log('📥 Parsed STT response:', JSON.stringify(data));
+        console.log('📥 Parsed STT response:', JSON.stringify(data).substring(0, 200));
       } catch (parseError) {
         console.error('❌ Failed to parse STT response as JSON:', parseError);
-        console.error('Response was:', responseText.substring(0, 500));
+        console.error('❌ Parse error details:', parseError instanceof Error ? parseError.message : String(parseError));
+        console.error('❌ Response was:', responseText.substring(0, 500));
+        
+        // Log character codes of first few characters for debugging
+        const charCodes = trimmedResponse.substring(0, 10).split('').map((c, i) => 
+          `[${i}]='${c}'(${c.charCodeAt(0)})`
+        ).join(' ');
+        console.error('❌ First chars:', charCodes);
         
         // Try to give a more helpful error message
         if (responseText.length < 200) {
-          throw new Error(`Could not process response: ${responseText}`);
+          throw new Error(`Invalid response: ${responseText.substring(0, 100)}`);
         }
-        throw new Error('Service returned malformed data. Please try again.');
+        throw new Error('Service returned invalid data. Please try recording again.');
       }
       
       const text = data?.text?.trim() || '';
