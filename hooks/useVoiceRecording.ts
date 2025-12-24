@@ -520,8 +520,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 500) {
+      if (durationMs < 1000) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
+        throw new Error('Recording too short. Please speak for at least 1 second.');
       }
       
       await recording.stopAndUnloadAsync();
@@ -640,7 +641,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!finalWebResult) {
         if (isMountedRef.current) {
-          setError('No speech detected. Please speak clearly and try again.');
+          setError('No speech detected. Please speak clearly and closer to your microphone.');
         }
         return null;
       }
@@ -677,7 +678,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
         if (!capturedTranscript) {
           if (isMountedRef.current) {
-            setError('No audio recorded. Please try again.');
+            setError('Recording failed. Please check microphone permissions and try again.');
           }
           return null;
         }
@@ -687,12 +688,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('📤 Sending to transcription API...');
       const transcribedText = await transcribeAudio(formData);
       console.log('📥 API Transcription result:', transcribedText.slice(0, 100) || '(empty)');
+      console.log('📥 API Transcription length:', transcribedText.length);
 
       if (!isMountedRef.current) return null;
 
-      const finalText = capturedTranscript 
-        ? `${capturedTranscript} ${transcribedText}`.trim() 
-        : transcribedText.trim();
+      const finalText = transcribedText.trim() || capturedTranscript.trim();
+      console.log('📊 Final text combining:', { transcribed: transcribedText.length, captured: capturedTranscript.length, final: finalText.length });
 
       transcriptRef.current = '';
       setIsTranscribing(false);
@@ -701,7 +702,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (!finalText) {
         console.warn('⚠️ Empty transcription result - no speech detected');
         if (isMountedRef.current) {
-          setError('No speech detected in recording. Please speak clearly and try again.');
+          setError('Could not detect speech. Please speak clearly, louder, and closer to the microphone. Make sure you speak for at least 2-3 seconds.');
         }
         return null;
       }
