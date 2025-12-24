@@ -171,12 +171,19 @@ export function useCalendarSync() {
                 hour12: false,
               });
 
+          const eventDate = new Date(
+            event.startDate.getFullYear(),
+            event.startDate.getMonth(),
+            event.startDate.getDate(),
+            12, 0, 0, 0
+          );
+          
           return {
             id: `calendar_${event.id}_${Date.now()}`,
             task: event.title,
             completed: false,
             isReflection: false,
-            scheduledDate: event.startDate.toISOString(),
+            scheduledDate: eventDate.toISOString(),
             scheduledTime: scheduledTime,
             duration: duration,
             notes: event.notes,
