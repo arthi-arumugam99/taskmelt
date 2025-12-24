@@ -174,28 +174,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (recordingRef.current) {
         console.log('⚠️ Cleaning up existing recording...');
         try {
-          const status = await recordingRef.current.getStatusAsync();
-          if (status.isRecording) {
-            await recordingRef.current.stopAndUnloadAsync();
-          } else {
-            recordingRef.current._cleanupForUnloadedRecorder();
-          }
+          await recordingRef.current.stopAndUnloadAsync();
         } catch (e) {
           console.log('Cleanup error (ignored):', e);
         }
         recordingRef.current = null;
       }
-
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-        });
-      } catch (e) {
-        console.log('Reset audio mode error (ignored):', e);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
 
       const { status: existingStatus } = await Audio.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -234,62 +218,40 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         staysActiveInBackground: false,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('📱 Creating NEW recording instance...');
+      console.log('📱 Creating recording instance...');
       const recording = new Audio.Recording();
-      recordingRef.current = recording;
       
       console.log('⚙️ Preparing recorder...');
-      try {
-        await recording.prepareToRecordAsync({
-          android: {
-            extension: '.m4a',
-            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-            audioEncoder: Audio.AndroidAudioEncoder.AAC,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 64000,
-          },
-          ios: {
-            extension: '.m4a',
-            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-            audioQuality: Audio.IOSAudioQuality.MEDIUM,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 64000,
-          },
-          web: {
-            mimeType: 'audio/webm',
-            bitsPerSecond: 128000,
-          },
-        });
-      } catch (prepareErr) {
-        console.error('❌ Prepare failed:', prepareErr);
-        throw new Error('Failed to prepare recorder. Please restart the app.');
-      }
-
-      console.log('✓ Recorder prepared, verifying...');
-      const preparedStatus = await recording.getStatusAsync();
-      console.log('📊 Prepared status:', JSON.stringify(preparedStatus));
+      await recording.prepareToRecordAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 64000,
+        },
+        ios: {
+          extension: '.m4a',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 64000,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      });
       
-      if (!preparedStatus.canRecord) {
-        throw new Error('Recorder not ready. Please try again.');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 50));
+      recordingRef.current = recording;
+      console.log('✓ Recorder prepared');
 
       console.log('▶️ Starting recording...');
       await recording.startAsync();
-      
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      const startedStatus = await recording.getStatusAsync();
-      console.log('📊 Started status:', JSON.stringify(startedStatus));
-      
-      if (!startedStatus.isRecording) {
-        throw new Error('Recording failed to start. Please try again.');
-      }
       
       console.log('✅ Mobile recording started successfully');
     } catch (err) {
