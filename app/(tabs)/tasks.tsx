@@ -13,13 +13,14 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Eye, EyeOff } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Eye, EyeOff, Calendar } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
 import { DumpSession, TaskItem } from '@/types/dump';
 import TaskEditModal from '@/components/TaskEditModal';
 import DayScroller from '@/components/DayScroller';
+import CalendarSyncModal from '@/components/CalendarSyncModal';
 import { useLocalSearchParams } from 'expo-router';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -60,6 +61,7 @@ export default function TasksScreen() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [showCalendarSync, setShowCalendarSync] = useState(false);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -371,6 +373,15 @@ export default function TasksScreen() {
               )}
             </View>
             <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => {
+                  setShowCalendarSync(true);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Calendar size={18} color={Colors.primary} />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.iconButton, hideCompleted && styles.iconButtonActive]}
                 onPress={() => {
@@ -792,6 +803,11 @@ export default function TasksScreen() {
           onDelete={handleDeleteTask}
         />
       )}
+
+      <CalendarSyncModal
+        visible={showCalendarSync}
+        onClose={() => setShowCalendarSync(false)}
+      />
     </SafeAreaView>
   );
 }
