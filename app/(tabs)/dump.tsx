@@ -76,7 +76,7 @@ export default function DumpScreen() {
   const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isProcessing, liveTranscript, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isProcessing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -439,7 +439,7 @@ Be smart, thoughtful, and help the user succeed!`,
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    value={isRecording ? liveTranscript : inputText}
+                    value={inputText}
                     onChangeText={setInputText}
                     placeholder={placeholder}
                     placeholderTextColor={Colors.textMuted}
@@ -449,10 +449,10 @@ Be smart, thoughtful, and help the user succeed!`,
                     maxLength={5000}
                     editable={!isRecording && !isProcessing}
                   />
-                  {(isRecording ? liveTranscript : inputText).length > 0 && (
+                  {inputText.length > 0 && (
                     <View style={styles.characterCountContainer}>
                       <Text style={styles.characterCount}>
-                        {(isRecording ? liveTranscript : inputText).length} / 5000
+                        {inputText.length} / 5000
                       </Text>
                     </View>
                   )}
@@ -462,7 +462,7 @@ Be smart, thoughtful, and help the user succeed!`,
                   <View style={styles.recordingIndicatorSimple}>
                     <View style={styles.recordingDot} />
                     <Text style={styles.recordingTextSimple}>
-                      {Platform.OS === 'web' && liveTranscript ? 'Listening...' : 'Recording... Speak now'}
+                      Recording... Speak now
                     </Text>
                   </View>
                 )}
