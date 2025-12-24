@@ -363,7 +363,7 @@ export default function TasksScreen() {
           <View style={styles.headerTop}>
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Tasks</Text>
-              <Text style={styles.subtitle}>Organized by priority & time</Text>
+              <Text style={styles.subtitle}>Smart AI organization</Text>
               {!showAllDates && (
                 <TouchableOpacity onPress={handleShowAll} style={{ marginTop: 4 }}>
                   <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Filtered by date • Tap to show all</Text>
@@ -559,17 +559,24 @@ export default function TasksScreen() {
                       {item.task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
                     </View>
                     <View style={styles.taskContent}>
-                      <Text
-                        style={[
-                          styles.taskText,
-                          item.task.completed && styles.taskTextCompleted,
-                        ]}
-                      >
-                        {item.task.task}
-                      </Text>
+                      <View style={styles.taskTextRow}>
+                        <Text
+                          style={[
+                            styles.taskText,
+                            item.task.completed && styles.taskTextCompleted,
+                          ]}
+                        >
+                          {item.task.task}
+                        </Text>
+                        {item.task.priority === 'high' && (
+                          <View style={styles.priorityIndicator}>
+                            <Text style={styles.priorityText}>!</Text>
+                          </View>
+                        )}
+                      </View>
                       <View style={styles.taskMeta}>
                         {item.task.scheduledTime && (
-                          <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
+                          <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20', borderWidth: 2, borderColor: item.categoryColor }]}>
                             <Clock size={12} color={item.categoryColor} />
                             <Text style={[styles.timeEstimate, { color: item.categoryColor, fontWeight: '700' as const }]}>
                               {item.task.scheduledTime}
@@ -577,10 +584,32 @@ export default function TasksScreen() {
                           </View>
                         )}
                         {item.task.duration && (
-                          <View style={styles.timeBadge}>
+                          <View style={[styles.timeBadge, { backgroundColor: Colors.card }]}>
                             <Clock size={12} color={Colors.textMuted} />
                             <Text style={styles.timeEstimate}>
                               {item.task.duration}
+                            </Text>
+                          </View>
+                        )}
+                        {item.task.energyLevel && (
+                          <View style={[styles.energyBadge, { 
+                            backgroundColor: item.task.energyLevel === 'high' ? '#FEE2E2' : 
+                                           item.task.energyLevel === 'medium' ? '#FEF3C7' : '#DCFCE7'
+                          }]}>
+                            <Text style={styles.energyText}>
+                              {item.task.energyLevel === 'high' ? '🔥' : 
+                               item.task.energyLevel === 'medium' ? '⚡' : '🌱'}
+                            </Text>
+                          </View>
+                        )}
+                        {item.task.context && item.task.context !== 'anywhere' && (
+                          <View style={[styles.contextBadge, { backgroundColor: Colors.accent5 }]}>
+                            <Text style={styles.contextText}>
+                              {item.task.context === 'work' ? '💼' : 
+                               item.task.context === 'home' ? '🏠' : 
+                               item.task.context === 'errands' ? '🛒' : 
+                               item.task.context === 'computer' ? '💻' : 
+                               item.task.context === 'phone' ? '📱' : '📍'}
                             </Text>
                           </View>
                         )}
@@ -982,6 +1011,44 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
     minWidth: 0,
+  },
+  taskTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '900' as const,
+    color: '#EF4444',
+  },
+  energyBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  energyText: {
+    fontSize: 11,
+  },
+  contextBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  contextText: {
+    fontSize: 11,
   },
 
   taskText: {

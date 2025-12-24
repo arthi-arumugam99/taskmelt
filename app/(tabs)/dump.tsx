@@ -36,19 +36,30 @@ const PLACEHOLDERS = [
 const resultSchema = z.object({
   categories: z.array(
     z.object({
-      name: z.string(),
-      emoji: z.string(),
-      color: z.string(),
+      name: z.string().describe('Category name like Work, Personal, Health, etc'),
+      emoji: z.string().describe('Single relevant emoji'),
+      color: z.string().describe('Hex color code'),
+      priority: z.enum(['high', 'medium', 'low']).optional(),
       items: z.array(
         z.object({
-          task: z.string(),
+          task: z.string().describe('Clear, actionable task description'),
           priority: z.enum(['high', 'medium', 'low']),
-          duration: z.string().optional(),
+          duration: z.string().optional().describe('Estimated time like 15min, 1h, 2h'),
+          scheduledTime: z.string().optional().describe('Suggested time in HH:MM format'),
+          energyLevel: z.enum(['high', 'medium', 'low']).optional(),
+          context: z.enum(['home', 'work', 'errands', 'computer', 'phone', 'anywhere']).optional(),
+          subtasks: z.array(
+            z.object({
+              task: z.string(),
+              duration: z.string().optional(),
+            })
+          ).optional().describe('Break down complex tasks into 2-4 subtasks'),
         })
       ),
     })
-  ).max(3),
-  summary: z.string(),
+  ).min(1).max(5).describe('2-5 well-organized categories'),
+  summary: z.string().describe('Brief summary of what the user wants to accomplish'),
+  reflectionInsight: z.string().optional().describe('Optional insight about patterns or suggestions'),
 });
 
 function generateId(): string {
@@ -108,14 +119,69 @@ export default function DumpScreen() {
         try {
           console.log(`Attempt ${attempt}/${maxRetries}...`);
           
-          const truncatedText = text.length > 800 ? text.substring(0, 800) : text;
+          const truncatedText = text.length > 1200 ? text.substring(0, 1200) : text;
+          
+          const currentTime = new Date();
+          const currentHour = currentTime.getHours();
+          const timeOfDay = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
           
           const rawResult = await Promise.race([
             generateObject({
               messages: [
                 {
                   role: 'user',
-                  content: `Extract tasks from this text. Return max 3 categories with tasks.\n\n${truncatedText}`,
+                  content: `You are a world-class productivity AI that transforms chaotic thoughts into organized, actionable tasks.
+
+Current context:
+- Time: ${timeOfDay} (${currentHour}:${currentTime.getMinutes().toString().padStart(2, '0')})
+- Day: ${currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
+
+User's brain dump:
+"""${truncatedText}"""
+
+Your task:
+1. Extract ALL actionable tasks (don't miss anything)
+2. Organize into 2-5 logical categories (Work, Personal, Health, Learning, etc.)
+3. Assign smart priorities:
+   - HIGH: urgent, time-sensitive, or high-impact
+   - MEDIUM: important but not urgent
+   - LOW: nice-to-have or routine
+
+4. Estimate realistic durations (15min, 30min, 1h, 2h, etc.)
+
+5. Suggest optimal times based on:
+   - Task type (deep work → morning, calls → afternoon, errands → midday)
+   - Energy needed (creative work → high energy times)
+   - Current time of day
+
+6. Assign energy levels:
+   - HIGH: requires focus, creativity, or physical energy
+   - MEDIUM: moderate effort
+   - LOW: routine, administrative, or low-stakes
+
+7. Set context (where/how to do it):
+   - work: office/work environment
+   - home: at home
+   - errands: out and about
+   - computer: needs computer
+   - phone: can do on phone
+   - anywhere: flexible
+
+8. Break complex tasks into 2-4 subtasks when helpful
+
+9. Choose appropriate emojis and colors:
+   - Work: 💼 #4F46E5
+   - Personal: 🏠 #10B981
+   - Health: 💪 #EF4444
+   - Learning: 📚 #F59E0B
+   - Creative: 🎨 #8B5CF6
+   - Finance: 💰 #059669
+   - Social: 👥 #EC4899
+   - Errands: 🛒 #F97316
+
+10. Write a brief summary and insight about what patterns you see
+
+Be smart, thoughtful, and help the user succeed!`,
                 },
               ],
               schema: resultSchema,
@@ -146,17 +212,29 @@ export default function DumpScreen() {
           
           const result = {
             ...rawResult,
-            categories: rawResult.categories.slice(0, 3).map((cat: any) => ({
+            categories: rawResult.categories.slice(0, 5).map((cat: any) => ({
               ...cat,
+              priority: cat.priority || 'medium',
               items: cat.items.map((item: any) => ({
                 ...item,
                 priority: sanitizePriority(item.priority),
                 original: item.task,
                 timeEstimate: item.duration,
+                duration: item.duration,
+                scheduledTime: item.scheduledTime,
+                energyLevel: item.energyLevel || 'medium',
+                context: item.context || 'anywhere',
                 isReflection: false,
                 closesLoop: false,
+                subtasks: item.subtasks?.map((sub: any) => ({
+                  task: sub.task,
+                  duration: sub.duration,
+                  completed: false,
+                  isReflection: false,
+                })) || [],
               })),
             })),
+            reflectionInsight: rawResult.reflectionInsight,
           };
           
           return result;
@@ -186,23 +264,46 @@ export default function DumpScreen() {
       console.log('Organization successful:', data);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
+      const now = new Date();
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
       const categories: Category[] = data.categories.map((cat: any) => ({
         ...cat,
         priority: cat.priority || 'medium',
-        items: cat.items.map((item: any) => ({
-          ...item,
-          id: generateId(),
-          completed: false,
-          priority: item.priority || 'medium',
-          subtasks: item.subtasks?.map((subtask: any) => ({
-            ...subtask,
+        items: cat.items.map((item: any) => {
+          let scheduledDate = todayDate.toISOString();
+          
+          if (item.scheduledTime) {
+            const [hours, minutes] = item.scheduledTime.split(':').map(Number);
+            const taskDateTime = new Date(todayDate);
+            taskDateTime.setHours(hours, minutes, 0, 0);
+            
+            if (taskDateTime < now) {
+              taskDateTime.setDate(taskDateTime.getDate() + 1);
+            }
+            scheduledDate = taskDateTime.toISOString();
+          }
+          
+          return {
+            ...item,
             id: generateId(),
             completed: false,
-            priority: subtask.priority || 'medium',
-          })),
-          isExpanded: false,
-          isReflection: item.isReflection || false,
-        })),
+            priority: item.priority || 'medium',
+            scheduledDate,
+            scheduledTime: item.scheduledTime,
+            energyLevel: item.energyLevel || 'medium',
+            context: item.context || 'anywhere',
+            subtasks: item.subtasks?.map((subtask: any) => ({
+              ...subtask,
+              id: generateId(),
+              completed: false,
+              priority: item.priority || 'medium',
+              isReflection: false,
+            })) || [],
+            isExpanded: false,
+            isReflection: item.isReflection || false,
+          };
+        }),
       }));
 
       const session: DumpSession = {
@@ -211,6 +312,7 @@ export default function DumpScreen() {
         categories,
         createdAt: new Date().toISOString(),
         summary: data.summary,
+        reflectionInsight: data.reflectionInsight,
       };
 
       addDump(session);
