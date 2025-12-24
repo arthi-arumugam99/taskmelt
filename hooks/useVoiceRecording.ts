@@ -190,14 +190,18 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Microphone permission denied');
       }
 
+      console.log('🔧 Setting audio mode...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
 
+      console.log('📱 Creating recording instance...');
       const recording = new Audio.Recording();
+      recordingRef.current = recording;
       
+      console.log('⚙️ Preparing recorder...');
       await recording.prepareToRecordAsync({
         android: {
           extension: '.m4a',
@@ -221,12 +225,34 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         },
       });
 
-      await recording.startAsync();
-      recordingRef.current = recording;
+      console.log('✓ Recorder prepared, checking status...');
+      const preparedStatus = await recording.getStatusAsync();
+      console.log('📊 Prepared status:', JSON.stringify(preparedStatus));
       
-      console.log('✅ Mobile recording started');
+      if (!preparedStatus.canRecord) {
+        throw new Error('Recorder is not ready to record');
+      }
+
+      console.log('▶️ Starting recording...');
+      await recording.startAsync();
+      
+      const startedStatus = await recording.getStatusAsync();
+      console.log('📊 Started status:', JSON.stringify(startedStatus));
+      
+      if (!startedStatus.isRecording) {
+        throw new Error('Recording failed to start');
+      }
+      
+      console.log('✅ Mobile recording started successfully');
     } catch (err) {
       console.error('❌ Mobile recording error:', err);
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (cleanupErr) {
+          console.log('Error during cleanup:', cleanupErr);
+        }
+      }
       recordingRef.current = null;
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
