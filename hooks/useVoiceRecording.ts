@@ -121,7 +121,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       let data;
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(trimmedResponse);
         console.log('📥 Parsed STT response:', JSON.stringify(data).substring(0, 200));
       } catch (parseError) {
         const error = parseError as Error;
