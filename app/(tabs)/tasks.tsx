@@ -13,7 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Minimize2, Maximize2, Eye, EyeOff } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Eye, EyeOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -59,7 +59,6 @@ export default function TasksScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
-  const [compactView, setCompactView] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(false);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
@@ -362,7 +361,7 @@ export default function TasksScreen() {
             ]}
           >
           <View style={styles.headerTop}>
-            <View>
+            <View style={styles.titleContainer}>
               <Text style={styles.title}>Tasks</Text>
               <Text style={styles.subtitle}>Organized by priority & time</Text>
               {!showAllDates && (
@@ -379,25 +378,7 @@ export default function TasksScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
               >
-                {hideCompleted ? <EyeOff size={20} color={Colors.background} /> : <Eye size={20} color={Colors.primary} />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.iconButton, compactView && styles.iconButtonActive]}
-                onPress={() => {
-                  setCompactView(!compactView);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-              >
-                {compactView ? <Maximize2 size={20} color={Colors.background} /> : <Minimize2 size={20} color={Colors.primary} />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => {
-                  setShowFilters(!showFilters);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-              >
-                <Filter size={20} color={Colors.primary} />
+                {hideCompleted ? <EyeOff size={18} color={Colors.background} /> : <Eye size={18} color={Colors.primary} />}
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconButton}
@@ -408,10 +389,19 @@ export default function TasksScreen() {
                 }}
               >
                 {showSearch ? (
-                  <X size={20} color={Colors.primary} />
+                  <X size={18} color={Colors.primary} />
                 ) : (
-                  <Search size={20} color={Colors.primary} />
+                  <Search size={18} color={Colors.primary} />
                 )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => {
+                  setShowFilters(!showFilters);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Filter size={18} color={Colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -541,49 +531,6 @@ export default function TasksScreen() {
             {filteredTasks.map((item, index) => {
               const panResponder = createPanResponder(index);
 
-              if (compactView) {
-                return (
-                  <View
-                    key={item.task.id}
-                    style={[
-                      styles.compactCard,
-                      draggingIndex === index && { opacity: 0.7 },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={styles.compactRow}
-                      onPress={() => handleToggleTask(item.dumpId, item.task.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        style={[
-                          styles.compactCheckbox,
-                          { borderColor: item.categoryColor },
-                          item.task.completed && { backgroundColor: item.categoryColor },
-                        ]}
-                      >
-                        {item.task.completed && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
-                      </View>
-                      <Text
-                        style={[
-                          styles.compactText,
-                          item.task.completed && styles.taskTextCompleted,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.task.task}
-                      </Text>
-                      {item.task.scheduledTime && (
-                        <Text style={[styles.compactTime, { color: item.categoryColor }]}>
-                          {item.task.scheduledTime}
-                        </Text>
-                      )}
-                      <Text style={styles.compactEmoji}>{item.categoryEmoji}</Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              }
-
               return (
               <View 
                 key={item.task.id}
@@ -612,29 +559,14 @@ export default function TasksScreen() {
                       {item.task.completed && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
                     </View>
                     <View style={styles.taskContent}>
-                      <View style={styles.taskTitleRow}>
-                        <Text
-                          style={[
-                            styles.taskText,
-                            item.task.completed && styles.taskTextCompleted,
-                          ]}
-                        >
-                          {item.task.task}
-                        </Text>
-                        {item.task.subtasks && item.task.subtasks.length > 0 && (
-                          <TouchableOpacity
-                            onPress={() => handleToggleExpand(item.task, item.dumpId)}
-                            style={styles.expandButton}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          >
-                            {item.task.isExpanded ? (
-                              <ChevronDown size={18} color={item.categoryColor} />
-                            ) : (
-                              <ChevronRight size={18} color={item.categoryColor} />
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                      <Text
+                        style={[
+                          styles.taskText,
+                          item.task.completed && styles.taskTextCompleted,
+                        ]}
+                      >
+                        {item.task.task}
+                      </Text>
                       <View style={styles.taskMeta}>
                         {item.task.scheduledTime && (
                           <View style={[styles.timeBadge, { backgroundColor: item.categoryColor + '20' }]}>
@@ -658,11 +590,19 @@ export default function TasksScreen() {
                           </Text>
                         </View>
                         {item.task.subtasks && item.task.subtasks.length > 0 && (
-                          <View style={[styles.subtaskCountBadge, { backgroundColor: item.categoryColor + '30' }]}>
+                          <TouchableOpacity
+                            onPress={() => handleToggleExpand(item.task, item.dumpId)}
+                            style={[styles.subtaskCountBadge, { backgroundColor: item.categoryColor + '30' }]}
+                          >
                             <Text style={[styles.subtaskCountText, { color: item.categoryColor }]}>
-                              {item.task.subtasks.filter(st => st.completed).length}/{item.task.subtasks.length}
+                              {item.task.subtasks.filter(st => st.completed).length}/{item.task.subtasks.length} subtasks
                             </Text>
-                          </View>
+                            {item.task.isExpanded ? (
+                              <ChevronDown size={14} color={item.categoryColor} strokeWidth={3} />
+                            ) : (
+                              <ChevronRight size={14} color={item.categoryColor} strokeWidth={3} />
+                            )}
+                          </TouchableOpacity>
                         )}
                       </View>
                     </View>
@@ -851,13 +791,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  titleContainer: {
+    flex: 1,
+    paddingRight: 12,
+  },
   headerActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
+    flexShrink: 0,
   },
   iconButton: {
-    padding: 10,
-    borderRadius: 12,
+    padding: 8,
+    borderRadius: 10,
     backgroundColor: Colors.card,
     borderWidth: 3,
     borderColor: Colors.border,
@@ -1038,14 +983,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minWidth: 0,
   },
-  taskTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  expandButton: {
-    padding: 2,
-  },
+
   taskText: {
     fontSize: 15,
     fontWeight: '600' as const,
@@ -1197,9 +1135,14 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
   },
   subtaskCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   subtaskCountText: {
     fontSize: 11,
