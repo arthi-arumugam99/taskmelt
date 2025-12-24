@@ -100,8 +100,10 @@ export function useCalendarSync() {
       try {
         setIsLoading(true);
         const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + daysAhead);
+        endDate.setHours(23, 59, 59, 999);
 
         const calendarEvents = await Calendar.getEventsAsync(
           calendarIds,
@@ -109,23 +111,31 @@ export function useCalendarSync() {
           endDate
         );
 
-        const mappedEvents: CalendarEvent[] = calendarEvents.map((event) => {
+        const eventMap = new Map<string, CalendarEvent>();
+        
+        calendarEvents.forEach((event) => {
           const calendar = calendars.find((c) => c.id === event.calendarId);
-          return {
-            id: event.id,
-            title: event.title,
-            startDate: new Date(event.startDate),
-            endDate: new Date(event.endDate),
-            allDay: event.allDay || false,
-            location: event.location || undefined,
-            notes: event.notes || undefined,
-            calendarId: event.calendarId,
-            calendarTitle: calendar?.title || 'Unknown Calendar',
-            calendarColor: calendar?.color,
-          };
+          const eventKey = `${event.title}_${new Date(event.startDate).getTime()}_${event.allDay}`;
+          
+          if (!eventMap.has(eventKey)) {
+            eventMap.set(eventKey, {
+              id: event.id,
+              title: event.title,
+              startDate: new Date(event.startDate),
+              endDate: new Date(event.endDate),
+              allDay: event.allDay || false,
+              location: event.location || undefined,
+              notes: event.notes || undefined,
+              calendarId: event.calendarId,
+              calendarTitle: calendar?.title || 'Unknown Calendar',
+              calendarColor: calendar?.color,
+            });
+          }
         });
 
-        const sortedEvents = mappedEvents.sort(
+        const uniqueEvents = Array.from(eventMap.values());
+        
+        const sortedEvents = uniqueEvents.sort(
           (a, b) => a.startDate.getTime() - b.startDate.getTime()
         );
 

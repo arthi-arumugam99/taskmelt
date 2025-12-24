@@ -50,7 +50,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const transcribeAudio = useCallback(async (formData: FormData): Promise<string> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
     try {
       console.log('📤 Sending audio to STT API...');
@@ -80,10 +80,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!responseText || responseText.trim() === '') {
         console.warn('⚠️ Empty response from STT API');
-        throw new Error('Empty response from transcription service. The audio may be too short or unclear.');
+        throw new Error('Could not transcribe audio. Please speak louder and longer.');
       }
       
-      // Check if response looks like JSON at all
       const trimmedResponse = responseText.trim();
       const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
       
@@ -99,29 +98,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         const lowerResponse = responseText.toLowerCase();
         
         if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
-          throw new Error('Transcription service error. Please try again in a moment.');
-        }
-        if (lowerResponse.includes('offline') || lowerResponse.includes('maintenance')) {
-          throw new Error('Transcription service is temporarily offline. Please try again later.');
-        }
-        if (lowerResponse.includes('network') || lowerResponse.includes('connection')) {
-          throw new Error('Network error. Please check your internet connection.');
+          throw new Error('Transcription service error. Please try again.');
         }
         if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech')) {
-          throw new Error('No speech detected in the audio. Please speak louder and longer (at least 2-3 seconds).');
-        }
-        if (lowerResponse.includes('error') && responseText.length < 200) {
-          throw new Error(`Transcription error: ${responseText}`);
+          throw new Error('No speech detected. Speak louder for at least 2-3 seconds.');
         }
         
-        // Show first part of response for debugging
         const preview = responseText.length > 50 ? responseText.substring(0, 50) + '...' : responseText;
-        throw new Error(`Invalid response from transcription service: ${preview}`);
-      }
-      
-      // Check if response is not JSON based on content-type
-      if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
-        console.warn('⚠️ Non-JSON content-type but response looks like JSON:', contentType);
+        throw new Error(`Transcription failed: ${preview}`);
       }
       
       let data;
@@ -130,37 +114,22 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.log('📥 Parsed STT response:', JSON.stringify(data).substring(0, 200));
       } catch (parseError) {
         console.error('❌ Failed to parse STT response as JSON:', parseError);
-        console.error('❌ Parse error details:', parseError instanceof Error ? parseError.message : String(parseError));
-        console.error('❌ Response was:', responseText.substring(0, 500));
-        
-        // Log character codes of first few characters for debugging
-        const charCodes = trimmedResponse.substring(0, 10).split('').map((c, i) => 
-          `[${i}]='${c}'(${c.charCodeAt(0)})`
-        ).join(' ');
-        console.error('❌ First chars:', charCodes);
-        
-        // Try to give a more helpful error message
-        if (responseText.length < 200) {
-          throw new Error(`Invalid response: ${responseText.substring(0, 100)}`);
-        }
-        throw new Error('Service returned invalid data. Please try recording again.');
+        throw new Error('Service returned invalid data. Please try again.');
       }
       
       const text = data?.text?.trim() || '';
       console.log('✅ Transcribed text:', text || '(empty)');
       console.log('📊 Text length:', text.length, 'characters');
-      console.log('📊 Full response data:', JSON.stringify(data));
       
       if (!text || text.length === 0) {
         console.warn('⚠️ Transcription returned empty text');
-        console.warn('⚠️ API response structure:', Object.keys(data || {}));
         
         if (data?.error) {
           const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
           throw new Error(errorMsg);
         }
         
-        throw new Error('No speech detected. Please: 1) Hold the button longer (2-3 seconds) 2) Speak louder and closer to microphone 3) Speak clearly');
+        throw new Error('No speech detected. Speak louder for 2-3 seconds.');
       }
       
       return text;
@@ -168,7 +137,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       clearTimeout(timeoutId);
       if (err instanceof Error && err.name === 'AbortError') {
         console.error('⏱️ STT request timed out');
-        throw new Error('Transcription timeout - try shorter audio');
+        throw new Error('Transcription timeout. Please try again.');
       }
       console.error('❌ STT error:', err);
       throw err;
@@ -563,9 +532,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 1500) {
+      if (durationMs < 800) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Please hold the button and speak for at least 2-3 seconds.');
+        throw new Error('Recording too short. Hold button and speak for 2-3 seconds.');
       }
       
       await recording.stopAndUnloadAsync();
@@ -696,7 +665,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!finalWebResult || finalWebResult.length === 0) {
         if (isMountedRef.current) {
-          setError('No speech detected. Please check: 1) Microphone is working 2) Speak louder and clearer 3) Browser has microphone permission');
+          setError('No speech detected. Check: 1) Microphone working 2) Speak louder 3) Browser has mic permission');
         }
         return null;
       }
@@ -762,10 +731,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (!finalText) {
         console.warn('⚠️ Empty transcription result - no speech detected');
         console.warn('⚠️ Recording duration was:', recordingDurationRef.current, 'seconds');
-        console.warn('⚠️ Transcribed text length:', transcribedText.length);
-        console.warn('⚠️ Captured transcript length:', capturedTranscript.length);
         if (isMountedRef.current) {
-          setError('No speech detected in audio. Try: 1) Speak louder 2) Hold button longer 3) Check microphone permissions');
+          setError('No speech detected. Try speaking louder and clearer.');
         }
         return null;
       }

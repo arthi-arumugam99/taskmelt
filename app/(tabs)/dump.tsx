@@ -447,66 +447,90 @@ Be smart, thoughtful, and help the user succeed!`,
               </View>
 
               <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={inputText}
-                  onChangeText={setInputText}
-                  placeholder={placeholder}
-                  placeholderTextColor={Colors.textMuted}
-                  multiline
-                  textAlignVertical="top"
-                  autoFocus={false}
-                  maxLength={5000}
-                />
-                {inputText.length > 0 && (
-                  <Text style={styles.characterCount}>
-                    {inputText.length} / 5000
-                  </Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    value={inputText}
+                    onChangeText={setInputText}
+                    placeholder={placeholder}
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    textAlignVertical="top"
+                    autoFocus={false}
+                    maxLength={5000}
+                    editable={!isRecording}
+                  />
+                  <View style={styles.inputActions}>
+                    <Animated.View style={{ transform: [{ scale: micPulse }] }}>
+                      <TouchableOpacity
+                        style={[
+                          styles.voiceButtonInline,
+                          isRecording && styles.voiceButtonActive,
+                          isTranscribing && styles.voiceButtonDisabled,
+                        ]}
+                        onPress={handleVoicePress}
+                        disabled={isTranscribing}
+                      >
+                        {isTranscribing ? (
+                          <ActivityIndicator size="small" color={Colors.background} />
+                        ) : isRecording ? (
+                          <Square size={20} color={Colors.background} fill={Colors.background} />
+                        ) : (
+                          <Mic size={20} color={Colors.background} />
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
+                    {inputText.length > 0 && (
+                      <Text style={styles.characterCount}>
+                        {inputText.length} / 5000
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {isRecording && (
+                  <View style={styles.liveTranscriptBox}>
+                    <View style={styles.recordingHeaderInline}>
+                      <View style={styles.recordingDot} />
+                      <Text style={styles.recordingTextInline}>Recording</Text>
+                      <Text style={styles.recordingDuration}>
+                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                      </Text>
+                    </View>
+                    {inputText.trim() && (
+                      <View style={styles.liveTranscriptContent}>
+                        <Text style={styles.liveTranscriptLabel}>Live transcript:</Text>
+                        <Text style={styles.liveTranscriptText}>{inputText}</Text>
+                      </View>
+                    )}
+                    {!inputText.trim() && (
+                      <Text style={styles.listeningHint}>
+                        {Platform.OS === 'web' ? '🎤 Speak now...' : '🎙️ Speak clearly...'}
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
 
-              <View style={styles.buttonContainer}>
-                <Animated.View style={{ transform: [{ scale: micPulse }] }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.voiceButton,
-                      isRecording && styles.voiceButtonActive,
-                      isTranscribing && styles.voiceButtonDisabled,
-                    ]}
-                    onPress={handleVoicePress}
-                    disabled={isTranscribing}
-                  >
-                    {isTranscribing ? (
-                      <ActivityIndicator size="small" color={Colors.background} />
-                    ) : isRecording ? (
-                      <Square size={24} color={Colors.background} fill={Colors.background} />
-                    ) : (
-                      <Mic size={24} color={Colors.background} />
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-
-                <Animated.View style={[styles.organizeButtonWrapper, { transform: [{ scale: buttonScale }] }]}>
-                  <TouchableOpacity
-                    style={[styles.organizeButton, buttonDisabled && styles.organizeButtonDisabled]}
-                    onPress={handleOrganize}
-                    disabled={buttonDisabled}
-                    activeOpacity={0.8}
-                  >
-                    {isPending ? (
-                      <>
-                        <ActivityIndicator size="small" color={Colors.background} style={styles.buttonLoader} />
-                        <Text style={styles.organizeButtonText}>Melting chaos...</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={20} color={Colors.background} style={{ marginRight: 8 }} />
-                        <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              </View>
+              <Animated.View style={[styles.organizeButtonWrapper, { transform: [{ scale: buttonScale }] }]}>
+                <TouchableOpacity
+                  style={[styles.organizeButton, buttonDisabled && styles.organizeButtonDisabled]}
+                  onPress={handleOrganize}
+                  disabled={buttonDisabled}
+                  activeOpacity={0.8}
+                >
+                  {isPending ? (
+                    <>
+                      <ActivityIndicator size="small" color={Colors.background} style={styles.buttonLoader} />
+                      <Text style={styles.organizeButtonText}>Melting chaos...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={20} color={Colors.background} style={{ marginRight: 8 }} />
+                      <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
 
               {isError && (
                 <View style={styles.errorContainer}>
@@ -535,36 +559,7 @@ Be smart, thoughtful, and help the user succeed!`,
                 </View>
               )}
 
-              {isRecording && (
-                <View style={styles.recordingIndicator}>
-                  <View style={styles.recordingHeader}>
-                    <View style={styles.recordingDot} />
-                    <Text style={styles.recordingText}>Recording</Text>
-                    <Text style={styles.recordingDuration}>
-                      {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                    </Text>
-                  </View>
-                  <View style={styles.listeningContainer}>
-                    <Text style={styles.listeningText}>
-                      {Platform.OS === 'web' ? '🎤 Speak now... (live transcription)' : '🎙️ Recording... (tap to stop)'}
-                    </Text>
-                    {inputText.trim() && (
-                      <View style={styles.transcriptPreview}>
-                        <Text style={styles.transcriptPreviewText} numberOfLines={3}>
-                          {inputText}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.waveBars}>
-                      <Animated.View style={[styles.waveBar, { height: 12 }]} />
-                      <Animated.View style={[styles.waveBar, { height: 20 }]} />
-                      <Animated.View style={[styles.waveBar, { height: 16 }]} />
-                      <Animated.View style={[styles.waveBar, { height: 24 }]} />
-                      <Animated.View style={[styles.waveBar, { height: 14 }]} />
-                    </View>
-                  </View>
-                </View>
-              )}
+
               
               {isTranscribing && (
                 <View style={styles.transcribingIndicator}>
@@ -644,59 +639,114 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 20,
-    position: 'relative',
   },
-  input: {
+  inputWrapper: {
     backgroundColor: Colors.card,
     borderRadius: 20,
-    padding: 20,
-    fontSize: 16,
-    color: Colors.text,
-    minHeight: 200,
-    maxHeight: 400,
     borderWidth: 3,
     borderColor: Colors.border,
-    lineHeight: 24,
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
+    overflow: 'hidden',
   },
-  characterCount: {
+  input: {
+    padding: 20,
+    paddingBottom: 60,
+    fontSize: 16,
+    color: Colors.text,
+    minHeight: 200,
+    maxHeight: 400,
+    lineHeight: 24,
+  },
+  inputActions: {
     position: 'absolute',
     bottom: 12,
-    right: 16,
-    fontSize: 12,
-    color: Colors.textMuted,
-    backgroundColor: Colors.card,
-    paddingHorizontal: 6,
-  },
-  buttonContainer: {
+    right: 12,
+    left: 12,
     flexDirection: 'row',
-    gap: 12,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  voiceButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  voiceButtonInline: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.accent3Dark,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: Colors.border,
     shadowColor: '#000',
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 0,
-    elevation: 4,
+    elevation: 3,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    backgroundColor: Colors.card,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
   },
   voiceButtonActive: {
     backgroundColor: Colors.error,
   },
   voiceButtonDisabled: {
     opacity: 0.6,
+  },
+  liveTranscriptBox: {
+    marginTop: 12,
+    padding: 14,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FCA5A5',
+  },
+  recordingHeaderInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recordingTextInline: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#EF4444',
+    flex: 1,
+    marginLeft: 8,
+  },
+  liveTranscriptContent: {
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  liveTranscriptLabel: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#DC2626',
+    textTransform: 'uppercase' as const,
+    marginBottom: 6,
+  },
+  liveTranscriptText: {
+    fontSize: 14,
+    color: '#1F2937',
+    lineHeight: 20,
+  },
+  listeningHint: {
+    fontSize: 13,
+    color: '#DC2626',
+    fontStyle: 'italic' as const,
+    textAlign: 'center',
+    marginTop: 4,
   },
   organizeButtonWrapper: {
     flex: 1,
