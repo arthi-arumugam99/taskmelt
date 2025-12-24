@@ -458,35 +458,6 @@ Be smart, thoughtful, and help the user succeed!`,
                   )}
                 </View>
                 
-                <Animated.View style={{ transform: [{ scale: micPulse }] }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.voiceButton,
-                      isRecording && styles.voiceButtonRecording,
-                      isProcessing && styles.voiceButtonDisabled,
-                    ]}
-                    onPress={handleVoicePress}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <ActivityIndicator size="small" color={Colors.background} />
-                        <Text style={styles.voiceButtonText}>Processing...</Text>
-                      </>
-                    ) : isRecording ? (
-                      <>
-                        <Square size={24} color={Colors.background} fill={Colors.background} />
-                        <Text style={styles.voiceButtonText}>Stop Recording</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Mic size={24} color={Colors.background} />
-                        <Text style={styles.voiceButtonText}>Voice Input</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-
                 {isRecording && (
                   <View style={styles.recordingIndicatorSimple}>
                     <View style={styles.recordingDot} />
@@ -495,26 +466,48 @@ Be smart, thoughtful, and help the user succeed!`,
                 )}
               </View>
 
-              <Animated.View style={[styles.organizeButtonWrapper, { transform: [{ scale: buttonScale }] }]}>
-                <TouchableOpacity
-                  style={[styles.organizeButton, buttonDisabled && styles.organizeButtonDisabled]}
-                  onPress={handleOrganize}
-                  disabled={buttonDisabled}
-                  activeOpacity={0.8}
-                >
-                  {isPending ? (
-                    <>
-                      <ActivityIndicator size="small" color={Colors.background} style={styles.buttonLoader} />
-                      <Text style={styles.organizeButtonText}>Melting chaos...</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={20} color={Colors.background} style={{ marginRight: 8 }} />
-                      <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+              <View style={styles.buttonRow}>
+                <Animated.View style={{ transform: [{ scale: micPulse }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.voiceButtonSmall,
+                      isRecording && styles.voiceButtonRecording,
+                      isProcessing && styles.voiceButtonDisabled,
+                    ]}
+                    onPress={handleVoicePress}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator size="small" color={Colors.background} />
+                    ) : isRecording ? (
+                      <Square size={22} color={Colors.background} fill={Colors.background} />
+                    ) : (
+                      <Mic size={22} color={Colors.background} />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+
+                <Animated.View style={[styles.organizeButtonWrapper, { transform: [{ scale: buttonScale }] }]}>
+                  <TouchableOpacity
+                    style={[styles.organizeButton, buttonDisabled && styles.organizeButtonDisabled]}
+                    onPress={handleOrganize}
+                    disabled={buttonDisabled}
+                    activeOpacity={0.8}
+                  >
+                    {isPending ? (
+                      <>
+                        <ActivityIndicator size="small" color={Colors.background} style={styles.buttonLoader} />
+                        <Text style={styles.organizeButtonText}>Melting chaos...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={20} color={Colors.background} style={{ marginRight: 8 }} />
+                        <Text style={styles.organizeButtonText}>Melt My Chaos</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
 
               {isError && (
                 <View style={styles.errorContainer}>
@@ -651,17 +644,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.borderLight,
   },
-  voiceButton: {
-    marginTop: 12,
-    marginBottom: 8,
+  buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  voiceButtonSmall: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.accent3Dark,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 3,
     borderColor: Colors.border,
     shadowColor: '#000',
