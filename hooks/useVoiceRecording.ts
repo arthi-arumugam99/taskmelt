@@ -77,46 +77,48 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('📥 Response content-type:', contentType);
       
       const responseText = await response.text();
-      console.log('📥 Raw STT response:', responseText.substring(0, 200));
+      console.log('📥 Raw STT response (first 200 chars):', responseText.substring(0, 200));
       console.log('📥 Response length:', responseText.length, 'bytes');
       
       if (!responseText || responseText.trim() === '') {
         console.warn('⚠️ Empty response from STT API');
-        throw new Error('Could not transcribe audio. Please speak louder and longer.');
+        throw new Error('No audio detected. Please try speaking louder.');
       }
       
       const trimmedResponse = responseText.trim();
       
       if (!trimmedResponse) {
-        throw new Error('Empty response from service. Please try again.');
+        throw new Error('Empty response. Please try again.');
+      }
+      
+      const lowerResponse = trimmedResponse.toLowerCase();
+      
+      if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
+        console.error('❌ HTML response received');
+        throw new Error('Service unavailable. Please try again later.');
+      }
+      
+      if (lowerResponse.includes('error') && !trimmedResponse.startsWith('{')) {
+        console.error('❌ Plain text error:', trimmedResponse.substring(0, 100));
+        throw new Error('Transcription failed. Try speaking louder.');
       }
       
       const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
       
-      console.log('🔍 Response analysis:', {
-        length: trimmedResponse.length,
-        startsWithBrace: trimmedResponse.startsWith('{'),
-        startsWithBracket: trimmedResponse.startsWith('['),
-        firstChars: trimmedResponse.substring(0, 30),
+      console.log('🔍 Response type check:', {
         looksLikeJSON,
+        firstChar: trimmedResponse[0],
+        length: trimmedResponse.length,
       });
       
       if (!looksLikeJSON) {
-        console.error('❌ Response does not look like JSON:', responseText.substring(0, 200));
-        const lowerResponse = responseText.toLowerCase();
+        console.error('❌ Non-JSON response:', trimmedResponse.substring(0, 200));
         
-        if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
-          throw new Error('Service error occurred. Please try again.');
-        }
-        if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech') || lowerResponse.includes('could not')) {
-          throw new Error('No speech detected. Please speak clearly for 2-3 seconds.');
-        }
-        if (lowerResponse.includes('error') || lowerResponse.includes('fail')) {
-          throw new Error('Transcription failed. Please try again.');
+        if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech') || lowerResponse.includes('could not detect')) {
+          throw new Error('No speech detected. Speak louder and hold for 2+ seconds.');
         }
         
-        console.error('❌ Unexpected response format. First 100 chars:', responseText.substring(0, 100));
-        throw new Error('Unexpected service response. Please try again.');
+        throw new Error('Invalid response format. Please try again.');
       }
       
       let data;
@@ -167,13 +169,28 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (recordingRef.current) {
         console.log('⚠️ Cleaning up existing recording...');
         try {
-          await recordingRef.current.stopAndUnloadAsync();
+          const status = await recordingRef.current.getStatusAsync();
+          if (status.isRecording) {
+            await recordingRef.current.stopAndUnloadAsync();
+          } else {
+            recordingRef.current._cleanupForUnloadedRecorder();
+          }
         } catch (e) {
           console.log('Cleanup error (ignored):', e);
         }
         recordingRef.current = null;
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch (e) {
+        console.log('Reset audio mode error (ignored):', e);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const { status: existingStatus } = await Audio.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -205,58 +222,68 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Microphone permission denied');
       }
 
-      console.log('🔧 Setting audio mode...');
+      console.log('🔧 Setting audio mode for recording...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
 
-      console.log('📱 Creating recording instance...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('📱 Creating NEW recording instance...');
       const recording = new Audio.Recording();
+      recordingRef.current = recording;
       
       console.log('⚙️ Preparing recorder...');
-      await recording.prepareToRecordAsync({
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 64000,
-        },
-        ios: {
-          extension: '.m4a',
-          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.MEDIUM,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 64000,
-        },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
-        },
-      });
+      try {
+        await recording.prepareToRecordAsync({
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+            audioEncoder: Audio.AndroidAudioEncoder.AAC,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          ios: {
+            extension: '.m4a',
+            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+            audioQuality: Audio.IOSAudioQuality.MEDIUM,
+            sampleRate: 16000,
+            numberOfChannels: 1,
+            bitRate: 64000,
+          },
+          web: {
+            mimeType: 'audio/webm',
+            bitsPerSecond: 128000,
+          },
+        });
+      } catch (prepareErr) {
+        console.error('❌ Prepare failed:', prepareErr);
+        throw new Error('Failed to prepare recorder. Please restart the app.');
+      }
 
-      console.log('✓ Recorder prepared, checking status...');
+      console.log('✓ Recorder prepared, verifying...');
       const preparedStatus = await recording.getStatusAsync();
       console.log('📊 Prepared status:', JSON.stringify(preparedStatus));
       
       if (!preparedStatus.canRecord) {
-        throw new Error('Recorder is not ready to record');
+        throw new Error('Recorder not ready. Please try again.');
       }
 
-      recordingRef.current = recording;
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       console.log('▶️ Starting recording...');
       await recording.startAsync();
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
       
       const startedStatus = await recording.getStatusAsync();
       console.log('📊 Started status:', JSON.stringify(startedStatus));
       
       if (!startedStatus.isRecording) {
-        throw new Error('Recording failed to start');
+        throw new Error('Recording failed to start. Please try again.');
       }
       
       console.log('✅ Mobile recording started successfully');
