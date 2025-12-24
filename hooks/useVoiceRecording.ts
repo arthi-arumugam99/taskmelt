@@ -160,7 +160,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           throw new Error(errorMsg);
         }
         
-        throw new Error('No speech detected. Please speak louder and hold the button while speaking (at least 1-2 seconds).');
+        throw new Error('No speech detected. Please: 1) Hold the button longer (2-3 seconds) 2) Speak louder and closer to microphone 3) Speak clearly');
       }
       
       return text;
@@ -563,9 +563,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 300) {
+      if (durationMs < 1000) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Please hold the button and speak for at least 1 second.');
+        throw new Error('Recording too short. Please hold the button and speak for at least 1-2 seconds.');
       }
       
       await recording.stopAndUnloadAsync();
