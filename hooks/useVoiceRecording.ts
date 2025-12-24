@@ -223,125 +223,170 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       throw new Error('Voice recording is not supported in this browser');
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 16000,
-      } 
-    });
-    streamRef.current = stream;
-    audioChunksRef.current = [];
-
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-      ? 'audio/webm;codecs=opus' 
-      : 'audio/webm';
-
-    const mediaRecorder = new MediaRecorder(stream, {
-      mimeType,
-      audioBitsPerSecond: 32000,
-    });
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
+    try {
+      if (navigator.permissions?.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          console.log('🎛️ Microphone permission state (web):', permissionStatus.state);
+          if (permissionStatus.state === 'denied') {
+            throw new Error(
+              'Microphone permission is blocked. Please allow microphone access in your browser settings, then refresh the page.'
+            );
+          }
+        } catch (e) {
+          console.log('Permissions API query failed (ignored):', e);
+        }
       }
-    };
 
-    mediaRecorder.onerror = (e) => {
-      console.error('MediaRecorder error:', e);
-    };
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 16000,
+        },
+      });
 
-    mediaRecorder.start(100);
-    mediaRecorderRef.current = mediaRecorder;
+      streamRef.current = stream;
+      audioChunksRef.current = [];
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      console.log('🎤 Initializing Speech Recognition...');
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      recognition.maxAlternatives = 1;
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
 
-      recognition.onresult = (event: any) => {
-        console.log('🗣️ Speech result received, results:', event.results.length);
-        let interimTranscript = '';
-        let newFinalTranscript = '';
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 32000,
+      });
 
-        for (let i = 0; i < event.results.length; i++) {
-          const result = event.results[i];
-          const transcript = result?.[0]?.transcript ?? '';
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
-          if (result.isFinal) {
-            if (i >= lastResultIndexRef.current) {
-              newFinalTranscript += transcript + ' ';
-              lastResultIndexRef.current = i + 1;
-              console.log('✓ Final transcript:', transcript);
+      mediaRecorder.onerror = (e) => {
+        console.error('MediaRecorder error:', e);
+      };
+
+      mediaRecorder.start(100);
+      mediaRecorderRef.current = mediaRecorder;
+
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        console.log('🎤 Initializing Speech Recognition...');
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event: any) => {
+          console.log('🗣️ Speech result received, results:', event.results.length);
+          let interimTranscript = '';
+          let newFinalTranscript = '';
+
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            const transcript = result?.[0]?.transcript ?? '';
+
+            if (result.isFinal) {
+              if (i >= lastResultIndexRef.current) {
+                newFinalTranscript += transcript + ' ';
+                lastResultIndexRef.current = i + 1;
+                console.log('✓ Final transcript:', transcript);
+              }
+            } else {
+              interimTranscript = transcript;
+              console.log('⋯ Interim transcript:', transcript.substring(0, 50));
             }
-          } else {
-            interimTranscript = transcript;
-            console.log('⋯ Interim transcript:', transcript.substring(0, 50));
           }
-        }
 
-        if (newFinalTranscript) {
-          finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
-          console.log('📝 Updated final transcript:', finalTranscriptRef.current.substring(0, 100));
+          if (newFinalTranscript) {
+            finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
+            console.log('📝 Updated final transcript:', finalTranscriptRef.current.substring(0, 100));
+            if (onTranscriptUpdateRef.current) {
+              onTranscriptUpdateRef.current(finalTranscriptRef.current);
+            }
+          }
+
+          const displayText = interimTranscript
+            ? `${finalTranscriptRef.current} ${interimTranscript}`.trim()
+            : finalTranscriptRef.current;
+
+          transcriptRef.current = displayText;
+          console.log('🔄 Calling update callback with text:', displayText.substring(0, 100));
           if (onTranscriptUpdateRef.current) {
-            onTranscriptUpdateRef.current(finalTranscriptRef.current);
+            onTranscriptUpdateRef.current(displayText);
+          } else {
+            console.warn('⚠️ No update callback registered!');
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('❌ Speech recognition error:', event?.error, event);
+          if (event?.error !== 'no-speech' && event?.error !== 'aborted') {
+            if (event?.error === 'not-allowed') {
+              console.error('Microphone permission denied for speech recognition');
+            }
+          }
+        };
+
+        recognition.onstart = () => {
+          console.log('✅ Speech Recognition started successfully');
+        };
+
+        recognition.onend = () => {
+          console.log('🛑 Speech Recognition ended');
+        };
+
+        try {
+          recognition.start();
+          recognitionRef.current = recognition;
+          console.log('📞 Speech Recognition start() called');
+        } catch (e) {
+          const rawMessage = e instanceof Error ? e.message : String(e);
+          const lowered = rawMessage.toLowerCase();
+          console.error('❌ Failed to start speech recognition:', e);
+
+          if (lowered.includes('notallowed') || lowered.includes('not-allowed') || lowered.includes('permission')) {
+            console.warn('⚠️ Speech recognition permission denied. Continuing with recording only.');
+          } else {
+            throw new Error('Failed to start live transcription: ' + rawMessage);
           }
         }
-
-        const displayText = interimTranscript 
-          ? `${finalTranscriptRef.current} ${interimTranscript}`.trim() 
-          : finalTranscriptRef.current;
-        
-        transcriptRef.current = displayText;
-        console.log('🔄 Calling update callback with text:', displayText.substring(0, 100));
-        if (onTranscriptUpdateRef.current) {
-          onTranscriptUpdateRef.current(displayText);
-        } else {
-          console.warn('⚠️ No update callback registered!');
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('❌ Speech recognition error:', event?.error, event);
-        if (event?.error !== 'no-speech' && event?.error !== 'aborted') {
-          if (event?.error === 'not-allowed') {
-            console.error('Microphone permission denied for speech recognition');
-          }
-        }
-      };
-
-      recognition.onstart = () => {
-        console.log('✅ Speech Recognition started successfully');
-      };
-
-      recognition.onend = () => {
-        console.log('🛑 Speech Recognition ended');
-      };
-
-      try {
-        recognition.start();
-        recognitionRef.current = recognition;
-        console.log('📞 Speech Recognition start() called');
-      } catch (e) {
-        console.error('❌ Failed to start speech recognition:', e);
-        throw new Error('Failed to start live transcription: ' + (e instanceof Error ? e.message : String(e)));
+      } else {
+        console.warn('⚠️ Speech Recognition API not available in this browser');
+        console.warn('Live transcription will not work. Only recording will be available.');
       }
-    } else {
-      console.warn('⚠️ Speech Recognition API not available in this browser');
-      console.warn('Live transcription will not work. Only recording will be available.');
-    }
 
-    console.log('✅ Recording started');
+      console.log('✅ Recording started');
+    } catch (e) {
+      const rawMessage = e instanceof Error ? e.message : String(e);
+      const lowered = rawMessage.toLowerCase();
+      console.error('❌ Web recording start error:', e);
+
+      if (streamRef.current) {
+        try {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        } catch {
+          // ignore
+        }
+        streamRef.current = null;
+      }
+
+      if (lowered.includes('notallowed') || lowered.includes('permission denied') || lowered.includes('not-allowed')) {
+        throw new Error(
+          'Microphone permission denied. Please allow microphone access in your browser/site settings, then try again.'
+        );
+      }
+
+      throw new Error(rawMessage || 'Failed to start recording');
+    }
   }, []);
 
   const startRecording = useCallback(async (onTranscriptUpdate: (text: string) => void) => {
     console.log('🎬 startRecording called, Platform:', Platform.OS);
-    
+
     setError(null);
     transcriptRef.current = '';
     finalTranscriptRef.current = '';
@@ -359,7 +404,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       }
 
       if (!isMountedRef.current) return;
-      
+
       setIsRecording(true);
       console.log('✅ isRecording set to true');
 
@@ -371,7 +416,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         if (!isMountedRef.current) return;
         const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
         setRecordingDuration(elapsed);
-        
+
         if (elapsed >= MAX_RECORDING_DURATION) {
           console.log('⏱️ Max recording duration reached, auto-stopping');
           if (stopRecordingRef.current) {
