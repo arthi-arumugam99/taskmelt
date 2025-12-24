@@ -178,19 +178,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   }, []);
 
   const startRecordingWeb = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('Recording not supported');
-    }
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Recording not supported');
+      }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
 
-    streamRef.current = stream;
+      streamRef.current = stream;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -227,6 +228,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } catch {
         console.log('⚠️ Speech recognition unavailable');
       }
+    }
+    } catch (err) {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError' || err.message.includes('permission')) {
+          throw new Error('Microphone permission is required to record audio. Please enable it in your device settings.');
+        }
+        throw err;
+      }
+      throw new Error('Failed to access microphone');
     }
   }, []);
 
