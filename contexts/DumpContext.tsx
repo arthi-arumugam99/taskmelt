@@ -11,6 +11,59 @@ const STORAGE_KEY = 'taskmelt_dumps';
 const LIFETIME_COUNT_KEY = 'taskmelt_lifetime_dump_count';
 const FREE_USER_DUMP_LIMIT = 3;
 
+function validateAndFixDate(dateStr: string | undefined, fallbackDate: string): string {
+  if (!dateStr) return fallbackDate;
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      console.log('Invalid date detected:', dateStr, 'using fallback');
+      return fallbackDate;
+    }
+    return date.toISOString();
+  } catch {
+    console.log('Error parsing date:', dateStr, 'using fallback');
+    return fallbackDate;
+  }
+}
+
+function validateOptionalDate(dateStr: string | undefined): string | undefined {
+  if (!dateStr) return undefined;
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      console.log('Invalid optional date detected:', dateStr, 'returning undefined');
+      return undefined;
+    }
+    return date.toISOString();
+  } catch {
+    console.log('Error parsing optional date:', dateStr, 'returning undefined');
+    return undefined;
+  }
+}
+
+function sanitizeDumpSession(dump: DumpSession): DumpSession {
+  const now = new Date();
+  const todayISO = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  
+  return {
+    ...dump,
+    createdAt: validateAndFixDate(dump.createdAt, now.toISOString()),
+    categories: dump.categories.map(cat => ({
+      ...cat,
+      items: cat.items.map(item => ({
+        ...item,
+        scheduledDate: validateAndFixDate(item.scheduledDate, todayISO),
+        completedAt: validateOptionalDate(item.completedAt),
+        subtasks: item.subtasks?.map(sub => ({
+          ...sub,
+          scheduledDate: sub.scheduledDate ? validateAndFixDate(sub.scheduledDate, todayISO) : undefined,
+          completedAt: validateOptionalDate(sub.completedAt),
+        })) || [],
+      })),
+    })),
+  };
+}
+
 async function loadLocalDumps(): Promise<DumpSession[]> {
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
@@ -22,7 +75,11 @@ async function loadLocalDumps(): Promise<DumpSession[]> {
           await AsyncStorage.removeItem(STORAGE_KEY);
           return [];
         }
-        return parsed;
+        const sanitized = parsed.map(dump => sanitizeDumpSession(dump));
+        if (sanitized.length !== parsed.length) {
+          console.log('Some dumps were corrupted and removed');
+        }
+        return sanitized;
       } catch (parseError) {
         console.log('Error parsing stored dumps, clearing corrupted data:', parseError);
         console.log('Corrupted value type:', typeof stored);
@@ -96,7 +153,7 @@ async function loadRemoteDumps(userId: string): Promise<DumpSession[]> {
     }
 
     console.log('Sync: Loaded', data?.length ?? 0, 'remote dumps');
-    return (data ?? []).map((row) => ({
+    const dumps = (data ?? []).map((row) => ({
       id: row.id,
       rawText: row.raw_text,
       categories: row.categories,
@@ -104,6 +161,7 @@ async function loadRemoteDumps(userId: string): Promise<DumpSession[]> {
       summary: row.summary,
       reflectionInsight: row.reflection_insight,
     }));
+    return dumps.map(dump => sanitizeDumpSession(dump));
   } catch (error) {
     console.log('Sync: Error loading remote dumps:', error);
     return [];

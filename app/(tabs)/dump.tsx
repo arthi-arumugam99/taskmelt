@@ -274,14 +274,26 @@ Be smart, thoughtful, and help the user succeed!`,
           let scheduledDate = todayDate.toISOString();
           
           if (item.scheduledTime) {
-            const [hours, minutes] = item.scheduledTime.split(':').map(Number);
-            const taskDateTime = new Date(todayDate);
-            taskDateTime.setHours(hours, minutes, 0, 0);
-            
-            if (taskDateTime < now) {
-              taskDateTime.setDate(taskDateTime.getDate() + 1);
+            try {
+              const [hours, minutes] = item.scheduledTime.split(':').map(Number);
+              if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                console.warn('Invalid time format:', item.scheduledTime);
+              } else {
+                const taskDateTime = new Date(todayDate);
+                taskDateTime.setHours(hours, minutes, 0, 0);
+                
+                if (isNaN(taskDateTime.getTime())) {
+                  console.warn('Invalid date created for task:', item.task);
+                } else {
+                  if (taskDateTime < now) {
+                    taskDateTime.setDate(taskDateTime.getDate() + 1);
+                  }
+                  scheduledDate = taskDateTime.toISOString();
+                }
+              }
+            } catch (err) {
+              console.error('Error parsing scheduled time:', err);
             }
-            scheduledDate = taskDateTime.toISOString();
           }
           
           return {
