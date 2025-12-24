@@ -80,7 +80,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!responseText || responseText.trim() === '') {
         console.warn('⚠️ Empty response from STT API');
-        throw new Error('No audio data was captured. Please try speaking again.');
+        throw new Error('Empty response from transcription service. The audio may be too short or unclear.');
       }
       
       // Check if response looks like JSON at all
@@ -99,21 +99,24 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         const lowerResponse = responseText.toLowerCase();
         
         if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
-          throw new Error('Service temporarily unavailable. Please try again.');
+          throw new Error('Transcription service error. Please try again in a moment.');
         }
         if (lowerResponse.includes('offline') || lowerResponse.includes('maintenance')) {
-          throw new Error('Service is offline. Please try again later.');
+          throw new Error('Transcription service is temporarily offline. Please try again later.');
         }
         if (lowerResponse.includes('network') || lowerResponse.includes('connection')) {
-          throw new Error('Network error. Please check your connection.');
+          throw new Error('Network error. Please check your internet connection.');
+        }
+        if (lowerResponse.includes('no audio') || lowerResponse.includes('no speech')) {
+          throw new Error('No speech detected in the audio. Please speak louder and longer (at least 2-3 seconds).');
         }
         if (lowerResponse.includes('error') && responseText.length < 200) {
-          throw new Error(`Service error: ${responseText}`);
+          throw new Error(`Transcription error: ${responseText}`);
         }
         
         // Show first part of response for debugging
         const preview = responseText.length > 50 ? responseText.substring(0, 50) + '...' : responseText;
-        throw new Error(`Invalid response format: ${preview}`);
+        throw new Error(`Invalid response from transcription service: ${preview}`);
       }
       
       // Check if response is not JSON based on content-type
@@ -153,10 +156,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.warn('⚠️ API response structure:', Object.keys(data || {}));
         
         if (data?.error) {
-          throw new Error(data.error);
+          const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          throw new Error(errorMsg);
         }
         
-        return '';
+        throw new Error('No speech detected in the recording. Please speak clearly for at least 2-3 seconds.');
       }
       
       return text;
@@ -559,9 +563,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 500) {
+      if (durationMs < 1000) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Please speak for at least 1 second.');
+        throw new Error('Recording too short. Please hold the button and speak for at least 2-3 seconds.');
       }
       
       await recording.stopAndUnloadAsync();
@@ -625,7 +629,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     if (Platform.OS === 'web') {
       console.log('✨ Web platform - processing live transcript');
       
-      // Stop recognition FIRST and wait for final results
+      // Capture transcripts BEFORE stopping (they're already in refs)
+      const capturedFinalTranscript = finalTranscriptRef.current.trim();
+      const capturedDisplayTranscript = transcriptRef.current.trim();
+      
+      console.log('📝 Pre-stop Final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
+      console.log('📝 Pre-stop Display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
+      
+      // Stop recognition and wait for any final events
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -633,25 +644,30 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         } catch (e) {
           console.log('Speech recognition stop error:', e);
         }
-        recognitionRef.current = null;
         
-        // Wait for final results to be processed
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait longer for final results to be processed
+        await new Promise(resolve => setTimeout(resolve, 800));
+        recognitionRef.current = null;
       }
 
-      // Capture transcripts AFTER stopping and waiting
-      const capturedFinalTranscript = finalTranscriptRef.current.trim();
-      const capturedDisplayTranscript = transcriptRef.current.trim();
+      // Re-capture transcripts AFTER stopping (in case final results came in)
+      const postStopFinalTranscript = finalTranscriptRef.current.trim();
+      const postStopDisplayTranscript = transcriptRef.current.trim();
       
-      console.log('📝 Final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
-      console.log('📝 Display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
+      console.log('📝 Post-stop Final transcript:', postStopFinalTranscript.slice(0, 100) || '(empty)');
+      console.log('📝 Post-stop Display transcript:', postStopDisplayTranscript.slice(0, 100) || '(empty)');
       
-      // Use the longer transcript
-      const webTranscript = capturedFinalTranscript.length >= capturedDisplayTranscript.length 
-        ? capturedFinalTranscript 
-        : capturedDisplayTranscript;
+      // Use the longest transcript from all captures
+      const allTranscripts = [
+        capturedFinalTranscript,
+        capturedDisplayTranscript,
+        postStopFinalTranscript,
+        postStopDisplayTranscript
+      ].sort((a, b) => b.length - a.length);
       
-      console.log('📝 Selected web transcript (length:', webTranscript.length, '):', webTranscript.slice(0, 100) || '(empty)');
+      const webTranscript = allTranscripts[0];
+      
+      console.log('📝 Selected web transcript (length:', webTranscript.length, '):', webTranscript.slice(0, 100) || '(empty)')
       
       // Stop media recorder
       if (mediaRecorderRef.current) {
@@ -678,11 +694,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const finalWebResult = webTranscript.trim();
       console.log('✅ Returning web transcript (final):', finalWebResult ? finalWebResult.slice(0, 100) : '(EMPTY - NO SPEECH DETECTED)');
       
-      if (!finalWebResult) {
+      if (!finalWebResult || finalWebResult.length === 0) {
         if (isMountedRef.current) {
-          setError('No speech detected. Please speak clearly and closer to your microphone.');
+          setError('No speech detected. The microphone may not be working, or you may need to speak louder and longer (at least 1-2 seconds).');
         }
         return null;
+      }
+      
+      // Clear error on success
+      if (isMountedRef.current) {
+        setError(null);
       }
       
       return finalWebResult;
@@ -744,9 +765,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.warn('⚠️ Transcribed text length:', transcribedText.length);
         console.warn('⚠️ Captured transcript length:', capturedTranscript.length);
         if (isMountedRef.current) {
-          setError('No speech detected. Try speaking louder and clearer. Make sure your microphone is working and not muted.');
+          setError('No speech detected. Please speak for at least 2-3 seconds, louder and closer to the microphone.');
         }
         return null;
+      }
+
+      // Clear error on success
+      if (isMountedRef.current) {
+        setError(null);
       }
 
       console.log('✅ Final mobile transcribed text:', finalText.slice(0, 100));
