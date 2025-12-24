@@ -123,20 +123,41 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } as any);
 
       console.log('📤 Transcribing audio...');
+      console.log('Audio URI:', uri);
+      console.log('File type:', fileType);
+      
       const response = await fetch(STT_API_URL, {
         method: 'POST',
         body: formData,
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
         throw new Error('Transcription failed');
       }
 
-      const data = await response.json();
-      const text = (data.text || '').trim();
+      const responseText = await response.text();
+      console.log('Raw API response:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse JSON:', e);
+        throw new Error('Invalid response from transcription service');
+      }
+      
+      console.log('Parsed data:', JSON.stringify(data));
+      const text = (data.text || data.transcription || data.transcript || '').trim();
+      console.log('Extracted text:', text);
 
       if (!text) {
-        throw new Error('No speech detected');
+        console.error('No text in response. Full data:', JSON.stringify(data));
+        throw new Error('No speech detected. Please speak clearly and try again.');
       }
 
       console.log('✅ Transcribed:', text.substring(0, 50));
