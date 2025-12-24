@@ -132,9 +132,18 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Failed to transcribe audio');
       }
 
-      const text = await response.text();
-      console.log('📝 Raw response:', text.substring(0, 100));
-      const trimmed = text.trim();
+      const responseText = await response.text();
+      console.log('📝 Raw response:', responseText.substring(0, 100));
+      
+      let transcribedText = '';
+      try {
+        const parsed = JSON.parse(responseText);
+        transcribedText = parsed.text || '';
+      } catch {
+        transcribedText = responseText;
+      }
+      
+      const trimmed = transcribedText.trim();
 
       if (!trimmed) {
         throw new Error('No speech detected');
