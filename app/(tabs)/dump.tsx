@@ -364,24 +364,29 @@ Be smart, thoughtful, and help the user succeed!`,
 
 
   const handleVoicePress = useCallback(async () => {
-    if (isRecording) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      console.log('🛑 Stopping recording...');
-      
-      const finalTranscript = await stopRecording();
-      
-      if (finalTranscript && finalTranscript.trim()) {
-        console.log('✅ Got transcript:', finalTranscript.substring(0, 100));
-        setInputText(finalTranscript.trim());
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      if (isRecording) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        console.log('🛑 Stopping recording...');
+        
+        const finalTranscript = await stopRecording();
+        
+        if (finalTranscript && finalTranscript.trim()) {
+          console.log('✅ Got transcript:', finalTranscript.substring(0, 100));
+          setInputText(finalTranscript.trim());
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          console.log('❌ No transcript');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
       } else {
-        console.log('❌ No transcript');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        console.log('🎤 Starting recording...');
+        await startRecording();
       }
-    } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      console.log('🎤 Starting recording...');
-      await startRecording();
+    } catch (err) {
+      console.error('Voice press error:', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   }, [isRecording, startRecording, stopRecording]);
 

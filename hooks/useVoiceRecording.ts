@@ -42,91 +42,101 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
 
   const startRecordingMobile = useCallback(async () => {
-    const { status } = await Audio.requestPermissionsAsync();
-    if (status !== 'granted') {
-      throw new Error('Microphone permission required');
+    try {
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          console.log('Cleanup old recording:', e);
+        }
+        recordingRef.current = null;
+      }
+
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Microphone permission required');
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const recording = new Audio.Recording();
+      
+      try {
+        await recording.prepareToRecordAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        await recording.startAsync();
+        recordingRef.current = recording;
+      } catch (prepError) {
+        console.error('Prepare/start error:', prepError);
+        try {
+          await recording.stopAndUnloadAsync();
+        } catch (e) {
+          console.log('Cleanup after error:', e);
+        }
+        throw new Error('Failed to start recording. Please try again.');
+      }
+    } catch (err) {
+      console.error('Mobile recording error:', err);
+      throw err;
     }
-
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-    });
-
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync({
-      android: {
-        extension: '.m4a',
-        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-        audioEncoder: Audio.AndroidAudioEncoder.AAC,
-        sampleRate: 16000,
-        numberOfChannels: 1,
-        bitRate: 64000,
-      },
-      ios: {
-        extension: '.m4a',
-        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-        audioQuality: Audio.IOSAudioQuality.MEDIUM,
-        sampleRate: 16000,
-        numberOfChannels: 1,
-        bitRate: 64000,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 128000,
-      },
-    });
-
-    await recording.startAsync();
-    recordingRef.current = recording;
   }, []);
 
   const stopRecordingMobile = useCallback(async (): Promise<string> => {
-    const recording = recordingRef.current;
-    if (!recording) {
-      throw new Error('No recording in progress');
+    try {
+      const recording = recordingRef.current;
+      if (!recording) {
+        throw new Error('No recording in progress');
+      }
+
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      const uri = recording.getURI();
+      recordingRef.current = null;
+
+      if (!uri) {
+        throw new Error('No recording URI');
+      }
+
+      const audioFile = {
+        uri,
+        name: 'recording.m4a',
+        type: 'audio/m4a',
+      };
+
+      const formData = new FormData();
+      formData.append('audio', audioFile as any);
+
+      const response = await fetch(STT_API_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to transcribe');
+      }
+
+      const text = await response.text();
+      const trimmed = text.trim();
+
+      if (!trimmed) {
+        throw new Error('No speech detected');
+      }
+
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        const data = JSON.parse(trimmed);
+        return data.text?.trim() || '';
+      }
+
+      return trimmed;
+    } catch (err) {
+      console.error('Stop recording error:', err);
+      throw err;
     }
-
-    await recording.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-    const uri = recording.getURI();
-    recordingRef.current = null;
-
-    if (!uri) {
-      throw new Error('No recording URI');
-    }
-
-    const audioFile = {
-      uri,
-      name: 'recording.m4a',
-      type: 'audio/m4a',
-    };
-
-    const formData = new FormData();
-    formData.append('audio', audioFile as any);
-
-    const response = await fetch(STT_API_URL, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to transcribe');
-    }
-
-    const text = await response.text();
-    const trimmed = text.trim();
-
-    if (!trimmed) {
-      throw new Error('No speech detected');
-    }
-
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      const data = JSON.parse(trimmed);
-      return data.text?.trim() || '';
-    }
-
-    return trimmed;
   }, []);
 
   const startRecordingWeb = useCallback(async () => {
@@ -236,9 +246,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start recording';
+      console.error('Start recording failed:', message);
       setError(message);
       setIsRecording(false);
-      throw err;
     }
   }, [startRecordingWeb, startRecordingMobile]);
 
