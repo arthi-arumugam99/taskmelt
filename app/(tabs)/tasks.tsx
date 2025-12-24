@@ -98,24 +98,32 @@ export default function TasksScreen() {
     const d1 = typeof date1 === 'string' ? new Date(date1) : date1;
     const d2 = typeof date2 === 'string' ? new Date(date2) : date2;
     
-    return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
-    );
+    const year1 = d1.getFullYear();
+    const month1 = d1.getMonth();
+    const day1 = d1.getDate();
+    
+    const year2 = d2.getFullYear();
+    const month2 = d2.getMonth();
+    const day2 = d2.getDate();
+    
+    return year1 === year2 && month1 === month2 && day1 === day2;
   }, []);
 
   const getTaskDate = useCallback((task: FlatTask): Date => {
     if (task.task.scheduledDate) {
       const scheduled = new Date(task.task.scheduledDate);
       if (!isNaN(scheduled.getTime())) {
-        const normalized = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate(), 0, 0, 0, 0);
-        return normalized;
+        const year = scheduled.getFullYear();
+        const month = scheduled.getMonth();
+        const day = scheduled.getDate();
+        return new Date(year, month, day, 0, 0, 0, 0);
       }
     }
     const created = new Date(task.createdAt);
-    const normalized = new Date(created.getFullYear(), created.getMonth(), created.getDate(), 0, 0, 0, 0);
-    return normalized;
+    const year = created.getFullYear();
+    const month = created.getMonth();
+    const day = created.getDate();
+    return new Date(year, month, day, 0, 0, 0, 0);
   }, []);
 
   const filteredTasks = useMemo(() => {
@@ -217,10 +225,7 @@ export default function TasksScreen() {
     setShowAllDates(false);
   }, []);
 
-  const handleShowAll = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowAllDates(true);
-  }, []);
+
 
   const handleToggleTask = useCallback((dumpId: string, taskId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -375,11 +380,6 @@ export default function TasksScreen() {
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Tasks</Text>
               <Text style={styles.subtitle}>Smart AI organization</Text>
-              {!showAllDates && (
-                <TouchableOpacity onPress={handleShowAll} style={{ marginTop: 4 }}>
-                  <Text style={{ fontSize: 12, color: Colors.primary, fontWeight: '600' }}>Filtered by date • Tap to show all</Text>
-                </TouchableOpacity>
-              )}
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -495,15 +495,6 @@ export default function TasksScreen() {
           selectedDate={selectedDate}
           onDateSelect={handleDateSelect}
         />
-        
-        {!showAllDates && (
-          <TouchableOpacity style={styles.showAllButton} onPress={handleShowAll}>
-            <Text style={styles.showAllText}>Show all dates</Text>
-            <X size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        )}
-
-
 
         <View style={styles.dateActionsRow}>
           <View style={styles.statsCard}>
