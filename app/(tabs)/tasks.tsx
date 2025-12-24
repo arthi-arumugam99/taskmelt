@@ -373,6 +373,24 @@ export default function TasksScreen() {
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
+                style={[styles.iconButton, hideCompleted && styles.iconButtonActive]}
+                onPress={() => {
+                  setHideCompleted(!hideCompleted);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                {hideCompleted ? <EyeOff size={20} color={Colors.background} /> : <Eye size={20} color={Colors.primary} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconButton, compactView && styles.iconButtonActive]}
+                onPress={() => {
+                  setCompactView(!compactView);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                {compactView ? <Maximize2 size={20} color={Colors.background} /> : <Minimize2 size={20} color={Colors.primary} />}
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
                   setShowFilters(!showFilters);
@@ -475,32 +493,7 @@ export default function TasksScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, hideCompleted && styles.quickActionButtonActive]}
-            onPress={() => {
-              setHideCompleted(!hideCompleted);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-          >
-            {hideCompleted ? <EyeOff size={16} color={Colors.background} /> : <Eye size={16} color={Colors.textSecondary} />}
-            <Text style={[styles.quickActionText, hideCompleted && styles.quickActionTextActive]}>
-              {hideCompleted ? 'Show done' : 'Hide done'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickActionButton, compactView && styles.quickActionButtonActive]}
-            onPress={() => {
-              setCompactView(!compactView);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-          >
-            {compactView ? <Maximize2 size={16} color={Colors.background} /> : <Minimize2 size={16} color={Colors.textSecondary} />}
-            <Text style={[styles.quickActionText, compactView && styles.quickActionTextActive]}>
-              {compactView ? 'Expand' : 'Compact'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+
 
         <View style={styles.dateActionsRow}>
           <View style={styles.statsCard}>
@@ -1212,34 +1205,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700' as const,
   },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  quickActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: Colors.card,
-    borderWidth: 2,
-    borderColor: Colors.border,
-  },
-  quickActionButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  quickActionText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.textSecondary,
-  },
-  quickActionTextActive: {
-    color: Colors.background,
-  },
+
   compactCard: {
     backgroundColor: Colors.card,
     borderRadius: 10,
