@@ -30,6 +30,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const recognitionRef = useRef<any>(null);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
+  const recordingDurationRef = useRef<number>(0);
   const transcriptRef = useRef<string>('');
   const finalTranscriptRef = useRef<string>('');
   const lastResultIndexRef = useRef<number>(0);
@@ -127,9 +128,16 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const text = data?.text?.trim() || '';
       console.log('✅ Transcribed text:', text || '(empty)');
       console.log('📊 Text length:', text.length, 'characters');
+      console.log('📊 Full response data:', JSON.stringify(data));
       
       if (!text || text.length === 0) {
         console.warn('⚠️ Transcription returned empty text');
+        console.warn('⚠️ API response structure:', Object.keys(data || {}));
+        
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+        
         return '';
       }
       
@@ -205,21 +213,21 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 16000,
+          sampleRate: 44100,
           numberOfChannels: 1,
-          bitRate: 32000,
+          bitRate: 128000,
         },
         ios: {
           extension: '.m4a',
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.LOW,
-          sampleRate: 16000,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
           numberOfChannels: 1,
-          bitRate: 32000,
+          bitRate: 128000,
         },
         web: {
           mimeType: 'audio/webm',
-          bitsPerSecond: 32000,
+          bitsPerSecond: 128000,
         },
       };
 
@@ -497,6 +505,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       durationIntervalRef.current = setInterval(() => {
         if (!isMountedRef.current) return;
         const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+        recordingDurationRef.current = elapsed;
         setRecordingDuration(elapsed);
 
         if (elapsed >= MAX_RECORDING_DURATION) {
@@ -532,7 +541,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 1000) {
+      if (durationMs < 500) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
         throw new Error('Recording too short. Please speak for at least 1 second.');
       }
@@ -713,8 +722,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       if (!finalText) {
         console.warn('⚠️ Empty transcription result - no speech detected');
+        console.warn('⚠️ Recording duration was:', recordingDurationRef.current, 'seconds');
+        console.warn('⚠️ Transcribed text length:', transcribedText.length);
+        console.warn('⚠️ Captured transcript length:', capturedTranscript.length);
         if (isMountedRef.current) {
-          setError('Could not detect speech. Please speak clearly, louder, and closer to the microphone. Make sure you speak for at least 2-3 seconds.');
+          setError('No speech detected. Try speaking louder and clearer. Make sure your microphone is working and not muted.');
         }
         return null;
       }
