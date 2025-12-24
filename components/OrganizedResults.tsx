@@ -322,7 +322,13 @@ export default function OrganizedResults({
   highlightedTaskIds = [],
   hideHighlightedTasks = true,
 }: OrganizedResultsProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    if (isNaN(now.getTime())) {
+      return new Date(Date.now());
+    }
+    return now;
+  });
 
 
   const nonEmptyCategories = categories.filter((c) => c.items.length > 0);

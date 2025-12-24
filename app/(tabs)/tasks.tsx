@@ -769,6 +769,12 @@ export default function TasksScreen() {
                 const day = selectedDate.getDate();
                 
                 const taskDate = new Date(year, month, day, 12, 0, 0, 0);
+                
+                if (isNaN(taskDate.getTime())) {
+                  console.log('⚠️ Invalid task date');
+                  return;
+                }
+                
                 const taskDateStr = taskDate.toISOString();
                 
                 const newDump: DumpSession = {

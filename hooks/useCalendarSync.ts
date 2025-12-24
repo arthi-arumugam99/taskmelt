@@ -183,11 +183,22 @@ export function useCalendarSync() {
 
           const eventDate = new Date(event.startDate);
           
+          if (isNaN(eventDate.getTime())) {
+            console.log(`⚠️ Invalid date for calendar event: ${event.title}`);
+            return null;
+          }
+          
           const year = eventDate.getFullYear();
           const month = eventDate.getMonth() + 1;
           const day = eventDate.getDate();
           
           const taskDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+          
+          if (isNaN(taskDate.getTime())) {
+            console.log(`⚠️ Invalid task date for calendar event: ${event.title}`);
+            return null;
+          }
+          
           const scheduledDateStr = taskDate.toISOString();
           
           console.log(`📅 Calendar event: ${event.title} scheduled for ${month}/${day}/${year} -> ${scheduledDateStr}`);
@@ -203,7 +214,7 @@ export function useCalendarSync() {
             notes: event.notes,
             context: event.location ? 'anywhere' : undefined,
           };
-        });
+        }).filter((item) => item !== null) as TaskItem[];
 
         const calendarEmoji = '📅';
         
