@@ -160,7 +160,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           throw new Error(errorMsg);
         }
         
-        throw new Error('No speech detected in the recording. Please speak clearly for at least 2-3 seconds.');
+        throw new Error('No speech detected. Please speak louder and hold the button while speaking (at least 1-2 seconds).');
       }
       
       return text;
@@ -563,9 +563,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 1000) {
+      if (durationMs < 300) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Please hold the button and speak for at least 2-3 seconds.');
+        throw new Error('Recording too short. Please hold the button and speak for at least 1 second.');
       }
       
       await recording.stopAndUnloadAsync();
@@ -696,7 +696,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       
       if (!finalWebResult || finalWebResult.length === 0) {
         if (isMountedRef.current) {
-          setError('No speech detected. The microphone may not be working, or you may need to speak louder and longer (at least 1-2 seconds).');
+          setError('No speech detected. Please check: 1) Microphone is working 2) Speak louder and clearer 3) Browser has microphone permission');
         }
         return null;
       }
@@ -765,7 +765,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         console.warn('⚠️ Transcribed text length:', transcribedText.length);
         console.warn('⚠️ Captured transcript length:', capturedTranscript.length);
         if (isMountedRef.current) {
-          setError('No speech detected. Please speak for at least 2-3 seconds, louder and closer to the microphone.');
+          setError('No speech detected in audio. Try: 1) Speak louder 2) Hold button longer 3) Check microphone permissions');
         }
         return null;
       }
