@@ -81,25 +81,32 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         return '';
       }
       
-      // Check if response is not JSON
-      if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
-        console.error('❌ Non-JSON response received:', contentType);
-        console.error('Response text:', responseText.substring(0, 500));
+      // Check if response looks like JSON at all
+      const trimmedResponse = responseText.trim();
+      const looksLikeJSON = trimmedResponse.startsWith('{') || trimmedResponse.startsWith('[');
+      
+      if (!looksLikeJSON) {
+        console.error('❌ Response does not look like JSON:', responseText.substring(0, 100));
+        const lowerResponse = responseText.toLowerCase();
         
-        if (responseText.toLowerCase().includes('html') || responseText.startsWith('<')) {
+        if (lowerResponse.includes('html') || trimmedResponse.startsWith('<')) {
           throw new Error('Service temporarily unavailable. Please try again.');
         }
-        if (responseText.toLowerCase().includes('offline')) {
+        if (lowerResponse.includes('offline') || lowerResponse.includes('maintenance')) {
           throw new Error('Service is offline. Please try again later.');
         }
-        if (responseText.toLowerCase().includes('network')) {
+        if (lowerResponse.includes('network') || lowerResponse.includes('connection')) {
           throw new Error('Network error. Please check your connection.');
         }
-        // Return the text directly if it looks like an error message
-        if (responseText.length < 200) {
+        if (lowerResponse.includes('error') && responseText.length < 200) {
           throw new Error(`Service error: ${responseText}`);
         }
         throw new Error('Service returned invalid response. Please try again.');
+      }
+      
+      // Check if response is not JSON based on content-type
+      if (!contentType.includes('application/json') && !contentType.includes('text/json')) {
+        console.warn('⚠️ Non-JSON content-type but response looks like JSON:', contentType);
       }
       
       let data;
@@ -109,7 +116,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       } catch (parseError) {
         console.error('❌ Failed to parse STT response as JSON:', parseError);
         console.error('Response was:', responseText.substring(0, 500));
-        throw new Error('Invalid JSON response from service. Please try again.');
+        
+        // Try to give a more helpful error message
+        if (responseText.length < 200) {
+          throw new Error(`Could not process response: ${responseText}`);
+        }
+        throw new Error('Service returned malformed data. Please try again.');
       }
       
       const text = data?.text?.trim() || '';
