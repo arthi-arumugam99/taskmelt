@@ -172,6 +172,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           console.log('Cleanup error (ignored):', e);
         }
         recordingRef.current = null;
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const { status: existingStatus } = await Audio.getPermissionsAsync();
@@ -213,7 +214,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       console.log('📱 Creating recording instance...');
       const recording = new Audio.Recording();
-      recordingRef.current = recording;
       
       console.log('⚙️ Preparing recorder...');
       await recording.prepareToRecordAsync({
@@ -247,6 +247,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Recorder is not ready to record');
       }
 
+      recordingRef.current = recording;
+
       console.log('▶️ Starting recording...');
       await recording.startAsync();
       
@@ -266,8 +268,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         } catch (cleanupErr) {
           console.log('Error during cleanup:', cleanupErr);
         }
+        recordingRef.current = null;
       }
-      recordingRef.current = null;
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       }).catch(() => {});
