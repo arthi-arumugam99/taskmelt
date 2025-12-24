@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View,
@@ -20,12 +20,14 @@ import {
   User,
   LogOut,
   LogIn,
+  Calendar as CalendarIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
+import CalendarSyncModal from '@/components/CalendarSyncModal';
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -61,6 +63,7 @@ export default function SettingsScreen() {
     isRestoring,
   } = useRevenueCat();
   const { user, isAuthenticated, signOut, isSigningOut } = useAuth();
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
   const handleClearAll = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -152,6 +155,11 @@ export default function SettingsScreen() {
       ]
     );
   }, [signOut]);
+
+  const handleCalendarSync = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCalendarModalVisible(true);
+  }, []);
 
   const totalTasks = dumps.reduce((acc, dump) => {
     return acc + dump.categories.reduce((catAcc, cat) => {
@@ -352,6 +360,18 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Calendar</Text>
+          <View style={styles.sectionContent}>
+            <SettingRow
+              icon={<CalendarIcon size={20} color={Colors.primary} />}
+              title="Sync Calendar Events"
+              subtitle="Import meetings and events as tasks"
+              onPress={handleCalendarSync}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
           <View style={styles.sectionContent}>
             <SettingRow
@@ -373,6 +393,11 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <CalendarSyncModal
+        visible={calendarModalVisible}
+        onClose={() => setCalendarModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
