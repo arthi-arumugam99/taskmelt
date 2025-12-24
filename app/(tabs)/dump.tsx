@@ -76,7 +76,7 @@ export default function DumpScreen() {
   const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isTranscribing, error: voiceError, recordingDuration, liveTranscript, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isProcessing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -458,17 +458,20 @@ Be smart, thoughtful, and help the user succeed!`,
                     style={[
                       styles.voiceButton,
                       isRecording && styles.voiceButtonRecording,
-                      isTranscribing && styles.voiceButtonDisabled,
+                      isProcessing && styles.voiceButtonDisabled,
                     ]}
                     onPress={handleVoicePress}
-                    disabled={isTranscribing}
+                    disabled={isProcessing}
                   >
-                    {isTranscribing ? (
-                      <ActivityIndicator size="small" color={Colors.background} />
+                    {isProcessing ? (
+                      <>
+                        <ActivityIndicator size="small" color={Colors.background} />
+                        <Text style={styles.voiceButtonText}>Processing...</Text>
+                      </>
                     ) : isRecording ? (
                       <>
                         <Square size={24} color={Colors.background} fill={Colors.background} />
-                        <Text style={styles.voiceButtonText}>Stop</Text>
+                        <Text style={styles.voiceButtonText}>Stop Recording</Text>
                       </>
                     ) : (
                       <>
@@ -480,25 +483,9 @@ Be smart, thoughtful, and help the user succeed!`,
                 </Animated.View>
 
                 {isRecording && (
-                  <View style={styles.liveTranscriptBox}>
-                    <View style={styles.recordingHeaderInline}>
-                      <View style={styles.recordingDot} />
-                      <Text style={styles.recordingTextInline}>Recording</Text>
-                      <Text style={styles.recordingDuration}>
-                        {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                      </Text>
-                    </View>
-                    {liveTranscript.trim() && (
-                      <View style={styles.liveTranscriptContent}>
-                        <Text style={styles.liveTranscriptLabel}>Live transcript:</Text>
-                        <Text style={styles.liveTranscriptText}>{liveTranscript}</Text>
-                      </View>
-                    )}
-                    {!liveTranscript.trim() && (
-                      <Text style={styles.listeningHint}>
-                        {Platform.OS === 'web' ? '🎤 Speak now...' : '🎙️ Speak clearly...'}
-                      </Text>
-                    )}
+                  <View style={styles.recordingIndicatorSimple}>
+                    <View style={styles.recordingDot} />
+                    <Text style={styles.recordingTextSimple}>Recording... Speak now</Text>
                   </View>
                 )}
               </View>
@@ -548,15 +535,6 @@ Be smart, thoughtful, and help the user succeed!`,
                   <Text style={styles.errorText}>
                     {voiceError}
                   </Text>
-                </View>
-              )}
-
-
-              
-              {isTranscribing && (
-                <View style={styles.transcribingIndicator}>
-                  <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.transcribingText}>Processing audio...</Text>
                 </View>
               )}
             </>
@@ -698,52 +676,22 @@ const styles = StyleSheet.create({
   voiceButtonDisabled: {
     opacity: 0.6,
   },
-  liveTranscriptBox: {
+  recordingIndicatorSimple: {
     marginTop: 12,
-    padding: 14,
+    padding: 16,
     backgroundColor: '#FEF2F2',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#FCA5A5',
-  },
-  recordingHeaderInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    gap: 10,
   },
-  recordingTextInline: {
-    fontSize: 13,
+  recordingTextSimple: {
+    fontSize: 15,
     fontWeight: '700' as const,
     color: '#EF4444',
-    flex: 1,
-    marginLeft: 8,
-  },
-  liveTranscriptContent: {
-    marginTop: 8,
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  liveTranscriptLabel: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#DC2626',
-    textTransform: 'uppercase' as const,
-    marginBottom: 6,
-  },
-  liveTranscriptText: {
-    fontSize: 14,
-    color: '#1F2937',
-    lineHeight: 20,
-  },
-  listeningHint: {
-    fontSize: 13,
-    color: '#DC2626',
-    fontStyle: 'italic' as const,
-    textAlign: 'center',
-    marginTop: 4,
   },
   organizeButtonWrapper: {
     flex: 1,
@@ -1004,23 +952,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     lineHeight: 18,
   },
-  transcribingIndicator: {
-    marginTop: 16,
-    padding: 14,
-    backgroundColor: Colors.accent1,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  transcribingText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '600' as const,
-  },
+
   waveBars: {
     flexDirection: 'row',
     gap: 4,
