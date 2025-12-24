@@ -235,17 +235,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 64000,
         },
         ios: {
           extension: '.m4a',
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
+          sampleRate: 16000,
           numberOfChannels: 1,
-          bitRate: 128000,
+          bitRate: 64000,
         },
         web: {
           mimeType: 'audio/webm',
@@ -563,9 +563,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       const durationMs = status.durationMillis || 0;
       console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
       
-      if (durationMs < 1000) {
+      if (durationMs < 1500) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Please hold the button and speak for at least 1-2 seconds.');
+        throw new Error('Recording too short. Please hold the button and speak for at least 2-3 seconds.');
       }
       
       await recording.stopAndUnloadAsync();
