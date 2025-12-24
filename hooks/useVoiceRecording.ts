@@ -4,13 +4,15 @@ import { Audio } from 'expo-av';
 
 const STT_API_URL = 'https://toolkit.rork.com/stt/transcribe/';
 const MAX_RECORDING_DURATION = 60;
+const MIN_RECORDING_DURATION_MS = 500;
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
   isTranscribing: boolean;
   error: string | null;
   recordingDuration: number;
-  startRecording: (onTranscriptUpdate: (text: string) => void) => Promise<void>;
+  liveTranscript: string;
+  startRecording: () => Promise<void>;
   stopRecording: () => Promise<string | null>;
   cancelRecording: () => void;
 }
@@ -35,8 +37,8 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
   const finalTranscriptRef = useRef<string>('');
   const lastResultIndexRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
-  const onTranscriptUpdateRef = useRef<((text: string) => void) | null>(null);
   const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(null);
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -151,42 +153,30 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (recordingRef.current) {
         console.log('⚠️ Cleaning up existing recording...');
         try {
-          const status = await recordingRef.current.getStatusAsync();
-          if (status.isRecording) {
-            await recordingRef.current.stopAndUnloadAsync();
-          } else {
-            await recordingRef.current.stopAndUnloadAsync().catch(() => {});
-          }
+          await recordingRef.current.stopAndUnloadAsync();
         } catch (e) {
           console.log('Cleanup error (ignored):', e);
         }
         recordingRef.current = null;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      }).catch(() => {});
-
       const { status: existingStatus } = await Audio.getPermissionsAsync();
-      console.log('📋 Current permission status:', existingStatus);
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
         console.log('🔐 Requesting microphone permission...');
         const { status } = await Audio.requestPermissionsAsync();
         finalStatus = status;
-        console.log('📋 New permission status:', finalStatus);
       }
 
       if (finalStatus !== 'granted') {
         Alert.alert(
-          'Microphone Permission Required',
-          'Please allow microphone access to use voice recording.',
+          'Microphone Permission',
+          'Microphone access is required for voice recording.',
           [
             { text: 'Cancel', style: 'cancel' },
             {
-              text: 'Open Settings',
+              text: 'Settings',
               onPress: () => {
                 if (Platform.OS === 'ios') {
                   Linking.openURL('app-settings:');
@@ -200,19 +190,15 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Microphone permission denied');
       }
 
-      console.log('🔊 Setting audio mode for recording...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log('🎙️ Creating new recording instance...');
       const recording = new Audio.Recording();
       
-      const recordingOptions = {
+      await recording.prepareToRecordAsync({
         android: {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
@@ -233,29 +219,12 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           mimeType: 'audio/webm',
           bitsPerSecond: 128000,
         },
-      };
+      });
 
-      console.log('🔧 Preparing recording...');
-      await recording.prepareToRecordAsync(recordingOptions);
-      console.log('✅ Recording prepared');
-      
-      const preparedStatus = await recording.getStatusAsync();
-      console.log('📊 Status after prepare:', JSON.stringify(preparedStatus));
-      
-      if (!preparedStatus.canRecord) {
-        throw new Error('Recording not ready. Please try again.');
-      }
-      
-      console.log('▶️ Starting recording...');
       await recording.startAsync();
       recordingRef.current = recording;
       
-      const recordingStatus = await recording.getStatusAsync();
-      console.log('✅ Recording started:', JSON.stringify(recordingStatus));
-      
-      if (!recordingStatus.isRecording) {
-        throw new Error('Failed to start recording. Please try again.');
-      }
+      console.log('✅ Mobile recording started');
     } catch (err) {
       console.error('❌ Mobile recording error:', err);
       recordingRef.current = null;
@@ -351,7 +320,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         recognition.maxAlternatives = 1;
 
         recognition.onresult = (event: any) => {
-          console.log('🗣️ Speech result received, results:', event.results.length);
           let interimTranscript = '';
           let newFinalTranscript = '';
 
@@ -363,17 +331,14 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
               if (i >= lastResultIndexRef.current) {
                 newFinalTranscript += transcript + ' ';
                 lastResultIndexRef.current = i + 1;
-                console.log('✓ Final transcript:', transcript);
               }
             } else {
               interimTranscript = transcript;
-              console.log('⋯ Interim transcript:', transcript.substring(0, 50));
             }
           }
 
           if (newFinalTranscript) {
             finalTranscriptRef.current = (finalTranscriptRef.current + newFinalTranscript).trim();
-            console.log('📝 Updated final transcript:', finalTranscriptRef.current.substring(0, 100));
           }
 
           const displayText = interimTranscript
@@ -381,21 +346,9 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             : finalTranscriptRef.current;
 
           transcriptRef.current = displayText;
-          console.log('🔄 Update callback status:', {
-            hasCallback: !!onTranscriptUpdateRef.current,
-            displayTextLength: displayText.length,
-            preview: displayText.substring(0, 100)
-          });
           
-          if (onTranscriptUpdateRef.current) {
-            try {
-              onTranscriptUpdateRef.current(displayText);
-              console.log('✅ Callback executed successfully');
-            } catch (err) {
-              console.error('❌ Callback error:', err);
-            }
-          } else {
-            console.warn('⚠️ No update callback registered!');
+          if (isMountedRef.current) {
+            setLiveTranscript(displayText);
           }
         };
 
@@ -488,17 +441,17 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
   }, []);
 
-  const startRecording = useCallback(async (onTranscriptUpdate: (text: string) => void) => {
+  const startRecording = useCallback(async () => {
     console.log('🎬 startRecording called, Platform:', Platform.OS);
 
     setError(null);
+    setLiveTranscript('');
     transcriptRef.current = '';
     finalTranscriptRef.current = '';
     lastResultIndexRef.current = 0;
     setRecordingDuration(0);
     setIsTranscribing(false);
     recordingStartTimeRef.current = Date.now();
-    onTranscriptUpdateRef.current = onTranscriptUpdate;
 
     try {
       if (Platform.OS === 'web') {
@@ -510,7 +463,6 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       if (!isMountedRef.current) return;
 
       setIsRecording(true);
-      console.log('✅ isRecording set to true');
 
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
@@ -523,7 +475,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         setRecordingDuration(elapsed);
 
         if (elapsed >= MAX_RECORDING_DURATION) {
-          console.log('⏱️ Max recording duration reached, auto-stopping');
+          console.log('⏱️ Max recording duration reached');
           if (stopRecordingRef.current) {
             stopRecordingRef.current();
           }
@@ -553,11 +505,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
       console.log('📊 Recording status before stop:', JSON.stringify(status));
       
       const durationMs = status.durationMillis || 0;
-      console.log('🕐 Recording duration:', durationMs, 'ms (', (durationMs / 1000).toFixed(1), 's)');
+      console.log('🕐 Recording duration:', durationMs, 'ms');
       
-      if (durationMs < 800) {
+      if (durationMs < MIN_RECORDING_DURATION_MS) {
         console.warn('⚠️ Recording too short:', durationMs, 'ms');
-        throw new Error('Recording too short. Hold button and speak for 2-3 seconds.');
+        throw new Error('Recording too short. Please speak for at least 1 second.');
       }
       
       await recording.stopAndUnloadAsync();
@@ -619,49 +571,20 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     }
 
     if (Platform.OS === 'web') {
-      console.log('✨ Web platform - processing live transcript');
+      console.log('✨ Web platform - using live transcript');
       
-      // Capture transcripts BEFORE stopping (they're already in refs)
-      const capturedFinalTranscript = finalTranscriptRef.current.trim();
-      const capturedDisplayTranscript = transcriptRef.current.trim();
+      const capturedTranscript = transcriptRef.current.trim();
       
-      console.log('📝 Pre-stop Final transcript:', capturedFinalTranscript.slice(0, 100) || '(empty)');
-      console.log('📝 Pre-stop Display transcript:', capturedDisplayTranscript.slice(0, 100) || '(empty)');
-      
-      // Stop recognition and wait for any final events
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-          console.log('🛑 Speech recognition stopped');
         } catch (e) {
-          console.log('Speech recognition stop error:', e);
+          console.log('Recognition stop:', e);
         }
-        
-        // Wait longer for final results to be processed
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 300));
         recognitionRef.current = null;
       }
 
-      // Re-capture transcripts AFTER stopping (in case final results came in)
-      const postStopFinalTranscript = finalTranscriptRef.current.trim();
-      const postStopDisplayTranscript = transcriptRef.current.trim();
-      
-      console.log('📝 Post-stop Final transcript:', postStopFinalTranscript.slice(0, 100) || '(empty)');
-      console.log('📝 Post-stop Display transcript:', postStopDisplayTranscript.slice(0, 100) || '(empty)');
-      
-      // Use the longest transcript from all captures
-      const allTranscripts = [
-        capturedFinalTranscript,
-        capturedDisplayTranscript,
-        postStopFinalTranscript,
-        postStopDisplayTranscript
-      ].sort((a, b) => b.length - a.length);
-      
-      const webTranscript = allTranscripts[0];
-      
-      console.log('📝 Selected web transcript (length:', webTranscript.length, '):', webTranscript.slice(0, 100) || '(empty)')
-      
-      // Stop media recorder
       if (mediaRecorderRef.current) {
         try {
           mediaRecorderRef.current.stop();
@@ -671,111 +594,71 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         mediaRecorderRef.current = null;
       }
       
-      // Stop stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
       
-      // Clear refs
+      const finalTranscript = finalTranscriptRef.current.trim() || capturedTranscript;
+      
       transcriptRef.current = '';
       finalTranscriptRef.current = '';
       lastResultIndexRef.current = 0;
-      onTranscriptUpdateRef.current = null;
+      setLiveTranscript('');
       
-      const finalWebResult = webTranscript.trim();
-      console.log('✅ Returning web transcript (final):', finalWebResult ? finalWebResult.slice(0, 100) : '(EMPTY - NO SPEECH DETECTED)');
-      
-      if (!finalWebResult || finalWebResult.length === 0) {
+      if (!finalTranscript) {
         if (isMountedRef.current) {
-          setError('No speech detected. Check: 1) Microphone working 2) Speak louder 3) Browser has mic permission');
+          setError('No speech detected');
         }
         return null;
       }
       
-      // Clear error on success
-      if (isMountedRef.current) {
-        setError(null);
-      }
-      
-      return finalWebResult;
+      console.log('✅ Web transcript:', finalTranscript.slice(0, 100));
+      return finalTranscript;
     }
-
-    // Mobile recording - stop recognition if running
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.log('Speech recognition stop:', e);
-      }
-      recognitionRef.current = null;
-    }
-
-    const capturedTranscript = transcriptRef.current.trim();
-    console.log('📝 Mobile: captured live transcript:', capturedTranscript.slice(0, 100) || '(empty)');
 
     try {
-
       setIsTranscribing(true);
-      console.log('🔄 Starting mobile transcription...');
 
       const formData = await stopRecordingMobile();
 
       if (!formData) {
-        console.log('⚠️ No audio data captured');
         if (isMountedRef.current) {
           setIsTranscribing(false);
-          transcriptRef.current = '';
-          onTranscriptUpdateRef.current = null;
-        }
-        if (!capturedTranscript) {
-          if (isMountedRef.current) {
-            setError('Recording failed. Please check microphone permissions and try again.');
-          }
-          return null;
-        }
-        return capturedTranscript;
-      }
-
-      console.log('📤 Sending to transcription API...');
-      const transcribedText = await transcribeAudio(formData);
-      console.log('📥 API Transcription result:', transcribedText.slice(0, 100) || '(empty)');
-      console.log('📥 API Transcription length:', transcribedText.length);
-
-      if (!isMountedRef.current) return null;
-
-      const finalText = transcribedText.trim() || capturedTranscript.trim();
-      console.log('📊 Final text combining:', { transcribed: transcribedText.length, captured: capturedTranscript.length, final: finalText.length });
-
-      transcriptRef.current = '';
-      setIsTranscribing(false);
-      onTranscriptUpdateRef.current = null;
-
-      if (!finalText) {
-        console.warn('⚠️ Empty transcription result - no speech detected');
-        console.warn('⚠️ Recording duration was:', recordingDurationRef.current, 'seconds');
-        if (isMountedRef.current) {
-          setError('No speech detected. Try speaking louder and clearer.');
+          setError('Failed to capture audio');
         }
         return null;
       }
 
-      // Clear error on success
+      const transcribedText = await transcribeAudio(formData);
+
+      if (!isMountedRef.current) return null;
+
+      transcriptRef.current = '';
+      finalTranscriptRef.current = '';
+      setIsTranscribing(false);
+      setLiveTranscript('');
+
+      if (!transcribedText || transcribedText.trim().length === 0) {
+        if (isMountedRef.current) {
+          setError('No speech detected');
+        }
+        return null;
+      }
+
       if (isMountedRef.current) {
         setError(null);
       }
 
-      console.log('✅ Final mobile transcribed text:', finalText.slice(0, 100));
-      return finalText;
+      console.log('✅ Mobile transcript:', transcribedText.slice(0, 100));
+      return transcribedText.trim();
     } catch (err) {
-      console.error('❌ Stop recording error:', err);
+      console.error('❌ Transcription error:', err);
       const message = err instanceof Error ? err.message : 'Transcription failed';
       
       if (isMountedRef.current) {
         setError(message);
         setIsTranscribing(false);
-        transcriptRef.current = '';
-        onTranscriptUpdateRef.current = null;
       }
       
       return null;
@@ -790,11 +673,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     setIsRecording(false);
     setIsTranscribing(false);
     setError(null);
+    setLiveTranscript('');
     transcriptRef.current = '';
     finalTranscriptRef.current = '';
     lastResultIndexRef.current = 0;
     setRecordingDuration(0);
-    onTranscriptUpdateRef.current = null;
 
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
@@ -846,6 +729,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     isTranscribing,
     error,
     recordingDuration,
+    liveTranscript,
     startRecording,
     stopRecording,
     cancelRecording,

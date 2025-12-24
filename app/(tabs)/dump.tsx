@@ -76,7 +76,7 @@ export default function DumpScreen() {
   const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
-  const { isRecording, isTranscribing, error: voiceError, recordingDuration, startRecording, stopRecording } = useVoiceRecording();
+  const { isRecording, isTranscribing, error: voiceError, recordingDuration, liveTranscript, startRecording, stopRecording } = useVoiceRecording();
 
   useEffect(() => {
     if (isRecording) {
@@ -367,39 +367,23 @@ Be smart, thoughtful, and help the user succeed!`,
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       console.log('🛑 Stopping recording...');
-      console.log('Current input text length:', inputText.length);
-      console.log('Current input preview:', inputText.substring(0, 100));
       
       const finalTranscript = await stopRecording();
       
-      console.log('=== STOP RECORDING RESULT ===');
-      console.log('Final transcript:', finalTranscript ? finalTranscript.substring(0, 100) : 'NULL OR EMPTY');
-      console.log('Final transcript length:', finalTranscript?.length || 0);
-      console.log('Current inputText:', inputText.substring(0, 100));
-      console.log('Current inputText length:', inputText.length);
-      console.log('============================');
-      
       if (finalTranscript && finalTranscript.trim()) {
-        console.log('✅ Using final transcript from stopRecording');
+        console.log('✅ Got transcript:', finalTranscript.substring(0, 100));
         setInputText(finalTranscript.trim());
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else if (inputText.trim()) {
-        console.log('✅ Keeping current input text (from live updates)');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        console.log('❌ No transcript captured at all');
+        console.log('❌ No transcript');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       console.log('🎤 Starting recording...');
-      setInputText('');
-      await startRecording((transcript) => {
-        console.log('📝 Live update (length:', transcript.length, '):', transcript.substring(0, 50));
-        setInputText(transcript);
-      });
+      await startRecording();
     }
-  }, [isRecording, startRecording, stopRecording, inputText]);
+  }, [isRecording, startRecording, stopRecording]);
 
 
 
@@ -496,13 +480,13 @@ Be smart, thoughtful, and help the user succeed!`,
                         {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                       </Text>
                     </View>
-                    {inputText.trim() && (
+                    {liveTranscript.trim() && (
                       <View style={styles.liveTranscriptContent}>
                         <Text style={styles.liveTranscriptLabel}>Live transcript:</Text>
-                        <Text style={styles.liveTranscriptText}>{inputText}</Text>
+                        <Text style={styles.liveTranscriptText}>{liveTranscript}</Text>
                       </View>
                     )}
-                    {!inputText.trim() && (
+                    {!liveTranscript.trim() && (
                       <Text style={styles.listeningHint}>
                         {Platform.OS === 'web' ? '🎤 Speak now...' : '🎙️ Speak clearly...'}
                       </Text>
