@@ -106,10 +106,10 @@ export default function DumpScreen() {
       console.log('=== Starting organization ===');
       console.log('Text length:', text.length, 'characters');
       console.log('Platform:', Platform.OS);
-      console.log('Toolkit URL configured:', !!process.env.EXPO_PUBLIC_TOOLKIT_URL);
+      console.log('Toolkit URL:', process.env.EXPO_PUBLIC_TOOLKIT_URL);
       
-      if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
-        throw new Error('AI service not configured. Please restart the app.');
+      if (!text.trim()) {
+        throw new Error('Please enter some text to organize.');
       }
       
       let lastError: Error | null = null;
@@ -192,14 +192,29 @@ Be smart, thoughtful, and help the user succeed!`,
           ]);
           
           console.log('✓ AI Response received');
-          console.log('Categories:', rawResult?.categories?.length ?? 0);
+          console.log('Raw result:', JSON.stringify(rawResult, null, 2).substring(0, 500));
+          console.log('Categories count:', rawResult?.categories?.length ?? 0);
           
           if (!rawResult || typeof rawResult !== 'object') {
-            throw new Error('Invalid AI response format');
+            console.error('Invalid response type:', typeof rawResult);
+            throw new Error('AI returned invalid response. Please try again.');
           }
           
           if (!rawResult.categories || !Array.isArray(rawResult.categories)) {
-            throw new Error('Missing categories in response');
+            console.error('Missing or invalid categories:', rawResult.categories);
+            throw new Error('AI did not return organized tasks. Please try again with more details.');
+          }
+          
+          if (rawResult.categories.length === 0) {
+            console.error('Empty categories array');
+            throw new Error('No tasks could be extracted. Please provide more specific details about what you need to do.');
+          }
+          
+          // Validate that categories have items
+          const hasItems = rawResult.categories.some((cat: any) => cat.items && cat.items.length > 0);
+          if (!hasItems) {
+            console.error('No items in any category');
+            throw new Error('No actionable tasks found. Try describing your tasks more clearly.');
           }
           
           const validPriorities = ['high', 'medium', 'low'];
@@ -250,18 +265,24 @@ Be smart, thoughtful, and help the user succeed!`,
       }
       
       console.error('All retry attempts failed');
+      console.error('Last error:', lastError);
       const errorMessage = lastError?.message || 'Unknown error';
       
-      if (errorMessage.includes('Network request failed')) {
+      if (errorMessage.includes('Network request failed') || errorMessage.includes('fetch')) {
         throw new Error('Unable to connect to AI service. Please check your internet connection and try again.');
       } else if (errorMessage.includes('timeout')) {
         throw new Error('AI is taking too long. Try a shorter brain dump or try again later.');
+      } else if (errorMessage.includes('parse') || errorMessage.includes('JSON')) {
+        throw new Error('AI response was corrupted. Please try again.');
       } else {
-        throw new Error(errorMessage);
+        throw new Error(`Failed to organize: ${errorMessage}`);
       }
     },
     onSuccess: (data) => {
-      console.log('Organization successful:', data);
+      console.log('=== Organization successful ===');
+      console.log('Categories:', data.categories?.length);
+      console.log('Total items:', data.categories?.reduce((acc: number, cat: any) => acc + (cat.items?.length || 0), 0));
+      console.log('Summary:', data.summary);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
       const now = new Date();
@@ -285,9 +306,6 @@ Be smart, thoughtful, and help the user succeed!`,
                 if (isNaN(taskDateTime.getTime())) {
                   console.warn('Invalid date created for task:', item.task);
                 } else {
-                  if (taskDateTime < now) {
-                    taskDateTime.setDate(taskDateTime.getDate() + 1);
-                  }
                   scheduledDate = taskDateTime.toISOString();
                 }
               }
@@ -327,22 +345,29 @@ Be smart, thoughtful, and help the user succeed!`,
         reflectionInsight: data.reflectionInsight,
       };
 
+      console.log('=== Saving session ===');
+      console.log('Session ID:', session.id);
+      console.log('Categories in session:', session.categories.length);
+      console.log('Tasks in session:', session.categories.reduce((acc, cat) => acc + cat.items.length, 0));
+      
       addDump(session);
       setInputText('');
       
       // Navigate to tasks page with animation
+      console.log('Navigating to tasks page...');
       router.push({
         pathname: '/(tabs)/tasks' as any,
         params: { animated: 'true', date: new Date().toISOString().split('T')[0] }
       });
     },
     onError: (error) => {
-      console.error('Organization failed:', error);
-      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      console.error('=== Organization FAILED ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error) {
-        console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
       }
+      console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     },
   });

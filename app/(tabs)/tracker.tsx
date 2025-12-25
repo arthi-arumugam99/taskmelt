@@ -8,7 +8,6 @@ import {
   TextInput,
   Animated,
   Modal,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Check, Flame, Plus, X, Trash2, Target } from 'lucide-react-native';
@@ -233,7 +232,7 @@ export default function TrackerScreen() {
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
     
-    if (checkDate.getTime() !== today.getTime()) return;
+    if (checkDate.getTime() > today.getTime()) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedDate(date);
@@ -309,44 +308,6 @@ export default function TrackerScreen() {
     });
     setHabitLogs(newLogs);
   }, [habitLogs]);
-
-  const clearAllDay = useCallback(() => {
-    const dateStr = formatDateString(selectedDate);
-    const completedCount = habitLogs[dateStr]?.length || 0;
-    
-    if (completedCount === 0) {
-      Alert.alert(
-        'Nothing to Clear',
-        'There are no completed habits for this day.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Clear All Habits?',
-      `This will permanently delete all ${completedCount} completed habit${completedCount > 1 ? 's' : ''} for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}. This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          },
-        },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            const newLogs = { ...habitLogs };
-            delete newLogs[dateStr];
-            setHabitLogs(newLogs);
-          },
-        },
-      ]
-    );
-  }, [selectedDate, habitLogs]);
 
   const today = new Date();
   const selectedDateStr = formatDateString(selectedDate);
@@ -438,7 +399,6 @@ export default function TrackerScreen() {
               todayDate.setHours(0, 0, 0, 0);
               const checkDate = new Date(date);
               checkDate.setHours(0, 0, 0, 0);
-              const isPast = checkDate < todayDate;
               const isFuture = checkDate > todayDate;
 
               return (
@@ -446,7 +406,7 @@ export default function TrackerScreen() {
                   key={index}
                   style={[
                     styles.dayCell,
-                    !isPast && !isFuture && completionLevel > 0 && {
+                    !isFuture && completionLevel > 0 && {
                       backgroundColor: completionLevel === 3 
                         ? Colors.accent2Dark 
                         : completionLevel === 2 
@@ -457,7 +417,7 @@ export default function TrackerScreen() {
                     isToday && !isSelected && styles.todayDay,
                   ]}
                   onPress={() => handleDatePress(date)}
-                  disabled={isPast || isFuture}
+                  disabled={isFuture}
                 >
                   <Text
                     style={[
@@ -465,12 +425,12 @@ export default function TrackerScreen() {
                       completionLevel > 0 && styles.dayTextWithActivity,
                       isSelected && styles.selectedDayText,
                       isToday && !isSelected && styles.todayDayText,
-                      (isPast || isFuture) && styles.pastDayText,
+                      isFuture && styles.pastDayText,
                     ]}
                   >
                     {date.getDate()}
                   </Text>
-                  {completionLevel === 3 && !isSelected && (
+                  {completionLevel === 3 && !isSelected && !isFuture && (
                     <View style={styles.completedBadge}>
                       <Check size={8} color="#FFFFFF" strokeWidth={4} />
                     </View>
@@ -498,21 +458,9 @@ export default function TrackerScreen() {
 
         <View style={styles.habitsSection}>
           <View style={styles.habitsSectionHeader}>
-            <View style={styles.habitsSectionHeaderLeft}>
-              <Text style={styles.habitsSectionTitle}>
-                {isSameDay(selectedDate, today) ? "Today's Habits" : "View Only"}
-              </Text>
-              {isSameDay(selectedDate, today) && todayProgress.completed > 0 && (
-                <TouchableOpacity
-                  style={styles.clearAllButton}
-                  onPress={clearAllDay}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Trash2 size={16} color="#EF4444" />
-                  <Text style={styles.clearAllText}>Clear All</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <Text style={styles.habitsSectionTitle}>
+              {isSameDay(selectedDate, today) ? "Today's Habits" : "View Only"}
+            </Text>
             <Text style={styles.habitProgress}>
               {todayProgress.completed}/{todayProgress.total}
             </Text>
