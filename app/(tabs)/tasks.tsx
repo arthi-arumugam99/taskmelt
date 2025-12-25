@@ -13,7 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Eye, EyeOff, Calendar } from 'lucide-react-native';
+import { Check, Search, X, Filter, Edit2, GripVertical, ChevronDown, ChevronRight, Clock, Plus, Eye, EyeOff, Calendar, Minimize2, Maximize2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
@@ -62,6 +62,7 @@ export default function TasksScreen() {
   const [newTaskText, setNewTaskText] = useState('');
   const [hideCompleted, setHideCompleted] = useState(false);
   const [showCalendarSync, setShowCalendarSync] = useState(false);
+  const [isCompactView, setIsCompactView] = useState(false);
   
   const cardAnimations = useRef<Animated.Value[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -383,6 +384,15 @@ export default function TasksScreen() {
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
+                style={[styles.iconButton, isCompactView && styles.iconButtonActive]}
+                onPress={() => {
+                  setIsCompactView(!isCompactView);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                {isCompactView ? <Maximize2 size={18} color={Colors.background} /> : <Minimize2 size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => {
                   setShowCalendarSync(true);
@@ -541,6 +551,45 @@ export default function TasksScreen() {
           <View style={styles.taskList}>
             {filteredTasks.map((item, index) => {
               const panResponder = createPanResponder(index);
+
+              if (isCompactView) {
+                return (
+                  <TouchableOpacity
+                    key={item.task.id}
+                    style={styles.compactCard}
+                    onPress={() => handleToggleTask(item.dumpId, item.task.id)}
+                    onLongPress={() => handleEditTask(item.task, item.dumpId)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.compactRow}>
+                      <View
+                        style={[
+                          styles.compactCheckbox,
+                          { borderColor: item.categoryColor },
+                          item.task.completed && { backgroundColor: item.categoryColor },
+                        ]}
+                      >
+                        {item.task.completed && <Check size={10} color="#FFFFFF" strokeWidth={3} />}
+                      </View>
+                      <Text
+                        style={[
+                          styles.compactText,
+                          item.task.completed && styles.taskTextCompleted,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.task.task}
+                      </Text>
+                      {item.task.scheduledTime && (
+                        <Text style={[styles.compactTime, { color: item.categoryColor }]}>
+                          {item.task.scheduledTime}
+                        </Text>
+                      )}
+                      <Text style={styles.compactEmoji}>{item.categoryEmoji}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
 
               return (
               <View 
