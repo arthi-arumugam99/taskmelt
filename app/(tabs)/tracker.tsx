@@ -430,7 +430,7 @@ export default function TrackerScreen() {
                   >
                     {date.getDate()}
                   </Text>
-                  {completionLevel === 3 && !isSelected && (
+                  {completionLevel === 3 && !isSelected && !isFuture && (
                     <View style={styles.completedBadge}>
                       <Check size={8} color="#FFFFFF" strokeWidth={4} />
                     </View>
