@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind CSS styles */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-beige text-taskmelt-black font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+}
+
+@layer utilities {
+  .taskmelt-border {
+    @apply border-4 border-taskmelt-black rounded-taskmelt;
+  }
+
+  .taskmelt-shadow {
+    box-shadow: 8px 8px 0px 0px rgba(26, 26, 26, 1);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

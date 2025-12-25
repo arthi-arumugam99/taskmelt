@@ -1,0 +1,37 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "taskmelt - Chaos in. Clarity out.",
+  description: "Transform your mental chaos into organized tasks. Brain dump everything, let AI create your perfect schedule.",
+  keywords: ["productivity", "task management", "habit tracker", "brain dump", "AI tasks", "mental clarity"],
+  authors: [{ name: "taskmelt" }],
+  openGraph: {
+    title: "taskmelt - Chaos in. Clarity out.",
+    description: "Transform your mental chaos into organized tasks. Brain dump everything, let AI create your perfect schedule.",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "taskmelt - Chaos in. Clarity out.",
+    description: "Transform your mental chaos into organized tasks.",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
