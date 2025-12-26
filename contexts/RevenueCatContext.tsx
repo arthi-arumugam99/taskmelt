@@ -9,8 +9,12 @@ import Purchases, {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 
-const API_KEY = 'appl_eaDfLBAAiQHdVMOsBfzRMgmxNHu';
+const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY!;
 const ENTITLEMENT_ID = 'taskmelt Pro';
+
+if (!API_KEY) {
+  console.warn('RevenueCat API key not configured. In-app purchases will not work.');
+}
 
 
 
