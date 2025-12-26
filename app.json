@@ -23,7 +23,14 @@
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
         "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar",
         "NSRemindersUsageDescription": "Allow $(PRODUCT_NAME) to access your reminders"
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
+    },
+    "extra": {
+      "privacyPolicyUrl": "https://rork.com/privacy",
+      "termsOfServiceUrl": "https://rork.com/terms"
     },
     "android": {
       "adaptiveIcon": {
@@ -38,7 +45,8 @@
         "android.permission.SCHEDULE_EXACT_ALARM",
         "READ_CALENDAR",
         "WRITE_CALENDAR"
-      ]
+      ],
+      "privacyPolicy": "https://rork.com/privacy"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
