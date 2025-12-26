@@ -9,7 +9,7 @@ import Purchases, {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 
-const API_KEY = 'test_IHCTNujqqArrFGLVyywQBbZKEVV';
+const API_KEY = 'appl_eaDfLBAAiQHdVMOsBfzRMgmxNHu';
 const ENTITLEMENT_ID = 'taskmelt Pro';
 
 
