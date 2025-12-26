@@ -18,33 +18,33 @@ const features: Feature[] = [
   {
     title: "Brain Dump Everything",
     description: "Type or speak everything on your mind—tasks, ideas, worries, random thoughts. No need to organize, just dump it all out. Use voice input for hands-free capture.",
-    image: "/screenshots/brain-dump.jpeg",
+    image: "/screenshots/IMG_4366.jpeg",
     icon: <Brain className="w-12 h-12" />,
   },
   {
     title: "AI Transforms Chaos into Clarity",
     description: "Our AI understands your brain dump and automatically organizes it into actionable tasks with time estimates, priorities, and smart scheduling.",
-    image: "/screenshots/tasks.jpeg",
+    image: "/screenshots/IMG_4369.jpeg",
     icon: <Sparkles className="w-12 h-12" />,
     reverse: true,
   },
   {
     title: "Time-Blocked Task Management",
     description: "See your day at a glance with time-blocked tasks. Add subtasks, set reminders, organize by category, and track progress effortlessly.",
-    image: "/screenshots/day-view.jpeg",
+    image: "/screenshots/IMG_4367.jpeg",
     icon: <ListTodo className="w-12 h-12" />,
   },
   {
     title: "Build Lasting Habits",
     description: "Track daily habits with visual streaks. No more zero days—do at least one thing towards your goals every single day, no matter how small.",
-    image: "/screenshots/habits.jpeg",
+    image: "/screenshots/IMG_4373.jpeg",
     icon: <Calendar className="w-12 h-12" />,
     reverse: true,
   },
   {
     title: "Visualize Your Progress",
     description: "See your productivity journey with calendar views and insights. Track completion rates, identify patterns, and celebrate your wins.",
-    image: "/screenshots/tracker.png",
+    image: "/screenshots/IMG_4372.jpeg",
     icon: <TrendingUp className="w-12 h-12" />,
   },
 ];

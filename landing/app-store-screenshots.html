@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>taskmelt App Store Screenshots</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f0f0;
+            padding: 40px 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .screenshot-container {
+            width: 1242px;
+            height: 2688px;
+            margin: 0 auto 60px;
+            position: relative;
+            background: #F5F1E8;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .screenshot-container img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            height: 100%;
+            width: auto;
+            object-fit: cover;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(26,26,26,0.7) 0%, rgba(26,26,26,0) 40%, rgba(26,26,26,0) 60%, rgba(26,26,26,0.85) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 120px 80px 140px;
+            z-index: 10;
+        }
+
+        .top-text {
+            text-align: center;
+        }
+
+        .bottom-text {
+            text-align: center;
+        }
+
+        .headline {
+            font-size: 110px;
+            font-weight: 900;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 30px;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            letter-spacing: -2px;
+        }
+
+        .subheadline {
+            font-size: 64px;
+            font-weight: 700;
+            color: #FFD4A8;
+            line-height: 1.3;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .description {
+            font-size: 52px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.4;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .highlight {
+            color: #FFD4A8;
+            font-weight: 900;
+        }
+
+        .number {
+            font-size: 140px;
+            font-weight: 900;
+            color: #FFD4A8;
+            position: absolute;
+            top: 60px;
+            left: 80px;
+            text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        /* Specific screenshot styles */
+        #screenshot1 .overlay {
+            background: linear-gradient(to bottom, rgba(26,26,26,0.8) 0%, rgba(26,26,26,0) 35%, rgba(26,26,26,0) 65%, rgba(26,26,26,0.9) 100%);
+        }
+
+        #screenshot2 img {
+            height: 85%;
+        }
+
+        #screenshot3 img {
+            height: 90%;
+        }
+
+        #screenshot5 .overlay {
+            background: linear-gradient(to bottom, rgba(26,26,26,0.75) 0%, rgba(26,26,26,0) 40%, rgba(26,26,26,0.9) 70%, rgba(26,26,26,0.95) 100%);
+        }
+
+        .label {
+            display: inline-block;
+            background: #FFD4A8;
+            color: #1A1A1A;
+            padding: 20px 50px;
+            border-radius: 60px;
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Screenshot 1: Brain Dump Hero -->
+    <div class="screenshot-container" id="screenshot1">
+        <img src="./public/screenshots/brain-dump.jpeg" alt="Brain Dump">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="headline">Dump everything<br>on your mind</div>
+                <div class="subheadline">Type or speak. No organizing needed.</div>
+            </div>
+            <div class="bottom-text">
+                <div class="description">AI instantly transforms your chaos into a clear, actionable schedule</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot 2: Tasks/AI Organization -->
+    <div class="screenshot-container" id="screenshot2">
+        <img src="./public/screenshots/tasks.jpeg" alt="Organized Tasks">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="headline">Chaos in.<br><span class="highlight">Clarity out.</span></div>
+            </div>
+            <div class="bottom-text">
+                <div class="description">Smart time estimates. Auto-scheduling. Subtasks. All organized in seconds.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot 3: Habits/Social Proof -->
+    <div class="screenshot-container" id="screenshot3">
+        <img src="./public/screenshots/habits.jpeg" alt="Habit Tracking">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="headline">Build habits<br>that stick</div>
+                <div class="subheadline">Visual streaks. Daily momentum.<br>No more zero days.</div>
+            </div>
+            <div class="bottom-text">
+                <div class="description"><span class="highlight">10,000+ users</span> turning overwhelm into action every day</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot 4: Calendar View -->
+    <div class="screenshot-container" id="screenshot4">
+        <img src="./public/screenshots/calendar.jpeg" alt="Calendar View">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="headline">See your entire<br>month at a glance</div>
+            </div>
+            <div class="bottom-text">
+                <div class="description">Track progress. Spot patterns. Celebrate wins. All in one view.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot 5: Day View/CTA -->
+    <div class="screenshot-container" id="screenshot5">
+        <img src="./public/screenshots/day-view.jpeg" alt="Day View">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="headline">Your perfect day,<br>pre-planned</div>
+                <div class="subheadline">Time-blocked schedule ready when you wake up</div>
+            </div>
+            <div class="bottom-text">
+                <div class="label">Start Free Today</div>
+                <div class="description">Join the productivity revolution</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot 6: Alternative - Tracker -->
+    <div class="screenshot-container" id="screenshot6">
+        <img src="./public/screenshots/tracker.png" alt="Tracker">
+        <div class="overlay">
+            <div class="top-text">
+                <div class="number">1</div>
+                <div class="headline" style="margin-top: 80px;">Brain dump<br>everything</div>
+            </div>
+            <div class="bottom-text">
+                <div class="description">Tasks, ideas, worries, random thoughts. Just get it all out.</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; padding: 40px; color: #666; font-size: 24px; max-width: 1242px; margin: 0 auto;">
+        <p><strong>Instructions:</strong></p>
+        <p style="margin-top: 20px;">1. Zoom your browser to 100%</p>
+        <p>2. Use Windows Snipping Tool (Win + Shift + S) or screenshot tool</p>
+        <p>3. Capture each screenshot container individually</p>
+        <p>4. Each is sized at 1242x2688px (iPhone 11 Pro Max standard)</p>
+        <p style="margin-top: 30px; font-size: 20px;">Use screenshots 1-5 for your App Store listing. Screenshot 6 is an alternative style if you prefer numbered sequence.</p>
+    </div>
+</body>
+</html>

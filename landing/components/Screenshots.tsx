@@ -4,12 +4,12 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 
 const screenshots = [
-  { src: "/screenshots/brain-dump.jpeg", alt: "Brain Dump" },
-  { src: "/screenshots/tasks.jpeg", alt: "AI-Organized Tasks" },
-  { src: "/screenshots/habits.jpeg", alt: "Habit Tracker" },
-  { src: "/screenshots/tracker.png", alt: "Calendar View" },
-  { src: "/screenshots/day-view.jpeg", alt: "Day View" },
-  { src: "/screenshots/calendar.jpeg", alt: "Monthly Calendar" },
+  { src: "/screenshots/IMG_4366.jpeg", alt: "Brain Dump" },
+  { src: "/screenshots/IMG_4369.jpeg", alt: "AI-Organized Tasks" },
+  { src: "/screenshots/IMG_4373.jpeg", alt: "Habit Tracker" },
+  { src: "/screenshots/IMG_4372.jpeg", alt: "No Zero Days Tracker" },
+  { src: "/screenshots/IMG_4367.jpeg", alt: "Detailed Task View" },
+  { src: "/screenshots/IMG_4374.jpeg", alt: "Insights & Analytics" },
 ];
 
 export default function Screenshots() {

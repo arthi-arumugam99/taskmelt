@@ -68,7 +68,7 @@ export default function Hero() {
         >
           <div className="taskmelt-border bg-white p-2 taskmelt-shadow">
             <Image
-              src="/screenshots/brain-dump.jpeg"
+              src="/screenshots/IMG_4366.jpeg"
               alt="taskmelt brain dump interface"
               width={400}
               height={867}
