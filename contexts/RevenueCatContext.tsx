@@ -29,7 +29,12 @@ async function initializePurchases(): Promise<void> {
     await Purchases.configure({ apiKey: API_KEY });
     console.log('RevenueCat: Initialized successfully');
   } catch (error) {
-    console.log('RevenueCat: Initialization error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Test Store')) {
+      console.log('RevenueCat: Running in sandbox - native payments unavailable. Use Test Store API key or create production build.');
+    } else {
+      console.log('RevenueCat: Initialization error:', error);
+    }
     throw error;
   }
 }
@@ -78,7 +83,13 @@ export const [RevenueCatProvider, useRevenueCat] = createContextHook(() => {
         setIsInitialized(true);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize purchases';
-        setInitError(message);
+        const isSandboxError = message.includes('Test Store') || message.includes('sandbox');
+        
+        if (isSandboxError) {
+          setInitError('Sandbox mode: Payments unavailable in preview. Works in production.');
+        } else {
+          setInitError(message);
+        }
         console.log('RevenueCat: Init failed:', message);
       }
     };
