@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: "Transform your mental chaos into organized tasks. Brain dump everything, let AI create your perfect schedule.",
   keywords: ["productivity", "task management", "habit tracker", "brain dump", "AI tasks", "mental clarity"],
   authors: [{ name: "taskmelt" }],
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
   openGraph: {
     title: "taskmelt - Chaos in. Clarity out.",
     description: "Transform your mental chaos into organized tasks. Brain dump everything, let AI create your perfect schedule.",
