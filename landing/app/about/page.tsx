@@ -115,8 +115,8 @@ export default function About() {
               We'd love to hear from you. Questions, feedback, or just want to say hi?
             </p>
             <p>
-              <a href="mailto:hello@taskmelt.com" className="text-taskmelt-black font-bold text-xl hover:underline">
-                hello@taskmelt.com
+              <a href="mailto:junomobileapplications@gmail.com" className="text-taskmelt-black font-bold text-xl hover:underline">
+                junomobileapplications@gmail.com
               </a>
             </p>
           </section>

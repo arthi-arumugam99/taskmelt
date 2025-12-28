@@ -90,8 +90,8 @@ export default function Terms() {
             <h2 className="text-3xl font-bold mb-4">Contact</h2>
             <p className="text-taskmelt-gray">
               Questions? Email{" "}
-              <a href="mailto:legal@taskmelt.com" className="text-taskmelt-black font-bold hover:underline">
-                legal@taskmelt.com
+              <a href="mailto:junomobileapplications@gmail.com" className="text-taskmelt-black font-bold hover:underline">
+                junomobileapplications@gmail.com
               </a>
             </p>
           </section>

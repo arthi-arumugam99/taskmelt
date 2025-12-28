@@ -84,8 +84,8 @@ export default function PrivacyPolicy() {
             <h2 className="text-3xl font-bold mb-4">Contact Us</h2>
             <p className="text-taskmelt-gray">
               Questions about privacy? Email us at{" "}
-              <a href="mailto:privacy@taskmelt.com" className="text-taskmelt-black font-bold hover:underline">
-                privacy@taskmelt.com
+              <a href="mailto:junomobileapplications@gmail.com" className="text-taskmelt-black font-bold hover:underline">
+                junomobileapplications@gmail.com
               </a>
             </p>
           </section>

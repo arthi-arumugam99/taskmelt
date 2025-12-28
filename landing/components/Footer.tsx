@@ -113,7 +113,7 @@ export default function Footer() {
         {/* Social Links */}
         <div className="flex justify-center gap-6 mb-12">
           <motion.a
-            href="mailto:hello@taskmelt.com"
+            href="mailto:junomobileapplications@gmail.com"
             whileHover={{ scale: 1.1 }}
             className="p-3 bg-white bg-opacity-10 rounded-full hover:bg-opacity-20 transition-colors"
             aria-label="Email"
