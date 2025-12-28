@@ -1,15 +1,91 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+
+const slug = "productivity-apps-comparison";
+const title = "Best Productivity Apps in 2025: Complete Comparison Guide";
+const description = "Compare the top productivity apps of 2025. Find the perfect tool for task management, habits, and getting things done. Honest, in-depth reviews.";
+const publishDate = "2025-12-21T10:00:00Z";
 
 export const metadata: Metadata = {
-  title: "Best Productivity Apps in 2025: Complete Comparison Guide",
-  description: "Compare the top productivity apps of 2025. Find the perfect tool for task management, habits, and getting things done. Honest, in-depth reviews.",
-  keywords: ["best productivity apps", "task management apps", "productivity tools 2025", "todoist vs notion", "productivity app comparison", "getting things done apps"],
+  title,
+  description,
+  keywords: [
+    "best productivity apps",
+    "task management apps",
+    "productivity tools 2025",
+    "todoist vs notion",
+    "productivity app comparison",
+    "getting things done apps",
+    "taskmelt vs todoist",
+    "notion alternatives",
+    "things 3 review",
+    "productivity software comparison"
+],
+  openGraph: {
+    title,
+    description,
+    url: `https://taskmelt.com/blog/${slug}`,
+    type: "article",
+    publishedTime: publishDate,
+    authors: ["taskmelt Team"],
+    siteName: "taskmelt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@taskmelt",
+  },
+  alternates: {
+    canonical: `https://taskmelt.com/blog/${slug}`,
+  },
 };
 
+const relatedArticles = [
+  {
+    "title": "The Brain Dump Technique: Clear Mental Clutter",
+    "slug": "brain-dump-technique-productivity",
+    "description": "Learn how to use brain dumping to reduce overwhelm and boost productivity."
+  },
+  {
+    "title": "Time Blocking Guide: Master Your Schedule",
+    "slug": "time-blocking-guide",
+    "description": "Complete guide to time blocking for maximum productivity and focus."
+  },
+  {
+    "title": "Getting Things Done (GTD) System Explained",
+    "slug": "getting-things-done",
+    "description": "Master David Allen's GTD methodology for stress-free productivity."
+  },
+  {
+    "title": "Deep Work Guide: Focus in a Distracted World",
+    "slug": "deep-work-guide",
+    "description": "Learn Cal Newport's deep work principles to produce your best work."
+  }
+];
+
 export default function ProductivityAppsComparison() {
+  const articleSchema = generateArticleSchema({
+    title,
+    description,
+    publishDate,
+    slug,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    slug,
+    title,
+  });
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">
           ← Back to Blog
@@ -171,12 +247,9 @@ export default function ProductivityAppsComparison() {
           </p>
         </div>
 
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
-          <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">
-            ← Back to all articles
-          </Link>
+        <RelatedArticles articles={relatedArticles} />
         </div>
-      </div>
-    </article>
+      </article>
+    </>
   );
 }

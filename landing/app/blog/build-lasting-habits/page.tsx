@@ -1,15 +1,91 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+
+const slug = "build-lasting-habits";
+const title = "How to Build Lasting Habits: Science-Based Guide (2025)";
+const description = "Build habits that actually stick using behavioral psychology. Learn the science of habit formation and lasting change.";
+const publishDate = "2025-12-22T10:00:00Z";
 
 export const metadata: Metadata = {
-  title: "How to Build Lasting Habits: The Science-Backed Approach That Works",
-  description: "Learn the proven strategies for building habits that stick using behavioral science. Complete guide to habit formation and behavior change.",
-  keywords: ["build habits", "habit formation", "lasting habits", "atomic habits", "behavior change", "habit stacking"],
+  title,
+  description,
+  keywords: [
+    "build habits",
+    "habit formation",
+    "lasting habits",
+    "how to build habits",
+    "habit stacking",
+    "atomic habits",
+    "habit science",
+    "create new habits",
+    "habit loop",
+    "behavior change"
+],
+  openGraph: {
+    title,
+    description,
+    url: `https://taskmelt.com/blog/${slug}`,
+    type: "article",
+    publishedTime: publishDate,
+    authors: ["taskmelt Team"],
+    siteName: "taskmelt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@taskmelt",
+  },
+  alternates: {
+    canonical: `https://taskmelt.com/blog/${slug}`,
+  },
 };
 
+const relatedArticles = [
+  {
+    "title": "Morning Routine for Peak Productivity",
+    "slug": "morning-routine-productivity",
+    "description": "Build a morning routine that sets you up for daily success."
+  },
+  {
+    "title": "Overcome Procrastination: Proven Strategies",
+    "slug": "overcome-procrastination",
+    "description": "Science-backed techniques to beat procrastination and take action."
+  },
+  {
+    "title": "The Pomodoro Technique Guide",
+    "slug": "pomodoro-technique",
+    "description": "Master the 25-minute focus technique used by millions."
+  },
+  {
+    "title": "Getting Things Done (GTD) System Explained",
+    "slug": "getting-things-done",
+    "description": "Master David Allen's GTD methodology for stress-free productivity."
+  }
+];
+
 export default function BuildHabits() {
+  const articleSchema = generateArticleSchema({
+    title,
+    description,
+    publishDate,
+    slug,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    slug,
+    title,
+  });
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">
           ← Back to Blog
@@ -85,10 +161,9 @@ export default function BuildHabits() {
             Remember: You don't rise to the level of your goals. You fall to the level of your systems.
           </p>
         </div>
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
-          <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">← Back to all articles</Link>
+        <RelatedArticles articles={relatedArticles} />
         </div>
-      </div>
-    </article>
+      </article>
+    </>
   );
 }

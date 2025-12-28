@@ -1,15 +1,90 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+
+const slug = "pomodoro-technique";
+const title = "The Pomodoro Technique: Complete Guide (2025)";
+const description = "Master the Pomodoro Technique for laser focus and productivity. Learn the 25-minute method that millions use to get more done.";
+const publishDate = "2025-12-20T10:00:00Z";
 
 export const metadata: Metadata = {
-  title: "Pomodoro Technique: Complete Guide to the 25-Minute Productivity Method",
-  description: "Master the Pomodoro Technique for better focus and productivity. Learn how to use this time management method effectively.",
-  keywords: ["pomodoro technique", "pomodoro timer", "time management", "focus technique", "productivity method"],
+  title,
+  description,
+  keywords: [
+    "pomodoro technique",
+    "pomodoro timer",
+    "time management pomodoro",
+    "focus technique",
+    "25 minute work method",
+    "pomodoro productivity",
+    "tomato timer technique",
+    "study technique pomodoro",
+    "deep focus method"
+],
+  openGraph: {
+    title,
+    description,
+    url: `https://taskmelt.com/blog/${slug}`,
+    type: "article",
+    publishedTime: publishDate,
+    authors: ["taskmelt Team"],
+    siteName: "taskmelt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@taskmelt",
+  },
+  alternates: {
+    canonical: `https://taskmelt.com/blog/${slug}`,
+  },
 };
 
+const relatedArticles = [
+  {
+    "title": "Time Blocking Guide: Master Your Schedule",
+    "slug": "time-blocking-guide",
+    "description": "Complete guide to time blocking for maximum productivity and focus."
+  },
+  {
+    "title": "Deep Work Guide: Focus in a Distracted World",
+    "slug": "deep-work-guide",
+    "description": "Learn Cal Newport's deep work principles to produce your best work."
+  },
+  {
+    "title": "Overcome Procrastination: Proven Strategies",
+    "slug": "overcome-procrastination",
+    "description": "Science-backed techniques to beat procrastination and take action."
+  },
+  {
+    "title": "Best Productivity Apps Comparison",
+    "slug": "productivity-apps-comparison",
+    "description": "Compare the top productivity apps to find your perfect tool."
+  }
+];
+
 export default function PomodoroTechnique() {
+  const articleSchema = generateArticleSchema({
+    title,
+    description,
+    publishDate,
+    slug,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    slug,
+    title,
+  });
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">← Back to Blog</Link>
         <header className="mb-12">
@@ -53,10 +128,9 @@ export default function PomodoroTechnique() {
 
           <p className="text-2xl font-bold mt-8">Try one pomodoro right now. You'll be amazed at what you accomplish.</p>
         </div>
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
-          <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">← Back to all articles</Link>
+        <RelatedArticles articles={relatedArticles} />
         </div>
-      </div>
-    </article>
+      </article>
+    </>
   );
 }

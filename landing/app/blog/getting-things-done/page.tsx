@@ -1,15 +1,90 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+
+const slug = "getting-things-done";
+const title = "Getting Things Done (GTD): Complete Guide to David Allen's System (2025)";
+const description = "Master the Getting Things Done (GTD) methodology for stress-free productivity. Complete guide to David Allen's proven system.";
+const publishDate = "2025-12-19T10:00:00Z";
 
 export const metadata: Metadata = {
-  title: "Getting Things Done (GTD): Complete Productivity System Guide",
-  description: "Master David Allen's GTD methodology. Learn the 5-step system for stress-free productivity.",
-  keywords: ["getting things done", "gtd", "david allen", "productivity system", "gtd method"],
+  title,
+  description,
+  keywords: [
+    "getting things done",
+    "GTD method",
+    "david allen gtd",
+    "gtd system",
+    "productivity system gtd",
+    "gtd workflow",
+    "getting things done book",
+    "gtd methodology",
+    "task management system"
+],
+  openGraph: {
+    title,
+    description,
+    url: `https://taskmelt.com/blog/${slug}`,
+    type: "article",
+    publishedTime: publishDate,
+    authors: ["taskmelt Team"],
+    siteName: "taskmelt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@taskmelt",
+  },
+  alternates: {
+    canonical: `https://taskmelt.com/blog/${slug}`,
+  },
 };
 
+const relatedArticles = [
+  {
+    "title": "The Brain Dump Technique: Clear Mental Clutter",
+    "slug": "brain-dump-technique-productivity",
+    "description": "Learn how to use brain dumping to reduce overwhelm and boost productivity."
+  },
+  {
+    "title": "Time Blocking Guide: Master Your Schedule",
+    "slug": "time-blocking-guide",
+    "description": "Complete guide to time blocking for maximum productivity and focus."
+  },
+  {
+    "title": "Best Productivity Apps Comparison",
+    "slug": "productivity-apps-comparison",
+    "description": "Compare the top productivity apps to find your perfect tool."
+  },
+  {
+    "title": "Build Lasting Habits That Stick",
+    "slug": "build-lasting-habits",
+    "description": "Science-based strategies to build habits that last a lifetime."
+  }
+];
+
 export default function GTD() {
+  const articleSchema = generateArticleSchema({
+    title,
+    description,
+    publishDate,
+    slug,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    slug,
+    title,
+  });
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">← Back to Blog</Link>
         <header className="mb-12">
@@ -35,8 +110,9 @@ export default function GTD() {
             <Link href="/#download" className="inline-block taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-lg font-bold">Download Free</Link>
           </div>
         </div>
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black"><Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">← Back to all articles</Link></div>
-      </div>
-    </article>
+        <RelatedArticles articles={relatedArticles} />
+        </div>
+      </article>
+    </>
   );
 }

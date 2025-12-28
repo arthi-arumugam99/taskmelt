@@ -1,15 +1,90 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+
+const slug = "overcome-procrastination";
+const title = "How to Overcome Procrastination: Science-Backed Strategies (2025)";
+const description = "Beat procrastination with proven psychological techniques. Learn why we procrastinate and how to take action immediately.";
+const publishDate = "2025-12-17T10:00:00Z";
 
 export const metadata: Metadata = {
-  title: "How to Overcome Procrastination: 15 Science-Backed Strategies That Work",
-  description: "Stop procrastinating and start taking action with these proven strategies. Learn why you procrastinate and how to fix it.",
-  keywords: ["overcome procrastination", "stop procrastinating", "procrastination tips", "beat procrastination", "productivity"],
+  title,
+  description,
+  keywords: [
+    "overcome procrastination",
+    "beat procrastination",
+    "stop procrastinating",
+    "procrastination tips",
+    "why do i procrastinate",
+    "procrastination psychology",
+    "productivity procrastination",
+    "anti-procrastination techniques",
+    "procrastination cure"
+],
+  openGraph: {
+    title,
+    description,
+    url: `https://taskmelt.com/blog/${slug}`,
+    type: "article",
+    publishedTime: publishDate,
+    authors: ["taskmelt Team"],
+    siteName: "taskmelt",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@taskmelt",
+  },
+  alternates: {
+    canonical: `https://taskmelt.com/blog/${slug}`,
+  },
 };
 
+const relatedArticles = [
+  {
+    "title": "The Pomodoro Technique Guide",
+    "slug": "pomodoro-technique",
+    "description": "Master the 25-minute focus technique used by millions."
+  },
+  {
+    "title": "Build Lasting Habits That Stick",
+    "slug": "build-lasting-habits",
+    "description": "Science-based strategies to build habits that last a lifetime."
+  },
+  {
+    "title": "Deep Work Guide: Focus in a Distracted World",
+    "slug": "deep-work-guide",
+    "description": "Learn Cal Newport's deep work principles to produce your best work."
+  },
+  {
+    "title": "Morning Routine for Peak Productivity",
+    "slug": "morning-routine-productivity",
+    "description": "Build a morning routine that sets you up for daily success."
+  }
+];
+
 export default function OvercomeProcrastination() {
+  const articleSchema = generateArticleSchema({
+    title,
+    description,
+    publishDate,
+    slug,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbSchema({
+    slug,
+    title,
+  });
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">← Back to Blog</Link>
         <header className="mb-12">
@@ -80,10 +155,9 @@ export default function OvercomeProcrastination() {
 
           <p className="text-2xl font-bold mt-8">Action beats perfection. Start messy, refine later.</p>
         </div>
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
-          <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">← Back to all articles</Link>
+        <RelatedArticles articles={relatedArticles} />
         </div>
-      </div>
-    </article>
+      </article>
+    </>
   );
 }

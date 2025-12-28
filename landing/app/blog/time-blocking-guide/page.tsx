@@ -1,15 +1,82 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import RelatedArticles from "@/components/RelatedArticles";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
-  title: "The Complete Guide to Time Blocking for Maximum Productivity | 2025",
-  description: "Master time blocking with this complete guide. Learn how to schedule your day, avoid distractions, and accomplish more in less time.",
-  keywords: ["time blocking", "time blocking method", "schedule productivity", "calendar blocking", "time management", "productivity system"],
+  title: "Time Blocking Guide: Master Your Schedule for Maximum Productivity (2025)",
+  description: "Master time blocking with this complete guide. Learn how to schedule your day, avoid distractions, and accomplish more in less time. Includes templates and examples.",
+  keywords: ["time blocking", "time blocking method", "schedule productivity", "calendar blocking", "time management", "productivity system", "time boxing"],
+  openGraph: {
+    title: "Time Blocking Guide: Master Your Schedule for Maximum Productivity",
+    description: "Master time blocking with this complete guide. Learn how to schedule your day, avoid distractions, and accomplish more in less time.",
+    url: "https://taskmelt.app/blog/time-blocking-guide",
+    siteName: "taskmelt",
+    images: [
+      {
+        url: "https://taskmelt.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Time Blocking Guide",
+      },
+    ],
+    locale: "en_US",
+    type: "article",
+    publishedTime: "2025-12-24T00:00:00Z",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Time Blocking Guide: Master Your Schedule for Maximum Productivity",
+    description: "Master time blocking to schedule your day and accomplish more in less time.",
+    images: ["https://taskmelt.app/icon.png"],
+  },
+  alternates: {
+    canonical: "https://taskmelt.app/blog/time-blocking-guide",
+  },
 };
 
 export default function TimeBlockingGuide() {
+  const articleSchema = generateArticleSchema(
+    "The Complete Guide to Time Blocking for Maximum Productivity",
+    "Master time blocking with this complete guide. Learn how to schedule your day, avoid distractions, and accomplish more in less time.",
+    "2025-12-24T00:00:00Z"
+  );
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://taskmelt.app" },
+    { name: "Blog", url: "https://taskmelt.app/blog" },
+    { name: "Time Blocking Guide", url: "https://taskmelt.app/blog/time-blocking-guide" },
+  ]);
+
+  const relatedArticles = [
+    {
+      href: "/blog/deep-work-guide",
+      title: "Deep Work: How to Focus in a Distracted World",
+      description: "Master deep work to accomplish more in less time with intense focus.",
+    },
+    {
+      href: "/blog/pomodoro-technique",
+      title: "Pomodoro Technique: The 25-Minute Productivity Method",
+      description: "Master the Pomodoro Technique for better focus and productivity.",
+    },
+    {
+      href: "/blog/brain-dump-technique-productivity",
+      title: "The Brain Dump Technique",
+      description: "Clear mental clutter and boost productivity with brain dumping.",
+    },
+    {
+      href: "/blog/morning-routine-productivity",
+      title: "The Perfect Morning Routine for Peak Productivity",
+      description: "Design a morning routine that sets you up for a productive day.",
+    },
+  ];
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">
           ← Back to Blog
@@ -143,12 +210,9 @@ export default function TimeBlockingGuide() {
           </p>
         </div>
 
-        <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
-          <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">
-            ← Back to all articles
-          </Link>
-        </div>
+        <RelatedArticles articles={relatedArticles} />
       </div>
     </article>
+    </>
   );
 }
