@@ -4,8 +4,33 @@ import { Heart, Zap, Users } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About taskmelt - Our Mission to End Productivity Overwhelm",
-  description: "Learn about taskmelt's mission to help people transform mental chaos into clarity through AI-powered task management.",
-  keywords: ["about taskmelt", "productivity app", "task management", "our mission", "company story"],
+  description: "Learn about taskmelt's mission to help people transform mental chaos into clarity through AI-powered task management. Chaos in. Clarity out.",
+  keywords: ["about taskmelt", "productivity app", "task management", "our mission", "company story", "AI task manager"],
+  openGraph: {
+    title: "About taskmelt - Our Mission to End Productivity Overwhelm",
+    description: "Learn about taskmelt's mission to help people transform mental chaos into clarity through AI-powered task management.",
+    url: "https://taskmelt.app/about",
+    siteName: "taskmelt",
+    images: [
+      {
+        url: "https://taskmelt.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "About taskmelt",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About taskmelt - Our Mission to End Productivity Overwhelm",
+    description: "Learn about taskmelt's mission to transform mental chaos into clarity.",
+    images: ["https://taskmelt.app/icon.png"],
+  },
+  alternates: {
+    canonical: "https://taskmelt.app/about",
+  },
 };
 
 export default function About() {

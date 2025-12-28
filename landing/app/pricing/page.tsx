@@ -3,9 +3,34 @@ import Link from "next/link";
 import { Check, Zap } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Pricing - taskmelt | Simple, Transparent Pricing",
-  description: "Choose the perfect plan for your productivity needs. Free forever or unlock premium features.",
-  keywords: ["taskmelt pricing", "productivity app pricing", "task management pricing", "free productivity app"],
+  title: "Pricing - taskmelt | Simple, Transparent Pricing for AI Task Management",
+  description: "Choose the perfect plan for your productivity needs. Start free with taskmelt's AI task manager. Upgrade anytime for unlimited features.",
+  keywords: ["taskmelt pricing", "productivity app pricing", "task management pricing", "free productivity app", "AI task manager pricing"],
+  openGraph: {
+    title: "taskmelt Pricing | Simple, Transparent Plans",
+    description: "Start free with taskmelt's AI task manager. Upgrade anytime for unlimited features.",
+    url: "https://taskmelt.app/pricing",
+    siteName: "taskmelt",
+    images: [
+      {
+        url: "https://taskmelt.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "taskmelt Pricing",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "taskmelt Pricing | Simple, Transparent Plans",
+    description: "Start free with taskmelt's AI task manager. Upgrade anytime for unlimited features.",
+    images: ["https://taskmelt.app/icon.png"],
+  },
+  alternates: {
+    canonical: "https://taskmelt.app/pricing",
+  },
 };
 
 export default function Pricing() {

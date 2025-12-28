@@ -1,15 +1,58 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import StructuredData from "@/components/StructuredData";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
-  title: "The Brain Dump Technique: How to Clear Mental Clutter and Boost Productivity",
-  description: "Learn the brain dump technique to reduce overwhelm, clear mental clutter, and dramatically increase your productivity. Complete guide with examples.",
-  keywords: ["brain dump", "brain dump technique", "mental clutter", "productivity tips", "reduce overwhelm", "clear your mind", "thought dumping"],
+  title: "Brain Dump Technique: Clear Mental Clutter & Boost Productivity (2025 Guide)",
+  description: "Learn the brain dump technique to reduce overwhelm, clear mental clutter, and dramatically increase your productivity. Complete guide with examples and science-backed strategies.",
+  keywords: ["brain dump", "brain dump technique", "mental clutter", "productivity tips", "reduce overwhelm", "clear your mind", "thought dumping", "brain dump app"],
+  openGraph: {
+    title: "Brain Dump Technique: Clear Mental Clutter & Boost Productivity",
+    description: "Learn the brain dump technique to reduce overwhelm, clear mental clutter, and dramatically increase your productivity. Complete guide with examples.",
+    url: "https://taskmelt.app/blog/brain-dump-technique-productivity",
+    siteName: "taskmelt",
+    images: [
+      {
+        url: "https://taskmelt.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Brain Dump Technique Guide",
+      },
+    ],
+    locale: "en_US",
+    type: "article",
+    publishedTime: "2025-12-25T00:00:00Z",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Brain Dump Technique: Clear Mental Clutter & Boost Productivity",
+    description: "Learn the brain dump technique to reduce overwhelm and boost productivity. Complete guide with examples.",
+    images: ["https://taskmelt.app/icon.png"],
+  },
+  alternates: {
+    canonical: "https://taskmelt.app/blog/brain-dump-technique-productivity",
+  },
 };
 
 export default function BrainDumpArticle() {
+  const articleSchema = generateArticleSchema(
+    "The Brain Dump Technique: How to Clear Mental Clutter and Boost Productivity",
+    "Learn the brain dump technique to reduce overwhelm, clear mental clutter, and dramatically increase your productivity. Complete guide with examples.",
+    "2025-12-25T00:00:00Z"
+  );
+
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://taskmelt.app" },
+    { name: "Blog", url: "https://taskmelt.app/blog" },
+    { name: "Brain Dump Technique", url: "https://taskmelt.app/blog/brain-dump-technique-productivity" },
+  ]);
+
   return (
-    <article className="min-h-screen py-20 px-6">
+    <>
+      <StructuredData data={articleSchema} />
+      <StructuredData data={breadcrumbSchema} />
+      <article className="min-h-screen py-20 px-6">
       <div className="max-w-4xl mx-auto">
         <Link href="/blog" className="text-taskmelt-gray hover:text-taskmelt-black mb-8 inline-block">
           ← Back to Blog
@@ -239,11 +282,31 @@ export default function BrainDumpArticle() {
         </div>
 
         <div className="mt-16 pt-8 border-t-4 border-taskmelt-black">
+          <h2 className="text-3xl font-black mb-6">Related Articles</h2>
+          <div className="grid gap-6 md:grid-cols-2 mb-12">
+            <Link href="/blog/getting-things-done" className="taskmelt-border p-6 hover:bg-taskmelt-peach transition-colors">
+              <h3 className="text-xl font-bold mb-2">Getting Things Done (GTD) Method</h3>
+              <p className="text-taskmelt-gray">Master David Allen's GTD system for ultimate productivity and stress-free work.</p>
+            </Link>
+            <Link href="/blog/time-blocking-guide" className="taskmelt-border p-6 hover:bg-taskmelt-peach transition-colors">
+              <h3 className="text-xl font-bold mb-2">Complete Time Blocking Guide</h3>
+              <p className="text-taskmelt-gray">Learn how to structure your day with time blocking for maximum focus and productivity.</p>
+            </Link>
+            <Link href="/blog/overcome-procrastination" className="taskmelt-border p-6 hover:bg-taskmelt-peach transition-colors">
+              <h3 className="text-xl font-bold mb-2">How to Overcome Procrastination</h3>
+              <p className="text-taskmelt-gray">Science-backed strategies to beat procrastination and start taking action.</p>
+            </Link>
+            <Link href="/blog/productivity-apps-comparison" className="taskmelt-border p-6 hover:bg-taskmelt-peach transition-colors">
+              <h3 className="text-xl font-bold mb-2">Best Productivity Apps Compared</h3>
+              <p className="text-taskmelt-gray">Compare top productivity apps to find the perfect tool for your workflow.</p>
+            </Link>
+          </div>
           <Link href="/blog" className="text-taskmelt-black font-bold text-lg hover:underline">
             ← Back to all articles
           </Link>
         </div>
       </div>
     </article>
+    </>
   );
 }

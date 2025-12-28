@@ -3,9 +3,34 @@ import Link from "next/link";
 import { Calendar, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Productivity Blog - taskmelt | Tips, Guides & Best Practices",
-  description: "Learn productivity tips, time management strategies, and how to build better habits with expert guides from taskmelt.",
-  keywords: ["productivity tips", "time management", "habit building", "task management", "productivity hacks", "getting things done"],
+  title: "Productivity Blog - taskmelt | Expert Tips, Guides & Strategies (2025)",
+  description: "Learn productivity tips, time management strategies, and how to build better habits with expert guides from taskmelt. Master GTD, Pomodoro, brain dumps, and more.",
+  keywords: ["productivity tips", "time management", "habit building", "task management", "productivity hacks", "getting things done", "brain dump", "pomodoro technique", "deep work"],
+  openGraph: {
+    title: "Productivity Blog - taskmelt | Expert Tips & Guides",
+    description: "Learn productivity tips, time management strategies, and how to build better habits with expert guides from taskmelt.",
+    url: "https://taskmelt.app/blog",
+    siteName: "taskmelt",
+    images: [
+      {
+        url: "https://taskmelt.app/icon.png",
+        width: 512,
+        height: 512,
+        alt: "taskmelt Productivity Blog",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Productivity Blog - taskmelt | Expert Tips & Guides",
+    description: "Master productivity with expert guides on GTD, Pomodoro, brain dumps, and more.",
+    images: ["https://taskmelt.app/icon.png"],
+  },
+  alternates: {
+    canonical: "https://taskmelt.app/blog",
+  },
 };
 
 const blogPosts = [
