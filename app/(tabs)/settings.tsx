@@ -21,6 +21,7 @@ import {
   LogOut,
   LogIn,
   Calendar as CalendarIcon,
+  Mail,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -159,6 +160,15 @@ export default function SettingsScreen() {
   const handleCalendarSync = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCalendarModalVisible(true);
+  }, []);
+
+  const handleSupport = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      'Support',
+      'For support, please email us at:\n\njunomobileapplications@gmail.com',
+      [{ text: 'OK' }]
+    );
   }, []);
 
   const totalTasks = dumps.reduce((acc, dump) => {
@@ -355,6 +365,12 @@ export default function SettingsScreen() {
               title="Rate the App"
               subtitle="Help us improve"
               onPress={handleRateApp}
+            />
+            <SettingRow
+              icon={<Mail size={20} color={Colors.primary} />}
+              title="Support"
+              subtitle="Get help via email"
+              onPress={handleSupport}
             />
           </View>
         </View>
