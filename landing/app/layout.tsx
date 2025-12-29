@@ -9,12 +9,11 @@ export const metadata: Metadata = {
   authors: [{ name: "taskmelt" }],
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.png", sizes: "512x512", type: "image/png" }
+      { url: "/favicon.ico", sizes: "any" }
     ],
-    shortcut: "/favicon.ico",
-    apple: "/icon.png",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
   openGraph: {
     title: "taskmelt - Chaos in. Clarity out.",
