@@ -8,8 +8,11 @@ export const metadata: Metadata = {
   keywords: ["productivity", "task management", "habit tracker", "brain dump", "AI tasks", "mental clarity"],
   authors: [{ name: "taskmelt" }],
   icons: {
-    icon: "/icon.png",
-    shortcut: "/icon.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" }
+    ],
+    shortcut: "/favicon.svg",
     apple: "/icon.png",
   },
   openGraph: {

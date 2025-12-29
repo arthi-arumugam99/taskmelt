@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background circle for better contrast in tabs -->
+  <circle cx="32" cy="32" r="32" fill="#2D3748"/>
+
+  <!-- Simplified checkmark - the core brand element -->
+  <path d="M20 32 L28 40 L44 24"
+        stroke="#A0E8D8"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Single swoosh/flow element - simplified -->
+  <path d="M18 48 Q28 46 38 48 Q48 50 54 46"
+        stroke="#E8F3F1"
+        stroke-width="3"
+        stroke-linecap="round"
+        fill="none"
+        opacity="0.7"/>
+</svg>
