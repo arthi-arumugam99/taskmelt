@@ -68,17 +68,17 @@ const relatedArticles = [
 ];
 
 export default function ProductivityAppsComparison() {
-  const articleSchema = generateArticleSchema({
+  const articleSchema = generateArticleSchema(
     title,
     description,
-    publishDate,
-    slug,
-  });
+    publishDate
+  );
 
-  const breadcrumbSchema = generateBreadcrumbSchema({
-    slug,
-    title,
-  });
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: "Home", url: "https://taskmelt.app" },
+    { name: "Blog", url: "https://taskmelt.app/blog" },
+    { name: "Productivity Apps Comparison", url: `https://taskmelt.app/blog/${slug}` },
+  ]);
 
   return (
     <>
