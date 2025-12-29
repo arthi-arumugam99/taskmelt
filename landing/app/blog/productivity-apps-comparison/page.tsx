@@ -46,24 +46,24 @@ export const metadata: Metadata = {
 
 const relatedArticles = [
   {
-    "title": "The Brain Dump Technique: Clear Mental Clutter",
-    "slug": "brain-dump-technique-productivity",
-    "description": "Learn how to use brain dumping to reduce overwhelm and boost productivity."
+    href: "/blog/brain-dump-technique-productivity",
+    title: "The Brain Dump Technique: Clear Mental Clutter",
+    description: "Learn how to use brain dumping to reduce overwhelm and boost productivity."
   },
   {
-    "title": "Time Blocking Guide: Master Your Schedule",
-    "slug": "time-blocking-guide",
-    "description": "Complete guide to time blocking for maximum productivity and focus."
+    href: "/blog/time-blocking-guide",
+    title: "Time Blocking Guide: Master Your Schedule",
+    description: "Complete guide to time blocking for maximum productivity and focus."
   },
   {
-    "title": "Getting Things Done (GTD) System Explained",
-    "slug": "getting-things-done",
-    "description": "Master David Allen's GTD methodology for stress-free productivity."
+    href: "/blog/getting-things-done",
+    title: "Getting Things Done (GTD) System Explained",
+    description: "Master David Allen's GTD methodology for stress-free productivity."
   },
   {
-    "title": "Deep Work Guide: Focus in a Distracted World",
-    "slug": "deep-work-guide",
-    "description": "Learn Cal Newport's deep work principles to produce your best work."
+    href: "/blog/deep-work-guide",
+    title: "Deep Work Guide: Focus in a Distracted World",
+    description: "Learn Cal Newport's deep work principles to produce your best work."
   }
 ];
 
