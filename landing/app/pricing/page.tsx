@@ -146,10 +146,10 @@ export default function Pricing() {
               href="#download"
               className="block w-full text-center taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-xl font-bold hover:bg-opacity-90 transition-all taskmelt-shadow"
             >
-              Start Free Trial
+              Get Pro
             </a>
             <p className="text-center text-sm text-taskmelt-gray mt-4">
-              7-day free trial. Cancel anytime.
+              Subscribe in-app after download
             </p>
           </div>
         </div>
@@ -176,7 +176,21 @@ export default function Pricing() {
             <div className="taskmelt-border bg-beige-light p-6">
               <h3 className="text-xl font-bold mb-2">What payment methods do you accept?</h3>
               <p className="text-taskmelt-gray">
-                All payments through App Store or Google Play. We accept credit cards, PayPal, and more.
+                All subscriptions are processed securely through the App Store (iOS) or Google Play Store (Android). We accept all payment methods supported by these platforms including credit/debit cards, UPI, net banking, and wallets.
+              </p>
+            </div>
+
+            <div className="taskmelt-border bg-beige-light p-6">
+              <h3 className="text-xl font-bold mb-2">How do I subscribe to Pro?</h3>
+              <p className="text-taskmelt-gray">
+                Download the taskmelt app, then tap "Upgrade to Pro" within the app. Your subscription will be managed through your App Store or Google Play account.
+              </p>
+            </div>
+
+            <div className="taskmelt-border bg-beige-light p-6">
+              <h3 className="text-xl font-bold mb-2">Can I manage my subscription?</h3>
+              <p className="text-taskmelt-gray">
+                Yes! Manage your subscription anytime in your App Store or Google Play settings. Cancel, upgrade, or change your plan with just a few taps.
               </p>
             </div>
           </div>

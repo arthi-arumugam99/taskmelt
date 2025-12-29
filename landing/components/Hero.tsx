@@ -49,15 +49,32 @@ export default function Hero() {
         </motion.p>
 
         {/* CTA Button */}
-        <motion.a
-          href="#download"
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="inline-block taskmelt-border bg-taskmelt-peach px-12 py-6 text-xl md:text-2xl font-bold hover:bg-opacity-90 transition-all hover:scale-105 taskmelt-shadow"
+          className="flex flex-col items-center gap-4"
         >
-          Download for iPhone
-        </motion.a>
+          <a
+            href="#download"
+            className="inline-block taskmelt-border bg-taskmelt-peach px-12 py-6 text-xl md:text-2xl font-bold hover:bg-opacity-90 transition-all hover:scale-105 taskmelt-shadow"
+          >
+            Download Free
+          </a>
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-taskmelt-gray">
+            <span className="flex items-center gap-2">
+              ✓ Free features included
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span className="flex items-center gap-2">
+              ✓ No credit card required
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span className="flex items-center gap-2">
+              ✓ 10,000+ happy users
+            </span>
+          </div>
+        </motion.div>
 
         {/* Phone Mockup */}
         <motion.div

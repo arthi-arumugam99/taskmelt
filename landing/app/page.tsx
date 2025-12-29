@@ -1,6 +1,11 @@
 import Hero from "@/components/Hero";
+import TrustSignals from "@/components/TrustSignals";
+import BeforeAfter from "@/components/BeforeAfter";
+import HowItWorks from "@/components/HowItWorks";
 import Features from "@/components/Features";
 import Screenshots from "@/components/Screenshots";
+import Gamification from "@/components/Gamification";
+import Transformations from "@/components/Transformations";
 import SocialProof from "@/components/SocialProof";
 import Download from "@/components/Download";
 import FAQ from "@/components/FAQ";
@@ -85,8 +90,13 @@ export default function Home() {
       <StructuredData data={faqSchema} />
       <main className="overflow-x-hidden">
         <Hero />
+        <TrustSignals />
+        <BeforeAfter />
+        <HowItWorks />
         <Features />
         <Screenshots />
+        <Gamification />
+        <Transformations />
         <SocialProof />
         <FAQ />
         <Download />
