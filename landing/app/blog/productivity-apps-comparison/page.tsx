@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import StructuredData from "@/components/StructuredData";
 import RelatedArticles from "@/components/RelatedArticles";
-import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/schemas";
+import { generateArticleSchema, generateBreadcrumbSchema } from "@/lib/structured-data";
 
 const slug = "productivity-apps-comparison";
 const title = "Best Productivity Apps in 2025: Complete Comparison Guide";
