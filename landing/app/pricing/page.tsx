@@ -100,7 +100,7 @@ export default function Pricing() {
 
             <h2 className="text-3xl font-black mb-4">Pro</h2>
             <div className="mb-6">
-              <span className="text-5xl font-black">$6.99</span>
+              <span className="text-5xl font-black">$4.99</span>
               <span className="text-2xl text-taskmelt-gray">/month</span>
             </div>
             <p className="text-lg text-taskmelt-gray mb-8">

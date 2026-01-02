@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,9 @@ import * as Haptics from 'expo-haptics';
 import { PurchasesPackage } from 'react-native-purchases';
 import Colors from '@/constants/colors';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
+
+const TERMS_URL = 'https://taskmelt.app/terms';
+const PRIVACY_URL = 'https://taskmelt.app/privacy';
 
 type PlanType = 'monthly' | 'yearly' | 'lifetime';
 
@@ -172,6 +176,14 @@ export default function PaywallScreen() {
     }
   }, [restorePurchases]);
 
+  const handleOpenTerms = useCallback(() => {
+    Linking.openURL(TERMS_URL);
+  }, []);
+
+  const handleOpenPrivacy = useCallback(() => {
+    Linking.openURL(PRIVACY_URL);
+  }, []);
+
   const formatPrice = (pkg: PurchasesPackage | undefined, fallback: string): string => {
     return fallback;
   };
@@ -227,7 +239,7 @@ export default function PaywallScreen() {
             {(yearlyPackage || allPackages.length === 0) && (
               <PricingCard
                 title="Yearly"
-                price={formatPrice(yearlyPackage, '$69.99')}
+                price={formatPrice(yearlyPackage, '$49.99')}
                 period="/year"
                 savings="Save 17%"
                 isSelected={selectedPlan === 'yearly'}
@@ -239,7 +251,7 @@ export default function PaywallScreen() {
             {(monthlyPackage || allPackages.length === 0) && (
               <PricingCard
                 title="Monthly"
-                price={formatPrice(monthlyPackage, '$6.99')}
+                price={formatPrice(monthlyPackage, '$4.99')}
                 period="/month"
                 isSelected={selectedPlan === 'monthly'}
                 onSelect={() => handleSelectPlan('monthly')}
@@ -289,8 +301,18 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          Cancel anytime. Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date.
+          Cancel anytime. Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date. Payment will be charged to your Apple ID account.
         </Text>
+
+        <View style={styles.legalLinks}>
+          <TouchableOpacity onPress={handleOpenTerms}>
+            <Text style={styles.legalLink}>Terms of Use</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalSeparator}>•</Text>
+          <TouchableOpacity onPress={handleOpenPrivacy}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -520,5 +542,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 16,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  legalLink: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '500' as const,
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 });

@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -21,6 +22,8 @@ import {
   LogOut,
   LogIn,
   Calendar as CalendarIcon,
+  FileText,
+  Shield,
   Mail,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -29,6 +32,9 @@ import { useDumps } from '@/contexts/DumpContext';
 import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import CalendarSyncModal from '@/components/CalendarSyncModal';
+
+const TERMS_URL = 'https://taskmelt.app/terms';
+const PRIVACY_URL = 'https://taskmelt.app/privacy';
 
 interface SettingRowProps {
   icon: React.ReactNode;
@@ -162,6 +168,16 @@ export default function SettingsScreen() {
     setCalendarModalVisible(true);
   }, []);
 
+  const handleTerms = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(TERMS_URL);
+  }, []);
+
+  const handlePrivacy = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(PRIVACY_URL);
+  }, []);
+
   const handleSupport = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
@@ -266,7 +282,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.proTextContainer}>
                 <Text style={styles.proTitle}>Upgrade to Pro</Text>
-                <Text style={styles.proSubtitle}>From $6.99/mo • Unlimited dumps</Text>
+                <Text style={styles.proSubtitle}>From $4.99/mo • Unlimited dumps</Text>
               </View>
               <ChevronRight size={20} color="#FFFFFF" />
             </View>
@@ -338,7 +354,7 @@ export default function SettingsScreen() {
               <SettingRow
                 icon={<Crown size={20} color={Colors.primary} />}
                 title="Upgrade to Pro"
-                subtitle="From $6.99/mo • $69.99/yr • $99.99 lifetime"
+                subtitle="From $4.99/mo • $49.99/yr • $99.99 lifetime"
                 onPress={handleUpgrade}
               />
             )}
@@ -383,6 +399,24 @@ export default function SettingsScreen() {
               title="Sync Calendar Events"
               subtitle="Import meetings and events as tasks"
               onPress={handleCalendarSync}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal</Text>
+          <View style={styles.sectionContent}>
+            <SettingRow
+              icon={<FileText size={20} color={Colors.primary} />}
+              title="Terms of Use"
+              subtitle="Read our terms and conditions"
+              onPress={handleTerms}
+            />
+            <SettingRow
+              icon={<Shield size={20} color={Colors.primary} />}
+              title="Privacy Policy"
+              subtitle="How we protect your data"
+              onPress={handlePrivacy}
             />
           </View>
         </View>
