@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Apple, Smartphone } from "lucide-react";
+import { Apple } from "lucide-react";
 
 export default function Download() {
   return (
@@ -24,27 +24,18 @@ export default function Download() {
             overwhelm into organized clarity
           </p>
 
-          {/* Download Buttons */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-12">
-            <motion.a
-              href="#download-ios"
+          {/* Download Button */}
+          <div className="flex flex-col gap-6 justify-center items-center mb-12">
+            <motion.div
               whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="taskmelt-border bg-taskmelt-black text-white px-10 py-6 text-xl font-bold flex items-center gap-3 hover:bg-opacity-90 transition-all taskmelt-shadow"
+              className="taskmelt-border bg-taskmelt-black text-white px-10 py-6 text-xl font-bold flex items-center gap-3 taskmelt-shadow"
             >
               <Apple className="w-8 h-8" />
-              Download for iPhone
-            </motion.a>
-
-            <motion.a
-              href="#download-android"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="taskmelt-border bg-white px-10 py-6 text-xl font-bold flex items-center gap-3 hover:bg-opacity-90 transition-all taskmelt-shadow"
-            >
-              <Smartphone className="w-8 h-8" />
-              Download for Android
-            </motion.a>
+              Coming Soon to App Store
+            </motion.div>
+            <p className="text-taskmelt-gray text-sm">
+              Available exclusively on iPhone
+            </p>
           </div>
 
           <p className="text-lg text-taskmelt-gray">

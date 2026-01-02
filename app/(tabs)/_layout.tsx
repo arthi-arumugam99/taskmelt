@@ -23,7 +23,7 @@ export default function TabLayout() {
           elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '700' as const,
           marginTop: 4,
         },
@@ -32,7 +32,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="dump"
         options={{
-          title: "Brain",
+          title: "Dump",
           tabBarIcon: ({ color, size }) => <Brain color={color} size={size} />,
         }}
       />
@@ -46,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tracker"
         options={{
-          title: "Tracker",
+          title: "Habits",
           tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />

@@ -139,7 +139,7 @@ export default function CalendarSyncModal({ visible, onClose }: CalendarSyncModa
               {step === 'calendars' ? 'Select Calendars' : step === 'events' ? 'Select Events' : 'Confirm Import'}
             </Text>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
             <X size={24} color={Colors.text} />
           </TouchableOpacity>
         </View>
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   closeButton: {
-    padding: 4,
+    padding: 12,
   },
   infoCard: {
     backgroundColor: Colors.accent1,
