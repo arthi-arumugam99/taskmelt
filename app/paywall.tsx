@@ -101,6 +101,8 @@ export default function PaywallScreen() {
     isRestoring,
     isLoading,
     allPackages,
+    error,
+    isInitialized,
   } = useRevenueCat();
 
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('yearly');
@@ -185,6 +187,9 @@ export default function PaywallScreen() {
   }, []);
 
   const formatPrice = (pkg: PurchasesPackage | undefined, fallback: string): string => {
+    if (pkg?.product?.priceString) {
+      return pkg.product.priceString;
+    }
     return fallback;
   };
 
@@ -234,9 +239,22 @@ export default function PaywallScreen() {
             <ActivityIndicator size="large" color={Colors.primary} />
             <Text style={styles.loadingText}>Loading plans...</Text>
           </View>
+        ) : error || (isInitialized && allPackages.length === 0) ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorTitle}>Unable to Load Plans</Text>
+            <Text style={styles.errorText}>
+              {error || 'Subscription plans are temporarily unavailable. Please try again later.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={handleClose}
+            >
+              <Text style={styles.retryButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={styles.pricingSection}>
-            {(yearlyPackage || allPackages.length === 0) && (
+            {yearlyPackage && (
               <PricingCard
                 title="Yearly"
                 price={formatPrice(yearlyPackage, '$49.99')}
@@ -248,7 +266,7 @@ export default function PaywallScreen() {
               />
             )}
 
-            {(monthlyPackage || allPackages.length === 0) && (
+            {monthlyPackage && (
               <PricingCard
                 title="Monthly"
                 price={formatPrice(monthlyPackage, '$4.99')}
@@ -258,7 +276,7 @@ export default function PaywallScreen() {
               />
             )}
 
-            {(lifetimePackage || allPackages.length === 0) && (
+            {lifetimePackage && (
               <PricingCard
                 title="Lifetime"
                 price={formatPrice(lifetimePackage, '$99.99')}
@@ -412,6 +430,37 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  retryButtonText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
   },
   pricingSection: {
     gap: 12,
