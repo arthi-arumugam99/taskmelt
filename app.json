@@ -17,12 +17,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.taskmelt",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar",
-        "NSRemindersUsageDescription": "Allow $(PRODUCT_NAME) to access your reminders"
+        "NSMicrophoneUsageDescription": "TaskMelt uses the microphone to convert your voice into tasks. For example, you can say 'Buy groceries tomorrow at 5pm' to quickly create a task without typing.",
+        "NSCalendarsUsageDescription": "TaskMelt accesses your calendar to sync tasks with your schedule and help you plan your day effectively.",
+        "NSRemindersUsageDescription": "TaskMelt accesses your reminders to import existing items and keep everything in one place."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -63,7 +60,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+          "microphonePermission": "TaskMelt uses the microphone to convert your voice into tasks. For example, you can say 'Buy groceries tomorrow at 5pm' to quickly create a task without typing."
         }
       ],
       [
@@ -78,7 +75,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "The app needs to access your calendar."
+          "calendarPermission": "TaskMelt accesses your calendar to sync tasks with your schedule and help you plan your day effectively."
         }
       ]
     ],
