@@ -15,9 +15,6 @@ import {
   Info,
   Heart,
   Sparkles,
-  Crown,
-  RefreshCw,
-  ChevronRight,
   User,
   LogOut,
   LogIn,
@@ -29,7 +26,6 @@ import {
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
-import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import CalendarSyncModal from '@/components/CalendarSyncModal';
 
@@ -63,12 +59,6 @@ function SettingRow({ icon, title, subtitle, onPress, destructive }: SettingRowP
 export default function SettingsScreen() {
   const router = useRouter();
   const { dumps, clearAll } = useDumps();
-  const {
-    isProUser,
-    customerInfo,
-    restorePurchases,
-    isRestoring,
-  } = useRevenueCat();
   const { user, isAuthenticated, signOut, isSigningOut } = useAuth();
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
@@ -109,31 +99,7 @@ export default function SettingsScreen() {
     );
   }, []);
 
-  const handleUpgrade = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/paywall' as any);
-  }, [router]);
-
-  const handleRestorePurchases = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    try {
-      await restorePurchases();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Success', 'Your purchases have been restored.');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to restore purchases';
-      Alert.alert('Restore Failed', message);
-    }
-  }, [restorePurchases]);
-
-  const handleManageSubscription = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      'Manage Subscription',
-      'To manage your subscription, go to Settings > Apple ID > Subscriptions on your device.',
-      [{ text: 'OK' }]
-    );
-  }, []);
+  
 
   const handleSignIn = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -270,40 +236,7 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {!isProUser ? (
-          <TouchableOpacity
-            style={styles.proCard}
-            onPress={handleUpgrade}
-            activeOpacity={0.8}
-          >
-            <View style={styles.proCardContent}>
-              <View style={styles.proIconContainer}>
-                <Crown size={24} color="#FFFFFF" />
-              </View>
-              <View style={styles.proTextContainer}>
-                <Text style={styles.proTitle}>Upgrade to Pro</Text>
-                <Text style={styles.proSubtitle}>From $4.99/mo • Unlimited dumps</Text>
-              </View>
-              <ChevronRight size={20} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.proActiveCard}>
-            <View style={styles.proActiveContent}>
-              <View style={styles.proActiveIconContainer}>
-                <Crown size={20} color={Colors.primary} />
-              </View>
-              <View style={styles.proActiveTextContainer}>
-                <Text style={styles.proActiveTitle}>task<Text style={styles.proActiveTitleItalic}>melt</Text> Pro</Text>
-                <Text style={styles.proActiveSubtitle}>
-                  {customerInfo?.activeSubscriptions?.length
-                    ? 'Active subscription'
-                    : 'Lifetime access'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+        
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -340,32 +273,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subscription</Text>
-          <View style={styles.sectionContent}>
-            {isProUser ? (
-              <SettingRow
-                icon={<Crown size={20} color={Colors.primary} />}
-                title="Manage Subscription"
-                subtitle="View or cancel your subscription"
-                onPress={handleManageSubscription}
-              />
-            ) : (
-              <SettingRow
-                icon={<Crown size={20} color={Colors.primary} />}
-                title="Upgrade to Pro"
-                subtitle="From $4.99/mo • $49.99/yr • $99.99 lifetime"
-                onPress={handleUpgrade}
-              />
-            )}
-            <SettingRow
-              icon={<RefreshCw size={20} color={Colors.primary} />}
-              title={isRestoring ? 'Restoring...' : 'Restore Purchases'}
-              subtitle="Restore previous purchases"
-              onPress={handleRestorePurchases}
-            />
-          </View>
-        </View>
+        
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
@@ -633,92 +541,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontStyle: 'italic',
   },
-  proCard: {
-    backgroundColor: Colors.accent1Dark,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 3,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  proCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  proIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    borderWidth: 2,
-    borderColor: Colors.border,
-  },
-  proTextContainer: {
-    flex: 1,
-  },
-  proTitle: {
-    fontSize: 17,
-    fontWeight: '800' as const,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  proSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: '600' as const,
-  },
-  proActiveCard: {
-    backgroundColor: Colors.accent5,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 3,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  proActiveContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  proActiveIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: Colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: Colors.border,
-  },
-  proActiveTextContainer: {
-    flex: 1,
-  },
-  proActiveTitle: {
-    fontSize: 16,
-    fontWeight: '800' as const,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  proActiveTitleItalic: {
-    fontStyle: 'italic' as const,
-  },
-  proActiveSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
+  
   accountInfo: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -19,7 +19,6 @@ import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
-import { useRevenueCat } from '@/contexts/RevenueCatContext';
 import { useRouter } from 'expo-router';
 import { DumpSession, Category } from '@/types/dump';
 

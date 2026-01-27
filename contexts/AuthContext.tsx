@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { Session, User } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import Purchases from 'react-native-purchases';
 import { supabase } from '@/lib/supabase';
 
 interface AuthState {
@@ -49,41 +48,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     isLoading: true,
     isInitialized: false,
   });
-  const isIdentifyingRef = useRef(false);
-  const lastIdentifiedUserIdRef = useRef<string | null>(null);
   const isHandlingDeepLinkRef = useRef(false);
-
-  const identifyWithRevenueCat = useCallback(async (userId: string, email?: string | null) => {
-    if (isIdentifyingRef.current || lastIdentifiedUserIdRef.current === userId) {
-      console.log('RevenueCat: Skipping identification (already in progress or completed):', userId);
-      return;
-    }
-
-    try {
-      isIdentifyingRef.current = true;
-      console.log('RevenueCat: Identifying user:', userId);
-      await Purchases.logIn(userId);
-      
-      if (email) {
-        try {
-          await Purchases.setEmail(email);
-        } catch (emailError: any) {
-          if (emailError?.code === 16 || emailError?.message?.includes('another request in flight')) {
-            console.log('RevenueCat: setEmail skipped (concurrent request):', emailError.message);
-          } else {
-            throw emailError;
-          }
-        }
-      }
-      
-      lastIdentifiedUserIdRef.current = userId;
-      console.log('RevenueCat: User identified successfully');
-    } catch (error) {
-      console.log('RevenueCat: Identify error:', error);
-    } finally {
-      isIdentifyingRef.current = false;
-    }
-  }, []);
 
   const handleAuthDeepLink = useCallback(async (url: string) => {
     if (!supabase || isHandlingDeepLinkRef.current) {
@@ -153,9 +118,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isInitialized: true,
       });
 
-      if (session?.user && Platform.OS !== 'web') {
-        identifyWithRevenueCat(session.user.id, session.user.email);
-      }
+      
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -168,24 +131,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isLoading: false,
         }));
 
-        if (session?.user && Platform.OS !== 'web') {
-          identifyWithRevenueCat(session.user.id, session.user.email);
-        } else if (!session && Platform.OS !== 'web') {
-          try {
-            lastIdentifiedUserIdRef.current = null;
-            await Purchases.logOut();
-            console.log('RevenueCat: Logged out');
-          } catch (error) {
-            console.log('RevenueCat: Logout error (may be anonymous):', error);
-          }
-        }
+        
 
         queryClient.invalidateQueries({ queryKey: ['customerInfo'] });
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [queryClient, identifyWithRevenueCat]);
+  }, [queryClient]);
 
   const signUpMutation = useMutation({
     mutationFn: async ({ email, password, name }: { email: string; password: string; name?: string }) => {
