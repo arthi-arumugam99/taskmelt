@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, Check, Sparkles, Crown, Zap, Shield } from 'lucide-react-native';
+import { Check, Sparkles, Crown, Zap, Shield } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { PurchasesPackage } from 'react-native-purchases';
 import Colors from '@/constants/colors';
@@ -25,9 +25,9 @@ type PlanType = 'monthly' | 'yearly' | 'lifetime';
 
 const FEATURES = [
   { icon: Zap, text: 'Unlimited brain dumps' },
-  { icon: Sparkles, text: 'Unlimited AI organization' },
+  { icon: Sparkles, text: '3 AI processing per day' },
   { icon: Crown, text: 'One-time payment, yours forever' },
-  { icon: Shield, text: 'Support development' },
+  { icon: Shield, text: 'Calendar sync & reminders' },
 ];
 
 interface PricingCardProps {
@@ -105,7 +105,9 @@ export default function PaywallScreen() {
 
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    }
   }, [router]);
 
 
@@ -132,9 +134,9 @@ export default function PaywallScreen() {
       await purchasePackage(pkg);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        'Welcome to Pro!',
-        'Thank you for your purchase! You now have unlimited AI processing.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        'Welcome to taskmelt!',
+        'Thank you for your purchase! You can now start organizing your thoughts.',
+        [{ text: 'Start Dumping', onPress: () => router.replace('/(tabs)/dump' as any) }]
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Purchase failed';
@@ -181,15 +183,7 @@ export default function PaywallScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={handleClose}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <X size={24} color={Colors.text} />
-        </TouchableOpacity>
-      </View>
+      <View style={styles.header} />
 
       <ScrollView
         style={styles.scrollView}
@@ -200,9 +194,9 @@ export default function PaywallScreen() {
           <View style={styles.iconContainer}>
             <Crown size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>task<Text style={styles.heroTitleItalic}>melt</Text> Pro</Text>
+          <Text style={styles.heroTitle}>task<Text style={styles.heroTitleItalic}>melt</Text></Text>
           <Text style={styles.heroSubtitle}>
-            Get unlimited AI processing with a one-time purchase
+            Transform chaos into clarity with one simple payment
           </Text>
         </View>
 
@@ -245,7 +239,7 @@ export default function PaywallScreen() {
                 </Text>
                 <Text style={styles.singlePriceLabel}>One-time purchase</Text>
                 <Text style={styles.singlePriceSubtext}>
-                  Pay once, unlimited AI processing forever
+                  Pay once, use forever. 3 AI processing daily.
                 </Text>
               </View>
             ) : (
@@ -253,7 +247,7 @@ export default function PaywallScreen() {
                 <Text style={styles.singlePriceAmount}>$6.99</Text>
                 <Text style={styles.singlePriceLabel}>One-time purchase</Text>
                 <Text style={styles.singlePriceSubtext}>
-                  Pay once, unlimited AI processing forever
+                  Pay once, use forever. 3 AI processing daily.
                 </Text>
               </View>
             )}
@@ -272,7 +266,7 @@ export default function PaywallScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.purchaseButtonText}>
-              Get Pro for {formatPrice(lifetimePackage, '$6.99')}
+              Get taskmelt for {formatPrice(lifetimePackage, '$6.99')}
             </Text>
           )}
         </TouchableOpacity>
@@ -290,7 +284,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          One-time purchase. No subscriptions, no recurring charges. Payment will be charged to your Apple ID account.
+          One-time purchase. No subscriptions, no recurring charges. 3 AI processing per day to keep costs sustainable. Payment will be charged to your Apple ID account.
         </Text>
 
         <View style={styles.legalLinks}>

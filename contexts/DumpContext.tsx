@@ -10,7 +10,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 const STORAGE_KEY = 'taskmelt_dumps';
 const DAILY_AI_COUNT_KEY = 'taskmelt_daily_ai_count';
 const DAILY_AI_DATE_KEY = 'taskmelt_daily_ai_date';
-const FREE_USER_DAILY_AI_LIMIT = 3;
+const DAILY_AI_LIMIT = 3;
 
 function validateAndFixDate(dateStr: string | undefined, fallbackDate: string): string {
   if (!dateStr) return fallbackDate;
@@ -648,13 +648,12 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     scheduleSmartNudge(pendingCount, breakdown);
   }, [dumps, scheduleSmartNudge]);
 
-  const canProcessWithAI = useCallback((isProUser: boolean) => {
-    if (isProUser) return true;
-    return dailyAICount < FREE_USER_DAILY_AI_LIMIT;
+  const canProcessWithAI = useCallback(() => {
+    return dailyAICount < DAILY_AI_LIMIT;
   }, [dailyAICount]);
 
   const remainingDailyAI = useMemo(() => {
-    return Math.max(0, FREE_USER_DAILY_AI_LIMIT - dailyAICount);
+    return Math.max(0, DAILY_AI_LIMIT - dailyAICount);
   }, [dailyAICount]);
 
   return {
@@ -673,6 +672,6 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     dailyAICount,
     canProcessWithAI,
     remainingDailyAI,
-    FREE_USER_DAILY_AI_LIMIT,
+    DAILY_AI_LIMIT,
   };
 });

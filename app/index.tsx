@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
 
 
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isProUser, isLoading } = useRevenueCat();
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -72,7 +74,13 @@ export default function SplashScreen() {
         duration: 400,
         useNativeDriver: true,
       }).start(() => {
-        router.replace('/(tabs)/dump' as any);
+        if (!isLoading) {
+          if (isProUser) {
+            router.replace('/(tabs)/dump' as any);
+          } else {
+            router.replace('/paywall' as any);
+          }
+        }
       });
     }, 2500);
 
