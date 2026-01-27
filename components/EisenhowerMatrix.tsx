@@ -2,6 +2,7 @@ import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { TaskItem, EisenhowerMatrix as IEisenhowerMatrix } from '@/types/dump';
 import { AlertCircle, Clock, UserX, Trash2 } from 'lucide-react-native';
 import SwipeableTask from './SwipeableTask';
+import React from "react";
 
 interface EisenhowerMatrixProps {
   tasks: TaskItem[];
@@ -74,7 +75,12 @@ export default function EisenhowerMatrix({
             >
               <SwipeableTask
                 task={task}
+                categoryColor="#6366F1"
+                categoryEmoji="📋"
+                categoryName="Task"
                 onComplete={() => onTaskComplete?.(task.id)}
+                onPostpone={() => {}}
+                onReschedule={() => {}}
                 onEdit={() => onTaskPress?.(task)}
               />
             </Pressable>

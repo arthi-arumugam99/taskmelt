@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { Play, Pause, RotateCcw, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -23,10 +23,10 @@ export default function PomodoroTimer({ task, onComplete, onClose }: PomodoroTim
   const [sessionsCompleted, setSessionsCompleted] = useState(0);
   const [currentSession, setCurrentSession] = useState<Partial<PomodoroSession> | null>(null);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const getDuration = () => {
+  const getDuration = useCallback(() => {
     switch (sessionType) {
       case 'work':
         return WORK_DURATION;
@@ -35,11 +35,59 @@ export default function PomodoroTimer({ task, onComplete, onClose }: PomodoroTim
       case 'longBreak':
         return LONG_BREAK;
     }
-  };
+  }, [sessionType]);
 
   useEffect(() => {
     setTimeLeft(getDuration());
-  }, [sessionType]);
+  }, [getDuration]);
+
+  const playSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('@/assets/sounds/timer-complete.mp3'),
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+    } catch (error) {
+      console.log('Error playing sound:', error);
+    }
+  };
+
+  const handleSessionComplete = useCallback(async () => {
+    setIsRunning(false);
+
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+
+    await playSound();
+
+    const session: PomodoroSession = {
+      id: `pomodoro-${Date.now()}`,
+      taskId: task?.id,
+      startedAt: currentSession?.startedAt || new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      duration: getDuration(),
+      type: sessionType,
+      completed: true,
+      interrupted: false,
+    };
+
+    onComplete?.(session);
+
+    if (sessionType === 'work') {
+      const newSessionsCompleted = sessionsCompleted + 1;
+      setSessionsCompleted(newSessionsCompleted);
+
+      if (newSessionsCompleted % SESSIONS_UNTIL_LONG_BREAK === 0) {
+        setSessionType('longBreak');
+      } else {
+        setSessionType('shortBreak');
+      }
+    } else {
+      setSessionType('work');
+    }
+  }, [task?.id, currentSession?.startedAt, getDuration, sessionType, sessionsCompleted, onComplete]);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -64,59 +112,8 @@ export default function PomodoroTimer({ task, onComplete, onClose }: PomodoroTim
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, timeLeft]);
+  }, [isRunning, timeLeft, handleSessionComplete]);
 
-  const playSound = async () => {
-    try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('@/assets/sounds/timer-complete.mp3'),
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-    } catch (error) {
-      console.log('Error playing sound:', error);
-    }
-  };
-
-  const handleSessionComplete = async () => {
-    setIsRunning(false);
-
-    // Haptic feedback
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-
-    // Play completion sound
-    await playSound();
-
-    // Create session record
-    const session: PomodoroSession = {
-      id: `pomodoro-${Date.now()}`,
-      taskId: task?.id,
-      startedAt: currentSession?.startedAt || new Date().toISOString(),
-      endedAt: new Date().toISOString(),
-      duration: getDuration(),
-      type: sessionType,
-      completed: true,
-      interrupted: false,
-    };
-
-    onComplete?.(session);
-
-    // Move to next session type
-    if (sessionType === 'work') {
-      const newSessionsCompleted = sessionsCompleted + 1;
-      setSessionsCompleted(newSessionsCompleted);
-
-      if (newSessionsCompleted % SESSIONS_UNTIL_LONG_BREAK === 0) {
-        setSessionType('longBreak');
-      } else {
-        setSessionType('shortBreak');
-      }
-    } else {
-      setSessionType('work');
-    }
-  };
 
   const handlePlayPause = async () => {
     if (!isRunning && timeLeft === getDuration()) {
