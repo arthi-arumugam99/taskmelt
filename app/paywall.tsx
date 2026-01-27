@@ -25,9 +25,9 @@ type PlanType = 'monthly' | 'yearly' | 'lifetime';
 
 const FEATURES = [
   { icon: Zap, text: 'Unlimited brain dumps' },
-  { icon: Sparkles, text: 'Advanced AI organization' },
-  { icon: Shield, text: 'Priority support' },
-  { icon: Crown, text: 'Early access to features' },
+  { icon: Sparkles, text: 'Unlimited AI organization' },
+  { icon: Crown, text: 'One-time payment, yours forever' },
+  { icon: Shield, text: 'Support development' },
 ];
 
 interface PricingCardProps {
@@ -92,8 +92,6 @@ function PricingCard({
 export default function PaywallScreen() {
   const router = useRouter();
   const {
-    monthlyPackage,
-    yearlyPackage,
     lifetimePackage,
     purchasePackage,
     restorePurchases,
@@ -105,30 +103,16 @@ export default function PaywallScreen() {
     isInitialized,
   } = useRevenueCat();
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>('yearly');
-
   const handleClose = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   }, [router]);
 
-  const handleSelectPlan = useCallback((plan: PlanType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedPlan(plan);
-  }, []);
+
 
   const getSelectedPackage = useCallback((): PurchasesPackage | undefined => {
-    switch (selectedPlan) {
-      case 'monthly':
-        return monthlyPackage;
-      case 'yearly':
-        return yearlyPackage;
-      case 'lifetime':
-        return lifetimePackage;
-      default:
-        return yearlyPackage;
-    }
-  }, [selectedPlan, monthlyPackage, yearlyPackage, lifetimePackage]);
+    return lifetimePackage;
+  }, [lifetimePackage]);
 
   const handlePurchase = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -138,7 +122,7 @@ export default function PaywallScreen() {
 
     const pkg = getSelectedPackage();
     if (!pkg) {
-      Alert.alert('Error', 'Selected plan is not available. Please try again.');
+      Alert.alert('Error', 'Purchase is not available at this time. Please try again later.');
       return;
     }
 
@@ -149,7 +133,7 @@ export default function PaywallScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Welcome to Pro!',
-        'Thank you for upgrading. Enjoy all the premium features in taskmelt!',
+        'Thank you for your purchase! You now have unlimited AI processing.',
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (error) {
@@ -218,7 +202,7 @@ export default function PaywallScreen() {
           </View>
           <Text style={styles.heroTitle}>task<Text style={styles.heroTitleItalic}>melt</Text> Pro</Text>
           <Text style={styles.heroSubtitle}>
-            Unlock the full potential of your productivity
+            Get unlimited AI processing with a one-time purchase
           </Text>
         </View>
 
@@ -254,37 +238,24 @@ export default function PaywallScreen() {
           </View>
         ) : (
           <View style={styles.pricingSection}>
-            {yearlyPackage && (
-              <PricingCard
-                title="Yearly"
-                price={formatPrice(yearlyPackage, '$49.99')}
-                period="/year"
-                savings="Save 17%"
-                isSelected={selectedPlan === 'yearly'}
-                isBestValue
-                onSelect={() => handleSelectPlan('yearly')}
-              />
-            )}
-
-            {monthlyPackage && (
-              <PricingCard
-                title="Monthly"
-                price={formatPrice(monthlyPackage, '$4.99')}
-                period="/month"
-                isSelected={selectedPlan === 'monthly'}
-                onSelect={() => handleSelectPlan('monthly')}
-              />
-            )}
-
-            {lifetimePackage && (
-              <PricingCard
-                title="Lifetime"
-                price={formatPrice(lifetimePackage, '$99.99')}
-                period="one-time"
-                savings="Pay once, own forever"
-                isSelected={selectedPlan === 'lifetime'}
-                onSelect={() => handleSelectPlan('lifetime')}
-              />
+            {lifetimePackage ? (
+              <View style={styles.singlePriceCard}>
+                <Text style={styles.singlePriceAmount}>
+                  {formatPrice(lifetimePackage, '$6.99')}
+                </Text>
+                <Text style={styles.singlePriceLabel}>One-time purchase</Text>
+                <Text style={styles.singlePriceSubtext}>
+                  Pay once, unlimited AI processing forever
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.singlePriceCard}>
+                <Text style={styles.singlePriceAmount}>$6.99</Text>
+                <Text style={styles.singlePriceLabel}>One-time purchase</Text>
+                <Text style={styles.singlePriceSubtext}>
+                  Pay once, unlimited AI processing forever
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -301,7 +272,7 @@ export default function PaywallScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.purchaseButtonText}>
-              Continue with {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
+              Get Pro for {formatPrice(lifetimePackage, '$6.99')}
             </Text>
           )}
         </TouchableOpacity>
@@ -319,7 +290,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          Cancel anytime. Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date. Payment will be charged to your Apple ID account.
+          One-time purchase. No subscriptions, no recurring charges. Payment will be charged to your Apple ID account.
         </Text>
 
         <View style={styles.legalLinks}>
@@ -463,7 +434,39 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   pricingSection: {
-    gap: 12,
+    alignItems: 'center',
+  },
+  singlePriceCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 32,
+    borderWidth: 3,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+  },
+  singlePriceAmount: {
+    fontSize: 56,
+    fontWeight: '900' as const,
+    color: Colors.primary,
+    marginBottom: 8,
+  },
+  singlePriceLabel: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  singlePriceSubtext: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   pricingCard: {
     backgroundColor: Colors.card,

@@ -73,7 +73,7 @@ export default function DumpScreen() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { addDump, canCreateDump, remainingFreeDumps } = useDumps();
+  const { addDump, canProcessWithAI, remainingDailyAI } = useDumps();
   const { isProUser } = useRevenueCat();
   const router = useRouter();
   const { isRecording, isProcessing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
@@ -375,7 +375,7 @@ Be smart, thoughtful, and help the user succeed!`,
   const handleOrganize = useCallback(() => {
     if (!inputText.trim() || isPending) return;
 
-    if (!canCreateDump(isProUser)) {
+    if (!canProcessWithAI(isProUser)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       router.push('/paywall' as any);
       return;
@@ -396,7 +396,7 @@ Be smart, thoughtful, and help the user succeed!`,
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     organizeMutate(inputText);
-  }, [inputText, isPending, organizeMutate, buttonScale, canCreateDump, isProUser, router]);
+  }, [inputText, isPending, organizeMutate, buttonScale, canProcessWithAI, isProUser, router]);
 
 
 
@@ -455,19 +455,19 @@ Be smart, thoughtful, and help the user succeed!`,
               <View style={styles.header}>
                 <Text style={styles.title}>task<Text style={styles.titleItalic}>melt</Text></Text>
                 <Text style={styles.subtitle}>Chaos in. Clarity out.</Text>
-                {!isProUser && remainingFreeDumps > 0 && (
+                {!isProUser && remainingDailyAI > 0 && (
                   <View style={styles.freeLimitBadge}>
                     <Text style={styles.freeLimitText}>
-                      {remainingFreeDumps} free {remainingFreeDumps === 1 ? 'dump' : 'dumps'} remaining
+                      {remainingDailyAI} free AI {remainingDailyAI === 1 ? 'process' : 'processes'} today
                     </Text>
                   </View>
                 )}
-                {!isProUser && remainingFreeDumps === 0 && (
+                {!isProUser && remainingDailyAI === 0 && (
                   <TouchableOpacity 
                     style={styles.upgradeBadge}
                     onPress={() => router.push('/paywall' as any)}
                   >
-                    <Text style={styles.upgradeBadgeText}>Upgrade to Pro for unlimited dumps</Text>
+                    <Text style={styles.upgradeBadgeText}>Get Pro for unlimited AI processing</Text>
                   </TouchableOpacity>
                 )}
               </View>

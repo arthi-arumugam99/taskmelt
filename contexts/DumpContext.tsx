@@ -8,8 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 
 const STORAGE_KEY = 'taskmelt_dumps';
-const LIFETIME_COUNT_KEY = 'taskmelt_lifetime_dump_count';
-const FREE_USER_DUMP_LIMIT = 3;
+const DAILY_AI_COUNT_KEY = 'taskmelt_daily_ai_count';
+const DAILY_AI_DATE_KEY = 'taskmelt_daily_ai_date';
+const FREE_USER_DAILY_AI_LIMIT = 3;
 
 function validateAndFixDate(dateStr: string | undefined, fallbackDate: string): string {
   if (!dateStr) return fallbackDate;
@@ -103,32 +104,40 @@ async function saveLocalDumps(dumps: DumpSession[]): Promise<void> {
   }
 }
 
-async function getLifetimeDumpCount(): Promise<number> {
+async function getDailyAICount(): Promise<{ count: number; date: string }> {
   try {
-    const count = await AsyncStorage.getItem(LIFETIME_COUNT_KEY);
-    if (!count) return 0;
-    const parsed = parseInt(count, 10);
-    if (isNaN(parsed)) {
-      console.log('Invalid lifetime count, resetting:', count);
-      await AsyncStorage.removeItem(LIFETIME_COUNT_KEY);
-      return 0;
+    const count = await AsyncStorage.getItem(DAILY_AI_COUNT_KEY);
+    const date = await AsyncStorage.getItem(DAILY_AI_DATE_KEY);
+    const today = new Date().toDateString();
+    
+    if (!date || date !== today) {
+      await AsyncStorage.setItem(DAILY_AI_DATE_KEY, today);
+      await AsyncStorage.setItem(DAILY_AI_COUNT_KEY, '0');
+      return { count: 0, date: today };
     }
-    return parsed;
+    
+    const parsed = parseInt(count || '0', 10);
+    if (isNaN(parsed)) {
+      console.log('Invalid daily count, resetting:', count);
+      await AsyncStorage.setItem(DAILY_AI_COUNT_KEY, '0');
+      return { count: 0, date: today };
+    }
+    return { count: parsed, date: today };
   } catch (error) {
-    console.log('Error getting lifetime dump count:', error);
-    return 0;
+    console.log('Error getting daily AI count:', error);
+    return { count: 0, date: new Date().toDateString() };
   }
 }
 
-async function incrementLifetimeDumpCount(): Promise<number> {
+async function incrementDailyAICount(): Promise<number> {
   try {
-    const current = await getLifetimeDumpCount();
-    const newCount = current + 1;
-    await AsyncStorage.setItem(LIFETIME_COUNT_KEY, newCount.toString());
-    console.log('Lifetime dump count incremented to:', newCount);
+    const { count } = await getDailyAICount();
+    const newCount = count + 1;
+    await AsyncStorage.setItem(DAILY_AI_COUNT_KEY, newCount.toString());
+    console.log('Daily AI count incremented to:', newCount);
     return newCount;
   } catch (error) {
-    console.log('Error incrementing lifetime dump count:', error);
+    console.log('Error incrementing daily AI count:', error);
     return 0;
   }
 }
@@ -259,13 +268,16 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
   const { user, isAuthenticated } = useAuth();
   const { scheduleTaskNotification, cancelTaskNotifications, scheduleSmartNudge } = useNotifications();
 
-  const lifetimeCountQuery = useQuery({
-    queryKey: ['lifetimeDumpCount'],
-    queryFn: getLifetimeDumpCount,
-    staleTime: Infinity,
+  const dailyAICountQuery = useQuery({
+    queryKey: ['dailyAICount', new Date().toDateString()],
+    queryFn: async () => {
+      const result = await getDailyAICount();
+      return result.count;
+    },
+    staleTime: 1000 * 60,
   });
 
-  const lifetimeDumpCount = lifetimeCountQuery.data ?? 0;
+  const dailyAICount = dailyAICountQuery.data ?? 0;
 
   const dumpQueryKey = useMemo(
     () => ['dumps', user?.id ?? 'local', isAuthenticated] as const,
@@ -315,7 +327,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
       const updated = [newDump, ...currentDumps];
       
       await saveLocalDumps(updated);
-      await incrementLifetimeDumpCount();
+      await incrementDailyAICount();
       
       if (isAuthenticated && user?.id) {
         await saveRemoteDump(user.id, newDump);
@@ -333,7 +345,7 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(dumpQueryKey, data);
-      queryClient.invalidateQueries({ queryKey: ['lifetimeDumpCount'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyAICount'] });
     },
   });
 
@@ -636,14 +648,14 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     scheduleSmartNudge(pendingCount, breakdown);
   }, [dumps, scheduleSmartNudge]);
 
-  const canCreateDump = useCallback((isProUser: boolean) => {
+  const canProcessWithAI = useCallback((isProUser: boolean) => {
     if (isProUser) return true;
-    return lifetimeDumpCount < FREE_USER_DUMP_LIMIT;
-  }, [lifetimeDumpCount]);
+    return dailyAICount < FREE_USER_DAILY_AI_LIMIT;
+  }, [dailyAICount]);
 
-  const remainingFreeDumps = useMemo(() => {
-    return Math.max(0, FREE_USER_DUMP_LIMIT - lifetimeDumpCount);
-  }, [lifetimeDumpCount]);
+  const remainingDailyAI = useMemo(() => {
+    return Math.max(0, FREE_USER_DAILY_AI_LIMIT - dailyAICount);
+  }, [dailyAICount]);
 
   return {
     dumps,
@@ -658,9 +670,9 @@ export const [DumpProvider, useDumps] = createContextHook(() => {
     deleteDump,
     clearAll,
     refetch,
-    lifetimeDumpCount,
-    canCreateDump,
-    remainingFreeDumps,
-    FREE_USER_DUMP_LIMIT,
+    dailyAICount,
+    canProcessWithAI,
+    remainingDailyAI,
+    FREE_USER_DAILY_AI_LIMIT,
   };
 });
