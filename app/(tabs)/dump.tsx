@@ -72,7 +72,7 @@ export default function DumpScreen() {
 
   const buttonScale = useRef(new Animated.Value(1)).current;
   const micPulse = useRef(new Animated.Value(1)).current;
-  const { addDump, canProcessWithAI, remainingDailyAI, DAILY_AI_LIMIT } = useDumps();
+  const { addDump } = useDumps();
   const router = useRouter();
   const { isRecording, isProcessing, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
 
@@ -373,11 +373,6 @@ Be smart, thoughtful, and help the user succeed!`,
   const handleOrganize = useCallback(() => {
     if (!inputText.trim() || isPending) return;
 
-    if (!canProcessWithAI()) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
-    }
-
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -393,7 +388,7 @@ Be smart, thoughtful, and help the user succeed!`,
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     organizeMutate(inputText);
-  }, [inputText, isPending, organizeMutate, buttonScale, canProcessWithAI]);
+  }, [inputText, isPending, organizeMutate, buttonScale]);
 
 
 
@@ -452,19 +447,6 @@ Be smart, thoughtful, and help the user succeed!`,
               <View style={styles.header}>
                 <Text style={styles.title}>task<Text style={styles.titleItalic}>melt</Text></Text>
                 <Text style={styles.subtitle}>Chaos in. Clarity out.</Text>
-                {remainingDailyAI > 0 ? (
-                  <View style={styles.dailyLimitBadge}>
-                    <Text style={styles.dailyLimitText}>
-                      {remainingDailyAI} of {DAILY_AI_LIMIT} AI {remainingDailyAI === 1 ? 'process' : 'processes'} remaining today
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.limitReachedBadge}>
-                    <Text style={styles.limitReachedText}>
-                      Daily limit reached. Resets at midnight.
-                    </Text>
-                  </View>
-                )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -550,14 +532,6 @@ Be smart, thoughtful, and help the user succeed!`,
                 </Animated.View>
               </View>
 
-              {!canProcessWithAI() && inputText.trim() && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>
-                    You've used all 3 AI processing for today. Your limit resets at midnight. You can still save unlimited dumps manually!
-                  </Text>
-                </View>
-              )}
-
               {isError && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>
@@ -625,35 +599,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textSecondary,
     fontWeight: '600' as const,
-  },
-  dailyLimitBadge: {
-    marginTop: 12,
-    backgroundColor: Colors.accent5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: Colors.border,
-  },
-  dailyLimitText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '600' as const,
-  },
-  limitReachedBadge: {
-    marginTop: 12,
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FCA5A5',
-  },
-  limitReachedText: {
-    fontSize: 13,
-    color: '#DC2626',
-    fontWeight: '700' as const,
-    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,

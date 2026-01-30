@@ -225,10 +225,35 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     },
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) {
+        throw new Error('Authentication not available. Please configure Supabase.');
+      }
+      console.log('Auth: Deleting account');
+
+      // Call the Supabase function to delete the user account
+      const { error } = await supabase.rpc('delete_user_account');
+      if (error) throw error;
+
+      // Sign out locally after account deletion
+      await supabase.auth.signOut();
+    },
+    onSuccess: () => {
+      console.log('Auth: Account deleted successfully');
+      queryClient.clear();
+      lastIdentifiedUserIdRef.current = null;
+    },
+    onError: (error) => {
+      console.log('Auth: Delete account error:', error);
+    },
+  });
+
   const { mutateAsync: signUpAsync } = signUpMutation;
   const { mutateAsync: signInAsync } = signInMutation;
   const { mutateAsync: signOutAsync } = signOutMutation;
   const { mutateAsync: resetPasswordAsync } = resetPasswordMutation;
+  const { mutateAsync: deleteAccountAsync } = deleteAccountMutation;
 
   const signUp = useCallback(
     async (email: string, password: string, name?: string) => {
@@ -255,6 +280,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     [resetPasswordAsync]
   );
 
+  const deleteAccount = useCallback(async () => {
+    return deleteAccountAsync();
+  }, [deleteAccountAsync]);
+
   return {
     user: authState.user,
     session: authState.session,
@@ -265,13 +294,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     signIn,
     signOut,
     resetPassword,
+    deleteAccount,
     isSigningUp: signUpMutation.isPending,
     isSigningIn: signInMutation.isPending,
     isSigningOut: signOutMutation.isPending,
     isResettingPassword: resetPasswordMutation.isPending,
+    isDeletingAccount: deleteAccountMutation.isPending,
     signUpError: signUpMutation.error as Error | null,
     signInError: signInMutation.error as Error | null,
     signOutError: signOutMutation.error as Error | null,
     resetPasswordError: resetPasswordMutation.error as Error | null,
+    deleteAccountError: deleteAccountMutation.error as Error | null,
   };
 });

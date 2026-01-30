@@ -167,3 +167,18 @@ CREATE INDEX IF NOT EXISTS idx_productivity_stats_date ON productivity_stats(dat
 
 ALTER TABLE productivity_stats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage their own productivity stats" ON productivity_stats FOR ALL USING (auth.uid() = user_id);
+
+-- Function to allow users to delete their own account
+-- This is required for App Store compliance (Guideline 5.1.1)
+CREATE OR REPLACE FUNCTION delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Delete the user from auth.users
+  -- All related data will be deleted via ON DELETE CASCADE
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$;

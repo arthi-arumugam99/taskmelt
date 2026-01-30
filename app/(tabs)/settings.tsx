@@ -22,6 +22,7 @@ import {
   FileText,
   Shield,
   Mail,
+  UserX,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
@@ -59,7 +60,7 @@ function SettingRow({ icon, title, subtitle, onPress, destructive }: SettingRowP
 export default function SettingsScreen() {
   const router = useRouter();
   const { dumps, clearAll } = useDumps();
-  const { user, isAuthenticated, signOut, isSigningOut } = useAuth();
+  const { user, isAuthenticated, signOut, isSigningOut, deleteAccount, isDeletingAccount } = useAuth();
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
 
   const handleClearAll = useCallback(() => {
@@ -99,8 +100,6 @@ export default function SettingsScreen() {
     );
   }, []);
 
-  
-
   const handleSignIn = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/auth' as any);
@@ -128,6 +127,44 @@ export default function SettingsScreen() {
       ]
     );
   }, [signOut]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This will delete all your data including dumps, tasks, and settings. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation for destructive action
+            Alert.alert(
+              'Final Confirmation',
+              'This is permanent. All your data will be lost forever.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete Forever',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
+                    } catch {
+                      Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }, [deleteAccount]);
 
   const handleCalendarSync = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -236,8 +273,6 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.sectionContent}>
@@ -261,6 +296,13 @@ export default function SettingsScreen() {
                   onPress={handleSignOut}
                   destructive
                 />
+                <SettingRow
+                  icon={<UserX size={20} color={Colors.error} />}
+                  title={isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                  subtitle="Permanently delete your account and data"
+                  onPress={handleDeleteAccount}
+                  destructive
+                />
               </>
             ) : (
               <SettingRow
@@ -272,8 +314,6 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
-
-        
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
@@ -541,7 +581,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontStyle: 'italic',
   },
-  
   accountInfo: {
     flexDirection: 'row',
     alignItems: 'center',
