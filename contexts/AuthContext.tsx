@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { Session, User } from '@supabase/supabase-js';
@@ -242,7 +242,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     onSuccess: () => {
       console.log('Auth: Account deleted successfully');
       queryClient.clear();
-      lastIdentifiedUserIdRef.current = null;
     },
     onError: (error) => {
       console.log('Auth: Delete account error:', error);

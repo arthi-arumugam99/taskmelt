@@ -27,7 +27,13 @@
     },
     "extra": {
       "privacyPolicyUrl": "https://rork.com/privacy",
-      "termsOfServiceUrl": "https://rork.com/terms"
+      "termsOfServiceUrl": "https://rork.com/terms",
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "c50401b3-142e-4f46-86da-c27182941d65"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -41,7 +47,11 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "READ_CALENDAR",
-        "WRITE_CALENDAR"
+        "WRITE_CALENDAR",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "privacyPolicy": "https://rork.com/privacy"
     },
@@ -81,6 +91,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "arthi1805"
   }
 }
