@@ -2,7 +2,7 @@
   "expo": {
     "name": "taskmelt",
     "slug": "taskmelt",
-    "version": "2.8.0",
+    "version": "3.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "taskmelt",
@@ -17,9 +17,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.taskmelt",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "taskmelt uses your microphone to capture voice input for the brain dump feature. For example, you can speak your thoughts and tasks aloud, and the app will transcribe them into organized, actionable items.",
-        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar",
-        "NSRemindersUsageDescription": "Allow $(PRODUCT_NAME) to access your reminders"
+        "NSMicrophoneUsageDescription": "TaskMelt uses the microphone to convert your voice into tasks. For example, you can say 'Buy groceries tomorrow at 5pm' to quickly create a task without typing.",
+        "NSCalendarsUsageDescription": "TaskMelt accesses your calendar to sync tasks with your schedule and help you plan your day effectively.",
+        "NSRemindersUsageDescription": "TaskMelt accesses your reminders to import existing items and keep everything in one place."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -27,13 +27,7 @@
     },
     "extra": {
       "privacyPolicyUrl": "https://rork.com/privacy",
-      "termsOfServiceUrl": "https://rork.com/terms",
-      "router": {
-        "origin": "https://rork.com/"
-      },
-      "eas": {
-        "projectId": "c50401b3-142e-4f46-86da-c27182941d65"
-      }
+      "termsOfServiceUrl": "https://rork.com/terms"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,11 +41,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR"
+        "WRITE_CALENDAR"
       ],
       "privacyPolicy": "https://rork.com/privacy"
     },
@@ -70,7 +60,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "taskmelt uses your microphone to capture voice input for the brain dump feature. For example, you can speak your thoughts and tasks aloud, and the app will transcribe them into organized, actionable items."
+          "microphonePermission": "TaskMelt uses the microphone to convert your voice into tasks. For example, you can say 'Buy groceries tomorrow at 5pm' to quickly create a task without typing."
         }
       ],
       [
@@ -85,13 +75,12 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "The app needs to access your calendar."
+          "calendarPermission": "TaskMelt accesses your calendar to sync tasks with your schedule and help you plan your day effectively."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "owner": "arthi1805"
+    }
   }
 }
