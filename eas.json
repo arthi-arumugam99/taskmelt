@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 3.0.0",
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "credentialsSource": "remote",
+        "buildType": "apk"
+      },
+      "ios": {
+        "credentialsSource": "remote"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
