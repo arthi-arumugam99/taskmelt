@@ -37,6 +37,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
   const startRecordingMobile = useCallback(async () => {
     try {
+      // Cleanup any existing recording first
       if (recordingRef.current) {
         try {
           await recordingRef.current.stopAndUnloadAsync();
@@ -48,50 +49,72 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
 
       console.log('📱 Requesting microphone permission...');
       const permission = await Audio.getPermissionsAsync();
-      
+
       if (permission.status !== 'granted') {
         const { status } = await Audio.requestPermissionsAsync();
-        
+
         if (status !== 'granted') {
           throw new Error('Microphone permission required. Please enable it in settings.');
         }
       }
 
+      // IMPORTANT: Set audio mode BEFORE creating/preparing the recording
+      // This must happen first to properly configure the iOS audio session
+      console.log('🔧 Configuring audio session...');
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
 
-      const recording = new Audio.Recording();
-      
-      await recording.prepareToRecordAsync({
-        android: {
-          extension: '.m4a',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
+      // Small delay to ensure audio session is fully activated on iOS
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('🎙️ Creating recording...');
+      const { recording } = await Audio.Recording.createAsync(
+        {
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+            audioEncoder: Audio.AndroidAudioEncoder.AAC,
+            sampleRate: 44100,
+            numberOfChannels: 1,
+            bitRate: 128000,
+          },
+          ios: {
+            extension: '.m4a',
+            audioQuality: Audio.IOSAudioQuality.HIGH,
+            sampleRate: 44100,
+            numberOfChannels: 1,
+            bitRate: 128000,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          web: {
+            mimeType: 'audio/webm',
+            bitsPerSecond: 128000,
+          },
         },
-        ios: {
-          extension: '.wav',
-          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        web: {
-          mimeType: 'audio/webm',
-          bitsPerSecond: 128000,
-        },
-      });
-      
-      await recording.startAsync();
+        undefined,
+        100 // Update interval in ms
+      );
+
       recordingRef.current = recording;
       console.log('✅ Mobile recording started');
     } catch (err) {
       console.error('❌ Mobile recording failed:', err);
+      // Reset audio mode on failure
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+      } catch {
+        // Ignore cleanup errors
+      }
       throw err;
     }
   }, []);
