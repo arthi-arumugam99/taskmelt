@@ -65,5 +65,14 @@
     "expo-constants": "~18.0.12",
     "expo-location": "~19.0.8"
   },
+  "overrides": {
+    "lucide-react-native": {
+      "react": "$react",
+      "react-native": "$react-native"
+    },
+    "@ai-sdk/react": {
+      "react": "$react"
+    }
+  },
   "private": true
 }
