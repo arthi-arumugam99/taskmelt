@@ -1,6 +1,80 @@
-import { generateObject, generateText } from '@rork-ai/toolkit-sdk';
-import { z } from 'zod';
 import { TaskItem, DumpSession } from '@/types/dump';
+
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface OpenAIRequest {
+  messages: OpenAIMessage[];
+  responseFormat?: { type: 'json_object' | 'text' };
+}
+
+async function callOpenAI<T = any>(request: OpenAIRequest): Promise<T> {
+  if (!OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured');
+  }
+
+  const response = await fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: request.messages,
+      response_format: request.responseFormat,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('OpenAI API error:', error);
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('No content in OpenAI response');
+  }
+
+  return JSON.parse(content) as T;
+}
+
+async function callOpenAIText(request: Omit<OpenAIRequest, 'responseFormat'>): Promise<string> {
+  if (!OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured');
+  }
+
+  const response = await fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: request.messages,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('OpenAI API error:', error);
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
 
 export interface ScheduledTask extends TaskItem {
   suggestedTime?: string;
@@ -25,6 +99,22 @@ export interface WeeklyInsights {
   suggestions: string[];
 }
 
+interface ScheduleAPIResponse {
+  timeBlocks: {
+    time: string;
+    taskIds: string[];
+    energyLevel: 'high' | 'medium' | 'low';
+    suggestedBreak?: boolean;
+  }[];
+}
+
+interface DependencyAPIResponse {
+  dependencies: {
+    taskId: string;
+    dependsOn: string[];
+  }[];
+}
+
 export async function scheduleTasksWithAI(
   tasks: TaskItem[],
   preferences: {
@@ -47,11 +137,15 @@ export async function scheduleTasksWithAI(
         dependencies: t.dependencies || [],
       }));
 
-    const result = await generateObject({
+    const result = await callOpenAI<ScheduleAPIResponse>({
       messages: [
         {
+          role: 'system',
+          content: 'You are an expert productivity scheduler. Return valid JSON only.',
+        },
+        {
           role: 'user',
-          content: `You are an expert productivity scheduler. Schedule these tasks into optimal time blocks.
+          content: `Schedule these tasks into optimal time blocks.
 
 Work hours: ${preferences.workHoursStart} - ${preferences.workHoursEnd}
 Peak energy times: ${preferences.peakEnergyTimes.join(', ')}
@@ -68,26 +162,17 @@ Rules:
 5. Add breaks between intense tasks (3+ consecutive high-energy tasks)
 6. Consider priority - high priority tasks get better time slots
 
-Return a schedule with time blocks.`,
+Return JSON: { "timeBlocks": [{ "time": "HH:MM", "taskIds": ["id1"], "energyLevel": "high|medium|low", "suggestedBreak": boolean }] }`,
         },
       ],
-      schema: z.object({
-        timeBlocks: z.array(
-          z.object({
-            time: z.string().describe('Time in HH:MM format'),
-            taskIds: z.array(z.string()),
-            energyLevel: z.enum(['high', 'medium', 'low']),
-            suggestedBreak: z.boolean().optional(),
-          })
-        ),
-      }),
+      responseFormat: { type: 'json_object' },
     });
 
-    const timeBlocks: TimeBlock[] = result.timeBlocks.map(block => {
+    const timeBlocks: TimeBlock[] = result.timeBlocks.map((block) => {
       const blockTasks = block.taskIds
-        .map(id => tasks.find(t => t.id === id))
+        .map((id: string) => tasks.find((t) => t.id === id))
         .filter((t): t is TaskItem => t !== undefined)
-        .map(t => ({
+        .map((t) => ({
           ...t,
           suggestedTime: block.time,
           energyMatch: calculateEnergyMatch(t, block.energyLevel, preferences),
@@ -179,8 +264,12 @@ export async function analyzeWeeklyPatterns(dumps: DumpSession[]): Promise<Weekl
       totalCategories: Object.keys(categoryStats).length,
     };
 
-    const insights = await generateObject({
+    const insights = await callOpenAI({
       messages: [
+        {
+          role: 'system',
+          content: 'You are a productivity analyst. Return valid JSON only.',
+        },
         {
           role: 'user',
           content: `Analyze this week's productivity data and provide insights:
@@ -195,23 +284,10 @@ Provide:
 5. Velocity trend - is the user speeding up, stable, or slowing down?
 6. Actionable suggestions for next week
 
-Be specific and data-driven.`,
+Return JSON: { "patterns": ["string"], "productivityPeaks": ["string"], "slowdowns": ["string"], "categoryTrends": [{ "category": "string", "trend": "up|down|stable", "percentage": number }], "velocityTrend": "accelerating|stable|slowing", "suggestions": ["string"] }`,
         },
       ],
-      schema: z.object({
-        patterns: z.array(z.string()).describe('Key patterns observed'),
-        productivityPeaks: z.array(z.string()).describe('When user is most productive'),
-        slowdowns: z.array(z.string()).describe('What causes slowdowns'),
-        categoryTrends: z.array(
-          z.object({
-            category: z.string(),
-            trend: z.enum(['up', 'down', 'stable']),
-            percentage: z.number(),
-          })
-        ),
-        velocityTrend: z.enum(['accelerating', 'stable', 'slowing']),
-        suggestions: z.array(z.string()).describe('Actionable suggestions'),
-      }),
+      responseFormat: { type: 'json_object' },
     });
 
     return insights;
@@ -234,7 +310,7 @@ export async function suggestSmartPostpone(task: TaskItem, allTasks: TaskItem[])
   reason: string;
 }> {
   try {
-    const result = await generateText({
+    const result = await callOpenAIText({
       messages: [
         {
           role: 'user',
@@ -312,8 +388,12 @@ export async function detectDependencies(tasks: TaskItem[]): Promise<Map<string,
       category: t.notes || '',
     }));
 
-    const result = await generateObject({
+    const result = await callOpenAI<DependencyAPIResponse>({
       messages: [
+        {
+          role: 'system',
+          content: 'You are a task dependency analyzer. Return valid JSON only.',
+        },
         {
           role: 'user',
           content: `Analyze these tasks and detect dependencies (which tasks should be done before others):
@@ -321,21 +401,16 @@ export async function detectDependencies(tasks: TaskItem[]): Promise<Map<string,
 ${JSON.stringify(taskList, null, 2)}
 
 Return a map of task IDs to their dependencies (tasks that must be completed first).
-Only include clear dependencies (e.g., "Buy groceries" must happen before "Cook dinner").`,
+Only include clear dependencies (e.g., "Buy groceries" must happen before "Cook dinner").
+
+Return JSON: { "dependencies": [{ "taskId": "string", "dependsOn": ["string"] }] }`,
         },
       ],
-      schema: z.object({
-        dependencies: z.array(
-          z.object({
-            taskId: z.string(),
-            dependsOn: z.array(z.string()),
-          })
-        ),
-      }),
+      responseFormat: { type: 'json_object' },
     });
 
     const depMap = new Map<string, string[]>();
-    result.dependencies.forEach(dep => {
+    result.dependencies.forEach((dep) => {
       depMap.set(dep.taskId, dep.dependsOn);
     });
 
@@ -353,8 +428,12 @@ export async function processNaturalLanguageCommand(
   try {
     const taskList = tasks.map(t => ({ id: t.id, task: t.task, context: t.context }));
 
-    const result = await generateObject({
+    const result = await callOpenAI({
       messages: [
+        {
+          role: 'system',
+          content: 'You are a natural language command parser. Return valid JSON only.',
+        },
         {
           role: 'user',
           content: `Parse this natural language command: "${command}"
@@ -370,16 +449,12 @@ Determine:
 
 Examples:
 - "Move all work tasks to Friday" → action: move, taskIds: [work task ids], newDate: next Friday
-- "Reschedule morning tasks to afternoon" → action: reschedule, taskIds: [morning task ids], newTime: 14:00`,
+- "Reschedule morning tasks to afternoon" → action: reschedule, taskIds: [morning task ids], newTime: 14:00
+
+Return JSON: { "action": "move|reschedule|change_context|delete|complete", "taskIds": ["string"], "newDate": "string or null", "newTime": "string or null", "newContext": "string or null" }`,
         },
       ],
-      schema: z.object({
-        action: z.enum(['move', 'reschedule', 'change_context', 'delete', 'complete']),
-        taskIds: z.array(z.string()),
-        newDate: z.string().optional(),
-        newTime: z.string().optional(),
-        newContext: z.string().optional(),
-      }),
+      responseFormat: { type: 'json_object' },
     });
 
     return result;
