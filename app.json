@@ -2,7 +2,7 @@
   "expo": {
     "name": "taskmelt",
     "slug": "taskmelt",
-    "version": "3.6.0",
+    "version": "3.7.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "taskmelt",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.taskmelt",
+      "bundleIdentifier": "com.taskmelt.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "TaskMelt uses the microphone to convert your voice into tasks. For example, you can say 'Buy groceries tomorrow at 5pm' to quickly create a task without typing.",
         "NSCalendarsUsageDescription": "TaskMelt accesses your calendar to sync tasks with your schedule and help you plan your day effectively.",
@@ -26,10 +26,10 @@
       }
     },
     "extra": {
-      "privacyPolicyUrl": "https://rork.com/privacy",
-      "termsOfServiceUrl": "https://rork.com/terms",
+      "privacyPolicyUrl": "https://taskmelt.app/privacy",
+      "termsOfServiceUrl": "https://taskmelt.app/terms",
       "router": {
-        "origin": "https://rork.com/"
+        "origin": "https://taskmelt.app/"
       },
       "eas": {
         "projectId": "c50401b3-142e-4f46-86da-c27182941d65"
@@ -40,7 +40,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.taskmelt",
+      "package": "com.taskmelt.app",
       "permissions": [
         "android.permission.VIBRATE",
         "RECORD_AUDIO",
@@ -53,7 +53,7 @@
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ],
-      "privacyPolicy": "https://rork.com/privacy"
+      "privacyPolicy": "https://taskmelt.app/privacy"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -62,7 +62,7 @@
       [
         "expo-router",
         {
-          "origin": "https://rork.com/"
+          "origin": "https://taskmelt.app/"
         }
       ],
       "expo-font",

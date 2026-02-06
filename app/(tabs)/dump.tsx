@@ -15,8 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mic, Square, Zap } from 'lucide-react-native';
 import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
+
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 import Colors from '@/constants/colors';
 import { useDumps } from '@/contexts/DumpContext';
 import { useRouter } from 'expo-router';
@@ -123,71 +124,88 @@ export default function DumpScreen() {
           const currentHour = currentTime.getHours();
           const timeOfDay = currentHour < 12 ? 'morning' : currentHour < 17 ? 'afternoon' : 'evening';
           
-          const rawResult = await Promise.race([
-            generateObject({
-              messages: [
-                {
-                  role: 'user',
-                  content: `You are a world-class productivity AI that transforms chaotic thoughts into organized, actionable tasks.
+          if (!OPENAI_API_KEY) {
+            throw new Error('OpenAI API key not configured. Add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.');
+          }
 
-Current context:
+          const systemPrompt = `You are a world-class productivity AI that transforms chaotic thoughts into organized, actionable tasks.
+
+You must respond with valid JSON matching this exact structure:
+{
+  "categories": [
+    {
+      "name": "Category name like Work, Personal, Health, etc",
+      "emoji": "Single relevant emoji",
+      "color": "Hex color code like #4F46E5",
+      "priority": "high" | "medium" | "low",
+      "items": [
+        {
+          "task": "Clear, actionable task description",
+          "priority": "high" | "medium" | "low",
+          "duration": "Estimated time like 15min, 1h, 2h",
+          "scheduledTime": "Suggested time in HH:MM format",
+          "energyLevel": "high" | "medium" | "low",
+          "context": "home" | "work" | "errands" | "computer" | "phone" | "anywhere",
+          "subtasks": [{ "task": "subtask", "duration": "time" }]
+        }
+      ]
+    }
+  ],
+  "summary": "Brief summary of what the user wants to accomplish",
+  "reflectionInsight": "Optional insight about patterns or suggestions"
+}
+
+Guidelines:
+- Extract ALL actionable tasks (don't miss anything)
+- Organize into 2-5 logical categories
+- Priorities: HIGH=urgent/time-sensitive, MEDIUM=important but not urgent, LOW=nice-to-have
+- Estimate realistic durations
+- Suggest optimal times based on task type and energy needed
+- Break complex tasks into 2-4 subtasks when helpful
+- Choose appropriate emojis and colors:
+  Work: 💼 #4F46E5, Personal: 🏠 #10B981, Health: 💪 #EF4444, Learning: 📚 #F59E0B
+  Creative: 🎨 #8B5CF6, Finance: 💰 #059669, Social: 👥 #EC4899, Errands: 🛒 #F97316`;
+
+          const userPrompt = `Current context:
 - Time: ${timeOfDay} (${currentHour}:${currentTime.getMinutes().toString().padStart(2, '0')})
 - Day: ${currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
 
 User's brain dump:
 """${truncatedText}"""
 
-Your task:
-1. Extract ALL actionable tasks (don't miss anything)
-2. Organize into 2-5 logical categories (Work, Personal, Health, Learning, etc.)
-3. Assign smart priorities:
-   - HIGH: urgent, time-sensitive, or high-impact
-   - MEDIUM: important but not urgent
-   - LOW: nice-to-have or routine
+Organize this into actionable tasks. Respond with JSON only.`;
 
-4. Estimate realistic durations (15min, 30min, 1h, 2h, etc.)
-
-5. Suggest optimal times based on:
-   - Task type (deep work → morning, calls → afternoon, errands → midday)
-   - Energy needed (creative work → high energy times)
-   - Current time of day
-
-6. Assign energy levels:
-   - HIGH: requires focus, creativity, or physical energy
-   - MEDIUM: moderate effort
-   - LOW: routine, administrative, or low-stakes
-
-7. Set context (where/how to do it):
-   - work: office/work environment
-   - home: at home
-   - errands: out and about
-   - computer: needs computer
-   - phone: can do on phone
-   - anywhere: flexible
-
-8. Break complex tasks into 2-4 subtasks when helpful
-
-9. Choose appropriate emojis and colors:
-   - Work: 💼 #4F46E5
-   - Personal: 🏠 #10B981
-   - Health: 💪 #EF4444
-   - Learning: 📚 #F59E0B
-   - Creative: 🎨 #8B5CF6
-   - Finance: 💰 #059669
-   - Social: 👥 #EC4899
-   - Errands: 🛒 #F97316
-
-10. Write a brief summary and insight about what patterns you see
-
-Be smart, thoughtful, and help the user succeed!`,
-                },
-              ],
-              schema: resultSchema,
+          const response = await Promise.race([
+            fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                ],
+                response_format: { type: 'json_object' },
+                temperature: 0.7,
+                max_tokens: 2000,
+              }),
             }),
-            new Promise<never>((_, reject) => 
+            new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error('Request timeout - AI is taking too long')), 90000)
             )
           ]);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('OpenAI API error:', errorText);
+            throw new Error('AI service error. Please try again.');
+          }
+
+          const openaiResponse = await response.json();
+          const rawResult = JSON.parse(openaiResponse.choices[0].message.content);
           
           console.log('✓ AI Response received');
           console.log('Raw result:', JSON.stringify(rawResult, null, 2).substring(0, 500));

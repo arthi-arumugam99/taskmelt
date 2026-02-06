@@ -137,7 +137,7 @@ export default function Footer() {
             <Instagram className="w-6 h-6" />
           </motion.a>
           <motion.a
-            href="https://github.com/arthi-arumugam99/rork-taskmelt"
+            href="https://github.com/arthi-arumugam99/taskmelt"
             whileHover={{ scale: 1.1 }}
             className="p-3 bg-white bg-opacity-10 rounded-full hover:bg-opacity-20 transition-colors"
             aria-label="GitHub"

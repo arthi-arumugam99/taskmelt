@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 
-const STT_API_URL = 'https://toolkit.rork.com/stt/transcribe/';
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -85,13 +86,11 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
           },
           ios: {
             extension: '.m4a',
-            audioQuality: Audio.IOSAudioQuality.HIGH,
+            outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+            audioQuality: Audio.IOSAudioQuality.MAX,
             sampleRate: 44100,
             numberOfChannels: 1,
             bitRate: 128000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
           },
           web: {
             mimeType: 'audio/webm',
@@ -136,30 +135,60 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         throw new Error('Recording failed');
       }
 
+      console.log('📁 Recording URI:', uri);
+
+      // Get file info to check if recording has content
+      const { getInfoAsync } = require('expo-file-system/legacy');
+      const fileInfo = await getInfoAsync(uri);
+      console.log('📊 File info:', JSON.stringify(fileInfo));
+
+      if (!fileInfo.exists) {
+        throw new Error('Recording file does not exist');
+      }
+
+      if (fileInfo.size < 1000) {
+        console.warn('⚠️ Recording file is very small:', fileInfo.size, 'bytes');
+      }
+
       const uriParts = uri.split('.');
       const fileType = uriParts[uriParts.length - 1];
 
+      // Use proper MIME type for m4a files (audio/mp4 is the standard)
+      const mimeType = fileType === 'm4a' ? 'audio/mp4' : `audio/${fileType}`;
+      console.log('🎵 File type:', fileType, 'MIME:', mimeType);
+
+      if (!OPENAI_API_KEY) {
+        throw new Error('OpenAI API key not configured. Add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.');
+      }
+
       const formData = new FormData();
-      formData.append('audio', {
+      formData.append('file', {
         uri,
         name: `recording.${fileType}`,
-        type: `audio/${fileType}`,
+        type: mimeType,
       } as any);
+      formData.append('model', 'whisper-1');
 
-      console.log('📤 Sending to STT API...');
-      
-      const response = await fetch(STT_API_URL, {
+      console.log('📤 Sending to Whisper API...', fileInfo.size, 'bytes');
+
+      const response = await fetch(WHISPER_API_URL, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
         body: formData,
       });
 
+      console.log('📡 Response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('STT API error:', errorText);
+        console.error('Whisper API error:', errorText);
         throw new Error('Transcription service error');
       }
 
       const data = await response.json();
+      console.log('📝 Whisper API response:', JSON.stringify(data));
       const text = (data.text || '').trim();
 
       if (!text) {
@@ -236,19 +265,28 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
           }
 
+          if (!OPENAI_API_KEY) {
+            reject(new Error('OpenAI API key not configured. Add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.'));
+            return;
+          }
+
           const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
+          formData.append('file', audioBlob, 'recording.webm');
+          formData.append('model', 'whisper-1');
 
-          console.log('📤 Sending to STT API...');
+          console.log('📤 Sending to Whisper API...');
 
-          const response = await fetch(STT_API_URL, {
+          const response = await fetch(WHISPER_API_URL, {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            },
             body: formData,
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('STT API error:', errorText);
+            console.error('Whisper API error:', errorText);
             reject(new Error('Transcription service error'));
             return;
           }
