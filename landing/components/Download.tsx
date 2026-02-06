@@ -26,13 +26,16 @@ export default function Download() {
 
           {/* Download Button */}
           <div className="flex flex-col gap-6 justify-center items-center mb-12">
-            <motion.div
+            <motion.a
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
               className="taskmelt-border bg-taskmelt-black text-white px-10 py-6 text-xl font-bold flex items-center gap-3 taskmelt-shadow"
             >
               <Apple className="w-8 h-8" />
-              Coming Soon to App Store
-            </motion.div>
+              Download on the App Store
+            </motion.a>
             <p className="text-taskmelt-gray text-sm">
               Available exclusively on iPhone
             </p>

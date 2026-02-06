@@ -241,7 +241,9 @@ export default function Gamification() {
               Join thousands of people turning their tasks into achievements
             </p>
             <a
-              href="#download"
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block taskmelt-border bg-taskmelt-black text-white px-10 py-4 text-lg font-bold hover:bg-opacity-90 transition-all hover:scale-105"
             >
               Start Your Streak Today

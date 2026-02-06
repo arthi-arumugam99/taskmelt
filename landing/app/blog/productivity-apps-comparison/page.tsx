@@ -224,9 +224,9 @@ export default function ProductivityAppsComparison() {
               <li>✓ You want time blocking without manual calendar work</li>
               <li>✓ You value beautiful, minimal design</li>
             </ul>
-            <Link href="/#download" className="inline-block mt-6 taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-lg font-bold">
+            <a href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912" target="_blank" rel="noopener noreferrer" className="inline-block mt-6 taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-lg font-bold">
               Try taskmelt Free
-            </Link>
+            </a>
           </div>
 
           <p><strong>Choose Todoist if...</strong> You want dead-simple task management with no frills</p>

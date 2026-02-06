@@ -52,12 +52,14 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/#download"
+                <a
+                  href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
                   Download
-                </Link>
+                </a>
               </li>
               <li>
                 <Link

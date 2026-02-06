@@ -84,7 +84,9 @@ export default function Pricing() {
             </ul>
 
             <a
-              href="#download"
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full text-center taskmelt-border bg-beige-light px-8 py-4 text-xl font-bold hover:bg-beige-dark transition-all"
             >
               Download Free
@@ -143,7 +145,9 @@ export default function Pricing() {
             </ul>
 
             <a
-              href="#download"
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full text-center taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-xl font-bold hover:bg-opacity-90 transition-all taskmelt-shadow"
             >
               Get Pro

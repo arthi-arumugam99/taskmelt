@@ -126,12 +126,14 @@ export default function About() {
             <p className="text-xl text-taskmelt-gray mb-8">
               Experience the relief of dumping your mental chaos and getting back organized clarity.
             </p>
-            <Link
-              href="/#download"
+            <a
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block taskmelt-border bg-taskmelt-black text-white px-10 py-4 text-xl font-bold hover:bg-opacity-90 transition-all"
             >
               Download Free
-            </Link>
+            </a>
           </section>
 
           <section>

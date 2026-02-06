@@ -343,12 +343,14 @@ export default function GTD() {
               let AI automatically organize by context and priority, and get a perfectly scheduled day.
               All the power of GTD without the manual overhead.
             </p>
-            <Link
-              href="/#download"
+            <a
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-lg font-bold hover:bg-opacity-90 transition-all"
             >
               Download taskmelt Free
-            </Link>
+            </a>
           </div>
 
           <h2 className="text-4xl font-black mt-12 mb-6">Common GTD Mistakes to Avoid</h2>

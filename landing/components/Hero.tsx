@@ -56,7 +56,9 @@ export default function Hero() {
           className="flex flex-col items-center gap-4"
         >
           <a
-            href="#download"
+            href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block taskmelt-border bg-taskmelt-peach px-12 py-6 text-xl md:text-2xl font-bold hover:bg-opacity-90 transition-all hover:scale-105 taskmelt-shadow"
           >
             Download Free

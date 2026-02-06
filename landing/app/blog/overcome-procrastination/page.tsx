@@ -302,12 +302,14 @@ export default function OvercomeProcrastination() {
               Brain dump overwhelming tasks. AI breaks them into manageable steps. Built-in Pomodoro timers.
               No more task paralysis—just clear next actions and focused work blocks.
             </p>
-            <Link
-              href="/#download"
+            <a
+              href="https://apps.apple.com/in/app/taskmelt-ai-task-planner/id6756967912"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block taskmelt-border bg-taskmelt-black text-white px-8 py-4 text-lg font-bold hover:bg-opacity-90 transition-all"
             >
               Stop Procrastinating Today
-            </Link>
+            </a>
           </div>
 
           <h3 className="text-3xl font-bold mt-8 mb-4">6. Remove Friction: Make Starting Effortless</h3>
